@@ -35,14 +35,46 @@ import std.range;
 
 private:
 
-auto split_decimal = ctRegex!(`([\.,])`);
+enum split_decimal = ctRegex!(`([\.,])`);
+//m from a.m/p.m, t from ISO T separator
+enum JUMP = [" ", ".", ",", ";", "-", "/", "'",
+        "at", "on", "and", "ad", "m", "t", "of",
+        "st", "nd", "rd", "th"];
+
+enum WEEKDAYS = [tuple("Mon", "Monday"),
+            tuple("Tue", "Tuesday"),
+            tuple("Wed", "Wednesday"),
+            tuple("Thu", "Thursday"),
+            tuple("Fri", "Friday"),
+            tuple("Sat", "Saturday"),
+            tuple("Sun", "Sunday")];
+enum MONTHS = [tuple("Jan", "January"),
+          tuple("Feb", "February"),
+          tuple("Mar", "March"),
+          tuple("Apr", "April"),
+          tuple("May", "May"),
+          tuple("Jun", "June"),
+          tuple("Jul", "July"),
+          tuple("Aug", "August"),
+          tuple("Sep", "Sept", "September"),
+          tuple("Oct", "October"),
+          tuple("Nov", "November"),
+          tuple("Dec", "December")];
+enum HMS = [tuple("h", "hour", "hours"),
+       tuple("m", "minute", "minutes"),
+       tuple("s", "second", "seconds")];
+enum AMPM = [tuple("am", "a"),
+        tuple("pm", "p")];
+enum UTCZONE = ["UTC", "GMT", "Z"];
+enum PERTAIN = ["of"];
+enum string[string] TZOFFSET = [];
+
 
 final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(ElementType!Range)) {
     //Fractional seconds are sometimes split by a comma
     private Range instream;
     private dchar[] charstack;
     private dchar[] tokenstack;
-    private bool eof = false;
 
     this(Range r) {
         instream = r;
@@ -63,7 +95,7 @@ final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(ElementT
      */
     string get_token() {
         import std.algorithm.iteration : count;
-        import std.regex : split;
+        import std.uni : isNumber, isSpace, isAlpha;
 
         if (self.tokenstack) {
             auto f = tokenstack.front;
@@ -75,14 +107,13 @@ final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(ElementT
         string token;
         string state;
 
-        while (!eof) {
+        // This is just a state machine, use enums and switch to speed up
+        while (!instream.empty) {
             // We only realize that we've reached the end of a token when we
             // find a character that's not part of the current token - since
             // that character may be part of the next token, it's stored in the
             // charstack.
             dchar nextchar;
-            string token;
-            bool seenletters;
 
             if (!charstack.empty) {
                 nextchar = charstack.front;
@@ -97,18 +128,15 @@ final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(ElementT
                 }
             }
 
-            if (nextchar == dchar.init) {
-                eof = true;
-                break;
-            } else if (state.empty) {
+            if (state.empty) {
                 // First character of the token - determines if we're starting
                 // to parse a word, a number or something else.
                 token ~= nextchar;
-                if (isword(nextchar)) {
+                if (isAlpha(nextchar)) {
                     state = "a";
-                } else if (isnum(nextchar)) {
+                } else if (isNumber(nextchar)) {
                     state = "0";
-                } else if (isspace(nextchar)) {
+                } else if (isSpace(nextchar)) {
                     token = " ";
                     break;  //emit token
                 } else {
@@ -118,7 +146,7 @@ final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(ElementT
                 // If we've already started reading a word, we keep reading
                 // letters until we find something that's not part of a word.
                 seenletters = true;
-                if (isword(nextchar)) {
+                if (isAlpha(nextchar)) {
                     token += nextchar;
                 } else if (nextchar == '.') {
                     token ~= nextchar;
@@ -130,7 +158,7 @@ final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(ElementT
             } else if (state == '0') {
                 // If we've already started reading a number, we keep reading
                 // numbers until we find something that doesn't fit.
-                if (isnum(nextchar)) {
+                if (isNumber(nextchar)) {
                     token ~= nextchar;
                 } else if (nextchar == '.' || (nextchar == ',' && len(token) >= 2)) {
                     token += nextchar;
@@ -143,9 +171,9 @@ final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(ElementT
                 // If we've seen some letters and a dot separator, continue
                 // parsing, and the tokens will be broken up later.
                 seenletters = true;
-                if (nextchar == '.' || isword(nextchar)) {
+                if (nextchar == '.' || isAlpha(nextchar)) {
                     token += nextchar;
-                } else if (isnum(nextchar) && token[$ - 1] == '.') {
+                } else if (isNumber(nextchar) && token[$ - 1] == '.') {
                     token += nextchar;
                     state = "0.";
                 } else {
@@ -155,9 +183,9 @@ final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(ElementT
             } else if (state == "0.") {
                 // If we've seen at least one dot separator, keep going, we'll
                 // break up the tokens later.
-                if (nextchar == '.' || isnum(nextchar)) {
+                if (nextchar == '.' || isNumber(nextchar)) {
                     token ~= nextchar;
-                } else if (isword(nextchar) && token[-1] == '.') {
+                } else if (isAlpha(nextchar) && token[-1] == '.') {
                     token ~= nextchar;
                     state = "a.";
                 } else {
@@ -169,9 +197,11 @@ final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(ElementT
 
         if (
             (state == "a." || state == "0.") ||
-            (seenletters || token.count('.') > 1 || token[-1] in '.,')
+            (seenletters || token.count('.') > 1 ||
+                (token[$ - 1] == '.' || token[$ - 1] == ',')
+            )
         ) {
-            l = token.split(split_decimal);
+            auto l = token.split(split_decimal);
             token = l[0];
             foreach (tok; l[1 .. $]) {
                 if (tok) {
@@ -180,63 +210,19 @@ final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(ElementT
             }
         }
 
-        if (state == "0." and token.count('.') == 0) {
+        if (state == "0." && token.count('.') == 0) {
             token = token.replace(',', '.');
         }
 
         return token;
     }
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        token = self.get_token()
-        if token is None:
-            raise StopIteration
-
-        return token
-
-    @classmethod
-    def split(cls, s):
-        return list(cls(s))
-
-    @classmethod
-    def isword(cls, nextchar):
-        """ Whether or not the next character is part of a word """
-        return nextchar.isalpha()
-
-    @classmethod
-    def isnum(cls, nextchar):
-        """ Whether the next character is part of a number """
-        return nextchar.isdigit()
-
-    @classmethod
-    def isspace(cls, nextchar):
-        """ Whether the next character is whitespace """
-        return nextchar.isspace()
 }
 
 
-class ResultBase {
-    def _repr(self, classname):
-        l = []
-        for attr in self.__slots__:
-            value = getattr(self, attr)
-            if value is not None:
-                l.append("%s=%s" % (attr, repr(value)))
-        return "%s(%s)" % (classname, ", ".join(l))
-
-    def __len__(self):
-        return (sum(getattr(self, attr) is not None
-                    for attr in self.__slots__))
-
-    def __repr__(self):
-        return self._repr(self.__class__.__name__)
-}
+interface ResultBase {}
 
 
-class ParserInfo:
+class ParserInfo {
     /**
     Class which handles what inputs are accepted. Subclass this to customize
     the language and acceptable values for each parameter.
@@ -254,118 +240,120 @@ class ParserInfo:
             Default is ``False``.
     */
 
-    //m from a.m/p.m, t from ISO T separator
-    JUMP = [" ", ".", ",", ";", "-", "/", "'",
-            "at", "on", "and", "ad", "m", "t", "of",
-            "st", "nd", "rd", "th"]
+    import std.typecons : tuple, Tuple;
+    import std.datetime : Clock;
+    import std.uni : toLower;
 
-    WEEKDAYS = [("Mon", "Monday"),
-                ("Tue", "Tuesday"),
-                ("Wed", "Wednesday"),
-                ("Thu", "Thursday"),
-                ("Fri", "Friday"),
-                ("Sat", "Saturday"),
-                ("Sun", "Sunday")]
-    MONTHS = [("Jan", "January"),
-              ("Feb", "February"),
-              ("Mar", "March"),
-              ("Apr", "April"),
-              ("May", "May"),
-              ("Jun", "June"),
-              ("Jul", "July"),
-              ("Aug", "August"),
-              ("Sep", "Sept", "September"),
-              ("Oct", "October"),
-              ("Nov", "November"),
-              ("Dec", "December")]
-    HMS = [("h", "hour", "hours"),
-           ("m", "minute", "minutes"),
-           ("s", "second", "seconds")]
-    AMPM = [("am", "a"),
-            ("pm", "p")]
-    UTCZONE = ["UTC", "GMT", "Z"]
-    PERTAIN = ["of"]
-    TZOFFSET = {}
+    private:
+    bool dayfirst;
+    bool yearfirst;
+    short year;
+    short century;
+    auto jump = convert(JUMP);
+    auto weekdays = convert(WEEKDAYS);
+    auto months = convert(MONTHS);
+    auto hms = convert(HMS);
+    auto ampm = convert(AMPM);
+    auto utczone = convert(UTCZONE);
+    auto pertain = convert(PERTAIN); 
 
-    def __init__(self, dayfirst=False, yearfirst=False):
-        self._jump = self._convert(self.JUMP)
-        self._weekdays = self._convert(self.WEEKDAYS)
-        self._months = self._convert(self.MONTHS)
-        self._hms = self._convert(self.HMS)
-        self._ampm = self._convert(self.AMPM)
-        self._utczone = self._convert(self.UTCZONE)
-        self._pertain = self._convert(self.PERTAIN)
+    int[string] convert(Range)(list) if (isInputRange!Range) {
+        int[string] dictionary;
 
-        self.dayfirst = dayfirst
-        self.yearfirst = yearfirst
+        foreach (i, value; list)
+        {
+            static if (isInstanceOf(Tuple, typeof(value)))
+            {
+                foreach (item; value)
+                {
+                    dictionary[item.toLower()] = i;
+                }
+            }
+            else
+            {
+                dictionary[value.toLower()] = i;
+            }
+        }
 
-        self._year = time.localtime().tm_year
-        self._century = self._year // 100 * 100
+        return dictionary;
+    }
 
-    def _convert(self, lst):
-        dct = {}
-        for i, v in enumerate(lst):
-            if isinstance(v, tuple):
-                for v in v:
-                    dct[v.lower()] = i
-            else:
-                dct[v.lower()] = i
-        return dct
+    public:
+    this(bool dayfirst = false, bool yearfirst = false) {
 
-    def jump(self, name):
-        return name.lower() in self._jump
+        dayfirst = dayfirst;
+        yearfirst = yearfirst;
 
-    def weekday(self, name):
-        if len(name) >= 3:
-            try:
-                return self._weekdays[name.lower()]
-            except KeyError:
-                pass
-        return None
+        year = Clock.currTime.year;
+        century = year / 10_000;
+    }
 
-    def month(self, name):
-        if len(name) >= 3:
-            try:
-                return self._months[name.lower()] + 1
-            except KeyError:
-                pass
-        return None
+    bool jump(string name) @safe pure nothrow {
+        return name.toLower() in jump;
+    }
 
-    def hms(self, name):
-        try:
-            return self._hms[name.lower()]
-        except KeyError:
-            return None
+    int weekday(string name) {
+        if (name.length >= 3 && name.toLower() in weekdays) {
+            return weekdays[name.toLower()];
+        }
+        return -1;
+    }
 
-    def ampm(self, name):
-        try:
-            return self._ampm[name.lower()]
-        except KeyError:
-            return None
+    int month(string name) {
+        if (name.length >= 3 && name.toLower() in months) {
+            return months[name.toLower()] + 1;
+        }
+        return -1;
+    }
 
-    def pertain(self, name):
-        return name.lower() in self._pertain
+    int hms(string name) {
+        if (name.toLower() in hms) {
+            return hms[name.toLower()];
+        }
+        return -1;
+    }
 
-    def utczone(self, name):
-        return name.lower() in self._utczone
+    int ampm(string name) {
+        if (name.toLower() in ampm) {
+            return ampm[name.toLower()];
+        }
+        return -1;
+    }
 
-    def tzoffset(self, name):
-        if name in self._utczone:
-            return 0
+    bool pertain(string name) {
+        return name.toLower() in pertain;
+    }
 
-        return self.TZOFFSET.get(name)
+    bool utczone(string name) {
+        return name.toLower() in utczone;
+    }
 
-    def convertyear(self, year, century_specified=False):
-        if year < 100 and not century_specified:
-            year += self._century
-            if abs(year - self._year) >= 50:
-                if year < self._year:
-                    year += 100
-                else:
-                    year -= 100
-        return year
+    int tzoffset(string name) {
+        if (name in utczone) {
+            return 0;
+        }
 
-    def validate(self, res):
+        return name in TZOFFSET ? TZOFFSET[name] : -1;
+    }
+
+    int convertyear(int convert_year, century_specified=false) {
+        import std.math : abs;
+
+        if (convert_year < 100 && !century_specified) {
+            convert_year += century;
+            if (abs(convert_year - year) >= 50) {
+                if (convert_year < year) {
+                    convert_year += 100
+                } else {
+                    convert_year -= 100
+                }
+            }
+        }
+
+        return convert_year;
+    }
+
+    bool validate(res) {
         //move to info
         if res.year is not None:
             res.year = self.convertyear(res.year, res.century_specified)
@@ -376,9 +364,10 @@ class ParserInfo:
         elif res.tzoffset != 0 and res.tzname and self.utczone(res.tzname):
             res.tzoffset = 0
         return True
+    }
+}
 
-
-private class YMD(list) {
+class YMD(list) {
     def __init__(self, tzstr, *args, **kwargs):
         super(self.__class__, self).__init__(*args, **kwargs)
         self.century_specified = False
@@ -491,66 +480,65 @@ class parser(object):
     def __init__(self, info=None):
         self.info = info or parserinfo()
 
+    /**
+    Parse the date/time string into a :class:`datetime.datetime` object.
+
+    :param timestr:
+        Any date/time string using the supported formats.
+
+    :param default:
+        The default datetime object, if this is a datetime object and not
+        ``None``, elements specified in ``timestr`` replace elements in the
+        default object.
+
+    :param ignoretz:
+        If set ``True``, time zones in parsed strings are ignored and a
+        naive :class:`datetime.datetime` object is returned.
+
+    :param tzinfos:
+        Additional time zone names / aliases which may be present in the
+        string. This argument maps time zone names (and optionally offsets
+        from those time zones) to time zones. This parameter can be a
+        dictionary with timezone aliases mapping time zone names to time
+        zones or a function taking two parameters (``tzname`` and
+        ``tzoffset``) and returning a time zone.
+
+        The timezones to which the names are mapped can be an integer
+        offset from UTC in minutes or a :class:`tzinfo` object.
+
+        .. doctest::
+           :options: +NORMALIZE_WHITESPACE
+
+            >>> from dateutil.parser import parse
+            >>> from dateutil.tz import gettz
+            >>> tzinfos = {"BRST": -10800, "CST": gettz("America/Chicago")}
+            >>> parse("2012-01-19 17:21:00 BRST", tzinfos=tzinfos)
+            datetime.datetime(2012, 1, 19, 17, 21, tzinfo=tzoffset(u'BRST', -10800))
+            >>> parse("2012-01-19 17:21:00 CST", tzinfos=tzinfos)
+            datetime.datetime(2012, 1, 19, 17, 21,
+                              tzinfo=tzfile('/usr/share/zoneinfo/America/Chicago'))
+
+        This parameter is ignored if ``ignoretz`` is set.
+
+    :param **kwargs:
+        Keyword arguments as passed to ``_parse()``.
+
+    :return:
+        Returns a :class:`datetime.datetime` object or, if the
+        ``fuzzy_with_tokens`` option is ``True``, returns a tuple, the
+        first element being a :class:`datetime.datetime` object, the second
+        a tuple containing the fuzzy tokens.
+
+    :raises ValueError:
+        Raised for invalid or unknown string format, if the provided
+        :class:`tzinfo` is not in a valid format, or if an invalid date
+        would be created.
+
+    :raises OverflowError:
+        Raised if the parsed date exceeds the largest valid C integer on
+        your system.
+     */
     def parse(self, timestr, default=None, ignoretz=False, tzinfos=None, **kwargs):
-        """
-        Parse the date/time string into a :class:`datetime.datetime` object.
-
-        :param timestr:
-            Any date/time string using the supported formats.
-
-        :param default:
-            The default datetime object, if this is a datetime object and not
-            ``None``, elements specified in ``timestr`` replace elements in the
-            default object.
-
-        :param ignoretz:
-            If set ``True``, time zones in parsed strings are ignored and a
-            naive :class:`datetime.datetime` object is returned.
-
-        :param tzinfos:
-            Additional time zone names / aliases which may be present in the
-            string. This argument maps time zone names (and optionally offsets
-            from those time zones) to time zones. This parameter can be a
-            dictionary with timezone aliases mapping time zone names to time
-            zones or a function taking two parameters (``tzname`` and
-            ``tzoffset``) and returning a time zone.
-
-            The timezones to which the names are mapped can be an integer
-            offset from UTC in minutes or a :class:`tzinfo` object.
-
-            .. doctest::
-               :options: +NORMALIZE_WHITESPACE
-
-                >>> from dateutil.parser import parse
-                >>> from dateutil.tz import gettz
-                >>> tzinfos = {"BRST": -10800, "CST": gettz("America/Chicago")}
-                >>> parse("2012-01-19 17:21:00 BRST", tzinfos=tzinfos)
-                datetime.datetime(2012, 1, 19, 17, 21, tzinfo=tzoffset(u'BRST', -10800))
-                >>> parse("2012-01-19 17:21:00 CST", tzinfos=tzinfos)
-                datetime.datetime(2012, 1, 19, 17, 21,
-                                  tzinfo=tzfile('/usr/share/zoneinfo/America/Chicago'))
-
-            This parameter is ignored if ``ignoretz`` is set.
-
-        :param **kwargs:
-            Keyword arguments as passed to ``_parse()``.
-
-        :return:
-            Returns a :class:`datetime.datetime` object or, if the
-            ``fuzzy_with_tokens`` option is ``True``, returns a tuple, the
-            first element being a :class:`datetime.datetime` object, the second
-            a tuple containing the fuzzy tokens.
-
-        :raises ValueError:
-            Raised for invalid or unknown string format, if the provided
-            :class:`tzinfo` is not in a valid format, or if an invalid date
-            would be created.
-
-        :raises OverflowError:
-            Raised if the parsed date exceeds the largest valid C integer on
-            your system.
-        """
-
         if default is None:
             effective_dt = datetime.datetime.now()
             default = datetime.datetime.now().replace(hour=0, minute=0,
@@ -619,7 +607,7 @@ class parser(object):
         else:
             return ret
 
-    class _result(_resultbase):
+    class _result(ResultBase):
         __slots__ = ["year", "month", "day", "weekday",
                      "hour", "minute", "second", "microsecond",
                      "tzname", "tzoffset", "ampm"]
@@ -1071,12 +1059,12 @@ class parser(object):
 
         class _tzparser(object):
 
-            class _result(_resultbase):
+            class _result(ResultBase):
 
                 __slots__ = ["stdabbr", "stdoffset", "dstabbr", "dstoffset",
                              "start", "end"]
 
-                class _attr(_resultbase):
+                class _attr(ResultBase):
                     __slots__ = ["month", "week", "weekday",
                                  "yday", "jyday", "day", "time"]
 
@@ -1084,7 +1072,7 @@ class parser(object):
                     return self._repr("")
 
                 def __init__(self):
-                    _resultbase.__init__(self)
+                    ResultBase.__init__(self)
                     self.start = self._attr()
                     self.end = self._attr()
 
@@ -1262,101 +1250,100 @@ DEFAULTPARSER = parser()
 
 public:
 
-def parse(timestr, parserinfo=None, **kwargs):
-    """
+/**
+Parse a string in one of the supported formats, using the
+``parserinfo`` parameters.
 
-    Parse a string in one of the supported formats, using the
-    ``parserinfo`` parameters.
+:param timestr:
+    A string containing a date/time stamp.
 
-    :param timestr:
-        A string containing a date/time stamp.
+:param parserinfo:
+    A :class:`parserinfo` object containing parameters for the parser.
+    If ``None``, the default arguments to the :class:`parserinfo`
+    constructor are used.
 
-    :param parserinfo:
-        A :class:`parserinfo` object containing parameters for the parser.
-        If ``None``, the default arguments to the :class:`parserinfo`
-        constructor are used.
+The ``**kwargs`` parameter takes the following keyword arguments:
 
-    The ``**kwargs`` parameter takes the following keyword arguments:
+:param default:
+    The default datetime object, if this is a datetime object and not
+    ``None``, elements specified in ``timestr`` replace elements in the
+    default object.
 
-    :param default:
-        The default datetime object, if this is a datetime object and not
-        ``None``, elements specified in ``timestr`` replace elements in the
-        default object.
+:param ignoretz:
+    If set ``True``, time zones in parsed strings are ignored and a naive
+    :class:`datetime` object is returned.
 
-    :param ignoretz:
-        If set ``True``, time zones in parsed strings are ignored and a naive
-        :class:`datetime` object is returned.
+:param tzinfos:
+        Additional time zone names / aliases which may be present in the
+        string. This argument maps time zone names (and optionally offsets
+        from those time zones) to time zones. This parameter can be a
+        dictionary with timezone aliases mapping time zone names to time
+        zones or a function taking two parameters (``tzname`` and
+        ``tzoffset``) and returning a time zone.
 
-    :param tzinfos:
-            Additional time zone names / aliases which may be present in the
-            string. This argument maps time zone names (and optionally offsets
-            from those time zones) to time zones. This parameter can be a
-            dictionary with timezone aliases mapping time zone names to time
-            zones or a function taking two parameters (``tzname`` and
-            ``tzoffset``) and returning a time zone.
-
-            The timezones to which the names are mapped can be an integer
-            offset from UTC in minutes or a :class:`tzinfo` object.
-
-            .. doctest::
-               :options: +NORMALIZE_WHITESPACE
-
-                >>> from dateutil.parser import parse
-                >>> from dateutil.tz import gettz
-                >>> tzinfos = {"BRST": -10800, "CST": gettz("America/Chicago")}
-                >>> parse("2012-01-19 17:21:00 BRST", tzinfos=tzinfos)
-                datetime.datetime(2012, 1, 19, 17, 21, tzinfo=tzoffset(u'BRST', -10800))
-                >>> parse("2012-01-19 17:21:00 CST", tzinfos=tzinfos)
-                datetime.datetime(2012, 1, 19, 17, 21,
-                                  tzinfo=tzfile('/usr/share/zoneinfo/America/Chicago'))
-
-            This parameter is ignored if ``ignoretz`` is set.
-
-    :param dayfirst:
-        Whether to interpret the first value in an ambiguous 3-integer date
-        (e.g. 01/05/09) as the day (``True``) or month (``False``). If
-        ``yearfirst`` is set to ``True``, this distinguishes between YDM and
-        YMD. If set to ``None``, this value is retrieved from the current
-        :class:`parserinfo` object (which itself defaults to ``False``).
-
-    :param yearfirst:
-        Whether to interpret the first value in an ambiguous 3-integer date
-        (e.g. 01/05/09) as the year. If ``True``, the first number is taken to
-        be the year, otherwise the last number is taken to be the year. If
-        this is set to ``None``, the value is retrieved from the current
-        :class:`parserinfo` object (which itself defaults to ``False``).
-
-    :param fuzzy:
-        Whether to allow fuzzy parsing, allowing for string like "Today is
-        January 1, 2047 at 8:21:00AM".
-
-    :param fuzzy_with_tokens:
-        If ``True``, ``fuzzy`` is automatically set to True, and the parser
-        will return a tuple where the first element is the parsed
-        :class:`datetime.datetime` datetimestamp and the second element is
-        a tuple containing the portions of the string which were ignored:
+        The timezones to which the names are mapped can be an integer
+        offset from UTC in minutes or a :class:`tzinfo` object.
 
         .. doctest::
+           :options: +NORMALIZE_WHITESPACE
 
             >>> from dateutil.parser import parse
-            >>> parse("Today is January 1, 2047 at 8:21:00AM", fuzzy_with_tokens=True)
-            (datetime.datetime(2011, 1, 1, 8, 21), (u'Today is ', u' ', u'at '))
+            >>> from dateutil.tz import gettz
+            >>> tzinfos = {"BRST": -10800, "CST": gettz("America/Chicago")}
+            >>> parse("2012-01-19 17:21:00 BRST", tzinfos=tzinfos)
+            datetime.datetime(2012, 1, 19, 17, 21, tzinfo=tzoffset(u'BRST', -10800))
+            >>> parse("2012-01-19 17:21:00 CST", tzinfos=tzinfos)
+            datetime.datetime(2012, 1, 19, 17, 21,
+                              tzinfo=tzfile('/usr/share/zoneinfo/America/Chicago'))
 
-    :return:
-        Returns a :class:`datetime.datetime` object or, if the
-        ``fuzzy_with_tokens`` option is ``True``, returns a tuple, the
-        first element being a :class:`datetime.datetime` object, the second
-        a tuple containing the fuzzy tokens.
+        This parameter is ignored if ``ignoretz`` is set.
 
-    :raises ValueError:
-        Raised for invalid or unknown string format, if the provided
-        :class:`tzinfo` is not in a valid format, or if an invalid date
-        would be created.
+:param dayfirst:
+    Whether to interpret the first value in an ambiguous 3-integer date
+    (e.g. 01/05/09) as the day (``True``) or month (``False``). If
+    ``yearfirst`` is set to ``True``, this distinguishes between YDM and
+    YMD. If set to ``None``, this value is retrieved from the current
+    :class:`parserinfo` object (which itself defaults to ``False``).
 
-    :raises OverflowError:
-        Raised if the parsed date exceeds the largest valid C integer on
-        your system.
-    """
+:param yearfirst:
+    Whether to interpret the first value in an ambiguous 3-integer date
+    (e.g. 01/05/09) as the year. If ``True``, the first number is taken to
+    be the year, otherwise the last number is taken to be the year. If
+    this is set to ``None``, the value is retrieved from the current
+    :class:`parserinfo` object (which itself defaults to ``False``).
+
+:param fuzzy:
+    Whether to allow fuzzy parsing, allowing for string like "Today is
+    January 1, 2047 at 8:21:00AM".
+
+:param fuzzy_with_tokens:
+    If ``True``, ``fuzzy`` is automatically set to True, and the parser
+    will return a tuple where the first element is the parsed
+    :class:`datetime.datetime` datetimestamp and the second element is
+    a tuple containing the portions of the string which were ignored:
+
+    .. doctest::
+
+        >>> from dateutil.parser import parse
+        >>> parse("Today is January 1, 2047 at 8:21:00AM", fuzzy_with_tokens=True)
+        (datetime.datetime(2011, 1, 1, 8, 21), (u'Today is ', u' ', u'at '))
+
+:return:
+    Returns a :class:`datetime.datetime` object or, if the
+    ``fuzzy_with_tokens`` option is ``True``, returns a tuple, the
+    first element being a :class:`datetime.datetime` object, the second
+    a tuple containing the fuzzy tokens.
+
+:raises ValueError:
+    Raised for invalid or unknown string format, if the provided
+    :class:`tzinfo` is not in a valid format, or if an invalid date
+    would be created.
+
+:raises OverflowError:
+    Raised if the parsed date exceeds the largest valid C integer on
+    your system.
+*/
+def parse(timestr, parserinfo=None, **kwargs):
     if parserinfo:
         return parser(parserinfo).parse(timestr, **kwargs)
     else:
