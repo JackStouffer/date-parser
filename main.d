@@ -34,451 +34,12 @@ import std.regex;
 import std.range;
 
 private:
-
-enum split_decimal = ctRegex!(`([\.,])`);
-//m from a.m/p.m, t from ISO T separator
-enum JUMP = [" ", ".", ",", ";", "-", "/", "'",
-        "at", "on", "and", "ad", "m", "t", "of",
-        "st", "nd", "rd", "th"];
-
-enum WEEKDAYS = [tuple("Mon", "Monday"),
-            tuple("Tue", "Tuesday"),
-            tuple("Wed", "Wednesday"),
-            tuple("Thu", "Thursday"),
-            tuple("Fri", "Friday"),
-            tuple("Sat", "Saturday"),
-            tuple("Sun", "Sunday")];
-enum MONTHS = [tuple("Jan", "January"),
-          tuple("Feb", "February"),
-          tuple("Mar", "March"),
-          tuple("Apr", "April"),
-          tuple("May", "May"),
-          tuple("Jun", "June"),
-          tuple("Jul", "July"),
-          tuple("Aug", "August"),
-          tuple("Sep", "Sept", "September"),
-          tuple("Oct", "October"),
-          tuple("Nov", "November"),
-          tuple("Dec", "December")];
-enum HMS = [tuple("h", "hour", "hours"),
-       tuple("m", "minute", "minutes"),
-       tuple("s", "second", "seconds")];
-enum AMPM = [tuple("am", "a"),
-        tuple("pm", "p")];
-enum UTCZONE = ["UTC", "GMT", "Z"];
-enum PERTAIN = ["of"];
-enum string[string] TZOFFSET = [];
-
-
-final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(ElementType!Range)) {
-    //Fractional seconds are sometimes split by a comma
-    private Range instream;
-    private dchar[] charstack;
-    private dchar[] tokenstack;
-
-    this(Range r) {
-        instream = r;
-    }
-
-    /**
-     This function breaks the time string into lexical units (tokens), which
-     can be parsed by the parser. Lexical units are demarcated by changes in
-     the character set, so any continuous string of letters is considered
-     one unit, any continuous string of numbers is considered one unit.
-
-     The main complication arises from the fact that dots ('.') can be used
-     both as separators (e.g. "Sep.20.2009") or decimal points (e.g.
-     "4:30:21.447"). As such, it is necessary to read the full context of
-     any dot-separated strings before breaking it into tokens; as such, this
-     function maintains a "token stack", for when the ambiguous context
-     demands that multiple tokens be parsed at once.
-     */
-    string get_token() {
-        import std.algorithm.iteration : count;
-        import std.uni : isNumber, isSpace, isAlpha;
-
-        if (self.tokenstack) {
-            auto f = tokenstack.front;
-            tokenstack.popFront;
-            return f;
-        }
-
-        bool seenletters = false;
-        string token;
-        string state;
-
-        // This is just a state machine, use enums and switch to speed up
-        while (!instream.empty) {
-            // We only realize that we've reached the end of a token when we
-            // find a character that's not part of the current token - since
-            // that character may be part of the next token, it's stored in the
-            // charstack.
-            dchar nextchar;
-
-            if (!charstack.empty) {
-                nextchar = charstack.front;
-                charstack.popFront;
-            } else {
-                nextchar = instream.front;
-                instream.popFront;
-
-                while (nextchar == '\x00') {
-                    nextchar = instream.front;
-                    instream.popFront;
-                }
-            }
-
-            if (state.empty) {
-                // First character of the token - determines if we're starting
-                // to parse a word, a number or something else.
-                token ~= nextchar;
-                if (isAlpha(nextchar)) {
-                    state = "a";
-                } else if (isNumber(nextchar)) {
-                    state = "0";
-                } else if (isSpace(nextchar)) {
-                    token = " ";
-                    break;  //emit token
-                } else {
-                    break;  //emit token
-                }
-            } else if (state == "a") {
-                // If we've already started reading a word, we keep reading
-                // letters until we find something that's not part of a word.
-                seenletters = true;
-                if (isAlpha(nextchar)) {
-                    token += nextchar;
-                } else if (nextchar == '.') {
-                    token ~= nextchar;
-                    state = "a.";
-                } else {
-                    charstack ~= nextchar;
-                    break;  //emit token
-                }
-            } else if (state == '0') {
-                // If we've already started reading a number, we keep reading
-                // numbers until we find something that doesn't fit.
-                if (isNumber(nextchar)) {
-                    token ~= nextchar;
-                } else if (nextchar == '.' || (nextchar == ',' && len(token) >= 2)) {
-                    token += nextchar;
-                    state = "0.";
-                } else {
-                    charstack ~= nextchar;
-                    break;  //emit token
-                }
-            } else if (state == "a.") {
-                // If we've seen some letters and a dot separator, continue
-                // parsing, and the tokens will be broken up later.
-                seenletters = true;
-                if (nextchar == '.' || isAlpha(nextchar)) {
-                    token += nextchar;
-                } else if (isNumber(nextchar) && token[$ - 1] == '.') {
-                    token += nextchar;
-                    state = "0.";
-                } else {
-                    charstack ~= nextchar;
-                    break;  //emit token
-                }
-            } else if (state == "0.") {
-                // If we've seen at least one dot separator, keep going, we'll
-                // break up the tokens later.
-                if (nextchar == '.' || isNumber(nextchar)) {
-                    token ~= nextchar;
-                } else if (isAlpha(nextchar) && token[-1] == '.') {
-                    token ~= nextchar;
-                    state = "a.";
-                } else {
-                    charstack ~= nextchar;
-                    break;  //emit token
-                }
-            }
-        }
-
-        if (
-            (state == "a." || state == "0.") ||
-            (seenletters || token.count('.') > 1 ||
-                (token[$ - 1] == '.' || token[$ - 1] == ',')
-            )
-        ) {
-            auto l = token.split(split_decimal);
-            token = l[0];
-            foreach (tok; l[1 .. $]) {
-                if (tok) {
-                    tokenstack ~= tok;
-                }
-            }
-        }
-
-        if (state == "0." && token.count('.') == 0) {
-            token = token.replace(',', '.');
-        }
-
-        return token;
-    }
-}
-
-
 interface ResultBase {}
-
-
-class ParserInfo {
-    /**
-    Class which handles what inputs are accepted. Subclass this to customize
-    the language and acceptable values for each parameter.
-
-    :param dayfirst:
-            Whether to interpret the first value in an ambiguous 3-integer date
-            (e.g. 01/05/09) as the day (``True``) or month (``False``). If
-            ``yearfirst`` is set to ``True``, this distinguishes between YDM
-            and YMD. Default is ``False``.
-
-    :param yearfirst:
-            Whether to interpret the first value in an ambiguous 3-integer date
-            (e.g. 01/05/09) as the year. If ``True``, the first number is taken
-            to be the year, otherwise the last number is taken to be the year.
-            Default is ``False``.
-    */
-
-    import std.typecons : tuple, Tuple;
-    import std.datetime : Clock;
-    import std.uni : toLower;
-
-    private:
-    bool dayfirst;
-    bool yearfirst;
-    short year;
-    short century;
-    auto jump = convert(JUMP);
-    auto weekdays = convert(WEEKDAYS);
-    auto months = convert(MONTHS);
-    auto hms = convert(HMS);
-    auto ampm = convert(AMPM);
-    auto utczone = convert(UTCZONE);
-    auto pertain = convert(PERTAIN); 
-
-    int[string] convert(Range)(list) if (isInputRange!Range) {
-        int[string] dictionary;
-
-        foreach (i, value; list)
-        {
-            static if (isInstanceOf(Tuple, typeof(value)))
-            {
-                foreach (item; value)
-                {
-                    dictionary[item.toLower()] = i;
-                }
-            }
-            else
-            {
-                dictionary[value.toLower()] = i;
-            }
-        }
-
-        return dictionary;
-    }
-
-    public:
-    this(bool dayfirst = false, bool yearfirst = false) {
-
-        dayfirst = dayfirst;
-        yearfirst = yearfirst;
-
-        year = Clock.currTime.year;
-        century = year / 10_000;
-    }
-
-    bool jump(string name) @safe pure nothrow {
-        return name.toLower() in jump;
-    }
-
-    int weekday(string name) {
-        if (name.length >= 3 && name.toLower() in weekdays) {
-            return weekdays[name.toLower()];
-        }
-        return -1;
-    }
-
-    int month(string name) {
-        if (name.length >= 3 && name.toLower() in months) {
-            return months[name.toLower()] + 1;
-        }
-        return -1;
-    }
-
-    int hms(string name) {
-        if (name.toLower() in hms) {
-            return hms[name.toLower()];
-        }
-        return -1;
-    }
-
-    int ampm(string name) {
-        if (name.toLower() in ampm) {
-            return ampm[name.toLower()];
-        }
-        return -1;
-    }
-
-    bool pertain(string name) {
-        return name.toLower() in pertain;
-    }
-
-    bool utczone(string name) {
-        return name.toLower() in utczone;
-    }
-
-    int tzoffset(string name) {
-        if (name in utczone) {
-            return 0;
-        }
-
-        return name in TZOFFSET ? TZOFFSET[name] : -1;
-    }
-
-    int convertyear(int convert_year, century_specified=false) {
-        import std.math : abs;
-
-        if (convert_year < 100 && !century_specified) {
-            convert_year += century;
-            if (abs(convert_year - year) >= 50) {
-                if (convert_year < year) {
-                    convert_year += 100
-                } else {
-                    convert_year -= 100
-                }
-            }
-        }
-
-        return convert_year;
-    }
-
-    bool validate(res) {
-        //move to info
-        if res.year is not None:
-            res.year = self.convertyear(res.year, res.century_specified)
-
-        if res.tzoffset == 0 and not res.tzname or res.tzname == 'Z':
-            res.tzname = "UTC"
-            res.tzoffset = 0
-        elif res.tzoffset != 0 and res.tzname and self.utczone(res.tzname):
-            res.tzoffset = 0
-        return True
-    }
-}
-
-class YMD(list) {
-    def __init__(self, tzstr, *args, **kwargs):
-        super(self.__class__, self).__init__(*args, **kwargs)
-        self.century_specified = False
-        self.tzstr = tzstr
-
-    @staticmethod
-    def token_could_be_year(token, year):
-        try:
-            return int(token) == year
-        except ValueError:
-            return False
-
-    @staticmethod
-    def find_potential_year_tokens(year, tokens):
-        return [token for token in tokens if YMD.token_could_be_year(token, year)]
-
-    def find_probable_year_index(self, tokens):
-        """
-        attempt to deduce if a pre 100 year was lost
-         due to padded zeros being taken off
-        """
-        for index, token in enumerate(self):
-            potential_year_tokens = YMD.find_potential_year_tokens(token, tokens)
-            if len(potential_year_tokens) == 1 and len(potential_year_tokens[0]) > 2:
-                return index
-
-    def append(self, val):
-        if hasattr(val, '__len__'):
-            if val.isdigit() and len(val) > 2:
-                self.century_specified = True
-        elif val > 100:
-            self.century_specified = True
-
-        super(self.__class__, self).append(int(val))
-
-    def resolveYMD(self, mstridx, yearfirst, dayfirst):
-        lenYMD = len(self)
-        year, month, day = (None, None, None)
-
-        if lenYMD > 3:
-            raise ValueError("More than three YMD values")
-        elif lenYMD == 1 or (mstridx != -1 and lenYMD == 2):
-            //One member, or two members with a month string
-            if mstridx != -1:
-                month = self[mstridx]
-                del self[mstridx]
-
-            if lenYMD > 1 or mstridx == -1:
-                if self[0] > 31:
-                    year = self[0]
-                else:
-                    day = self[0]
-
-        elif lenYMD == 2:
-            //Two members with numbers
-            if self[0] > 31:
-                //99-01
-                year, month = self
-            elif self[1] > 31:
-                //01-99
-                month, year = self
-            elif dayfirst and self[1] <= 12:
-                //13-01
-                day, month = self
-            else:
-                //01-13
-                month, day = self
-
-        elif lenYMD == 3:
-            //Three members
-            if mstridx == 0:
-                month, day, year = self
-            elif mstridx == 1:
-                if self[0] > 31 or (yearfirst and self[2] <= 31):
-                    //99-Jan-01
-                    year, month, day = self
-                else:
-                    //01-Jan-01
-                    //Give precendence to day-first, since
-                    //two-digit years is usually hand-written.
-                    day, month, year = self
-
-            elif mstridx == 2:
-                //WTF!?
-                if self[1] > 31:
-                    //01-99-Jan
-                    day, year, month = self
-                else:
-                    //99-01-Jan
-                    year, day, month = self
-
-            else:
-                if self[0] > 31 or \
-                    self.find_probable_year_index(_timelex.split(self.tzstr)) == 0 or \
-                   (yearfirst and self[1] <= 12 and self[2] <= 31):
-                    //99-01-01
-                    year, month, day = self
-                elif self[0] > 12 or (dayfirst and self[1] <= 12):
-                    //13-01-01
-                    day, month, year = self
-                else:
-                    //01-13-01
-                    month, day, year = self
-
-        return year, month, day
-}
 
 
 class parser(object):
     def __init__(self, info=None):
-        self.info = info or parserinfo()
+        self.info = info or ParserInfo()
 
     /**
     Parse the date/time string into a :class:`datetime.datetime` object.
@@ -626,7 +187,7 @@ class parser(object):
             (e.g. 01/05/09) as the day (``True``) or month (``False``). If
             ``yearfirst`` is set to ``True``, this distinguishes between YDM
             and YMD. If set to ``None``, this value is retrieved from the
-            current :class:`parserinfo` object (which itself defaults to
+            current :class:`ParserInfo` object (which itself defaults to
             ``False``).
 
         :param yearfirst:
@@ -634,7 +195,7 @@ class parser(object):
             (e.g. 01/05/09) as the year. If ``True``, the first number is taken
             to be the year, otherwise the last number is taken to be the year.
             If this is set to ``None``, the value is retrieved from the current
-            :class:`parserinfo` object (which itself defaults to ``False``).
+            :class:`ParserInfo` object (which itself defaults to ``False``).
 
         :param fuzzy:
             Whether to allow fuzzy parsing, allowing for string like "Today is
@@ -710,7 +271,7 @@ class parser(object):
                         s = l[i-1]
 
                         if not ymd and l[i-1].find('.') == -1:
-                            #ymd.append(info.convertyear(int(s[:2])))
+                            //ymd.append(info.convertyear(int(s[:2])))
 
                             ymd.append(s[:2])
                             ymd.append(s[2:4])
@@ -1252,17 +813,11 @@ public:
 
 /**
 Parse a string in one of the supported formats, using the
-``parserinfo`` parameters.
+`ParserInfo` parameters.
 
-:param timestr:
-    A string containing a date/time stamp.
-
-:param parserinfo:
-    A :class:`parserinfo` object containing parameters for the parser.
-    If ``None``, the default arguments to the :class:`parserinfo`
-    constructor are used.
-
-The ``**kwargs`` parameter takes the following keyword arguments:
+Params:
+    timestr = A string containing a date/time stamp.
+    ParserInfo = containing parameters for the parser. If `null` the default arguments to the :class:`ParserInfo` constructor are used.
 
 :param default:
     The default datetime object, if this is a datetime object and not
@@ -1303,14 +858,14 @@ The ``**kwargs`` parameter takes the following keyword arguments:
     (e.g. 01/05/09) as the day (``True``) or month (``False``). If
     ``yearfirst`` is set to ``True``, this distinguishes between YDM and
     YMD. If set to ``None``, this value is retrieved from the current
-    :class:`parserinfo` object (which itself defaults to ``False``).
+    :class:`ParserInfo` object (which itself defaults to ``False``).
 
 :param yearfirst:
     Whether to interpret the first value in an ambiguous 3-integer date
     (e.g. 01/05/09) as the year. If ``True``, the first number is taken to
     be the year, otherwise the last number is taken to be the year. If
     this is set to ``None``, the value is retrieved from the current
-    :class:`parserinfo` object (which itself defaults to ``False``).
+    :class:`ParserInfo` object (which itself defaults to ``False``).
 
 :param fuzzy:
     Whether to allow fuzzy parsing, allowing for string like "Today is
@@ -1328,23 +883,21 @@ The ``**kwargs`` parameter takes the following keyword arguments:
         >>> parse("Today is January 1, 2047 at 8:21:00AM", fuzzy_with_tokens=True)
         (datetime.datetime(2011, 1, 1, 8, 21), (u'Today is ', u' ', u'at '))
 
-:return:
-    Returns a :class:`datetime.datetime` object or, if the
-    ``fuzzy_with_tokens`` option is ``True``, returns a tuple, the
-    first element being a :class:`datetime.datetime` object, the second
-    a tuple containing the fuzzy tokens.
+Returns:
+    Returns a `datetime.datetime` object or, if the `fuzzy_with_tokens` option
+    is `true`, returns a tuple, the first element being a `datetime.datetime`
+    object, the second a tuple containing the fuzzy tokens.
 
-:raises ValueError:
-    Raised for invalid or unknown string format, if the provided
-    :class:`tzinfo` is not in a valid format, or if an invalid date
+Throws:
+    `Exception` will be thrown for invalid or unknown string format, or if
+    the provided `tzinfo` is not in a valid format, or if an invalid date
     would be created.
 
-:raises OverflowError:
-    Raised if the parsed date exceeds the largest valid C integer on
-    your system.
+Throws:
+    `ConvOverflowException` if the parsed date exceeds `int.max`
 */
-def parse(timestr, parserinfo=None, **kwargs):
-    if parserinfo:
-        return parser(parserinfo).parse(timestr, **kwargs)
+def parse(timestr, ParserInfo=None, **kwargs):
+    if ParserInfo:
+        return parser(ParserInfo).parse(timestr, **kwargs)
     else:
         return DEFAULTPARSER.parse(timestr, **kwargs)
