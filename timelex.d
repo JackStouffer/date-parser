@@ -1,6 +1,5 @@
 import std.datetime;
 import std.string;
-import std.collections;
 import std.regex;
 import std.range;
 
@@ -33,7 +32,7 @@ package final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(
         import std.algorithm.iteration : count;
         import std.uni : isNumber, isSpace, isAlpha;
 
-        if (self.tokenstack) {
+        if (this.tokenstack) {
             auto f = tokenstack.front;
             tokenstack.popFront;
             return f;

@@ -1,3 +1,5 @@
+import parser_info;
+
 package:
 interface ResultBase {}
 
@@ -62,7 +64,7 @@ package class Parser {
         effective_dt = datetime.datetime.now();
         defaultDate = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0);
 
-        res, skipped_tokens = self._parse(timestr, **kwargs);
+        res, skipped_tokens = this._parse(timestr, **kwargs);
 
         if (res is null) {
             throw new Exception("Unknown string format");
@@ -630,7 +632,7 @@ package class Parser {
 
             auto parse(string tzstr) {
                 auto res = new Result();
-                auto l = TimeLex.split(tzstr);
+                string[] l = TimeLex.split(tzstr);
                 
                 try {
                     size_t len_l = l.length;
@@ -701,22 +703,24 @@ package class Parser {
 
                     if (i >= len_l) {
                         // do nothing on purpose FIXME
-                    } else if (8 <= l.count(',') <= 9 && not [y for x in l[i:] if x != ',' for y in x if y not in "0123456789"]) {
+                    } else if (8 <= l.count(',') && l.count(',') <= 9 && l[i .. $].filter!(a => a != ",").filter!(a => !"0123456789".canFind(a)).array.length == 0) {
                         //GMT0BST,3,0,30,3600,10,0,26,7200[,3600]
-                        foreach (x; auto r = [res.start, res.end]) {
+                        foreach (x; [res.start, res.end]) {
                             x.month = to!int(l[i]);
-                            i += 2
-                            if l[i] == '-':
-                                value = to!int(l[i+1])*-1;
+                            i += 2;
+                            if (l[i] == '-') {
+                                value = to!int(l[i+1]) * -1;
                                 i += 1;
-                            else:
+                            } else {
                                 value = to!int(l[i]);
-                            i += 2
-                            if value:
+                            }
+                            i += 2;
+                            if (value) {
                                 x.week = value;
                                 x.weekday = (to!int(l[i])-1) % 7;
-                            else:
+                            } else {
                                 x.day = to!int(l[i]);
+                            }
                             i += 2;
                             x.time = to!int(l[i]);
                             i += 2;
@@ -724,14 +728,14 @@ package class Parser {
 
                         if (i < len_l) {
                             if (l[i] == '+' || l[i] == '-') {
-                                signal = (-1, 1)[l[i] == "+"]
-                                i += 1
+                                signal = (-1, 1)[l[i] == "+"];
+                                ++i;
                             } else {
-                                signal = 1
+                                signal = 1;
                             }
                             res.dstoffset = (res.stdoffset + to!int(l[i])) * signal;
                         }
-                    } else if (l.count(',') == 2 && l[i:].count('/') <= 2 && not [y for x in l[i:] if x not in (',', '/', 'J', 'M', '.', '-', ':') for y in x if y not in "0123456789"]) {
+                    } else if (l.count(',') == 2 && l[i .. $].count('/') <= 2 && l[i .. $].filter!(a => !(",/JM.-:".canFind(a))).filter!(a => !"0123456789".canFind(a)).array.length == 0) {
                         foreach (x; [res.start, res.end]) {
                             if (l[i] == 'J') {
                                 //non-leap year day (1 based)
@@ -739,44 +743,44 @@ package class Parser {
                                 x.jyday = to!int(l[i]);
                             } else if (l[i] == 'M') {
                                 //month[-.]week[-.]weekday
-                                i += 1;
+                                ++i;
                                 x.month = to!int(l[i]);
-                                i += 1;
-                                assert(l[i] in ('-', '.'));
-                                i += 1;
+                                ++i;
+                                assert(l[i] == '-' || l[i] == '.');
+                                ++i;
                                 x.week = to!int(l[i]);
                                 if (x.week == 5) {
-                                    x.week = -1
+                                    x.week = -1;
                                 }
-                                i += 1;
+                                ++i;
                                 assert(l[i] in ('-', '.'));
-                                i += 1;
+                                ++i;
                                 x.weekday = (to!int(l[i]) - 1) % 7;
                             } else {
                                 //year day (zero based)
-                                x.yday = int(l[i])+1
+                                x.yday = to!int(l[i])+1;
                             }
 
-                            i += 1;
+                            ++i;
 
                             if (i < len_l && l[i] == '/') {
-                                i += 1;
+                                ++i;
                                 //start time
                                 auto len_li = l[i].length;
                                 if (len_li == 4) {
                                     //-0300
-                                    x.time = (int(l[i][:2])*3600+int(l[i][2:])*60)
+                                    x.time = (to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60);
                                 } else if (i+1 < len_l && l[i+1] == ':') {
                                     //-03:00
                                     x.time = to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60;
                                     i += 2;
                                     if (i+1 < len_l && l[i+1] == ':') {
                                         i += 2;
-                                        x.time += int(l[i]);
+                                        x.time += to!int(l[i]);
                                     }
                                 } else if (len_li <= 2) {
                                     //-[0]3
-                                    x.time = (int(l[i][:2])*3600);
+                                    x.time = (to!int(l[i][0 .. 2]) * 3600);
                                 } else {
                                     return null;
                                 }
@@ -786,10 +790,13 @@ package class Parser {
                             assert(i == len_l || l[i] == ',');
 
                             i += 1;
+                        }
 
                         assert(i >= len_l);
                     }
-                } catch (IndexError, ValueError, AssertionError) {
+                }
+                catch (Exception)
+                {
                     return null;
                 }
 
@@ -809,7 +816,7 @@ package class Parser {
                 return to!int(value), 0;
             } else {
                 i, f = value.split(".");
-                return to!int(i), to!int(f.ljust(6, "0")[:6]);
+                return to!int(i), to!int(f.ljust(6, "0")[0 .. 6]);
             }
         }
     }

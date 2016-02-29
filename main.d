@@ -29,9 +29,11 @@ Additional resources about date/time string formats can be found below:
 
 import std.datetime;
 import std.string;
-import std.collections;
 import std.regex;
 import std.range;
+
+import parser;
+import parser_info;
 
 static this() {
     defaultParser = Parser(new ParserInfo());

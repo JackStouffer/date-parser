@@ -1,3 +1,5 @@
+import std.typecons;
+
 package:
 
 //m from a.m/p.m, t from ISO T separator
@@ -50,7 +52,6 @@ the language and acceptable values for each parameter.
         Default is ``False``.
 */
 class ParserInfo {
-    import std.typecons : tuple, Tuple;
     import std.datetime : Clock;
     import std.uni : toLower;
 
@@ -166,13 +167,13 @@ class ParserInfo {
     static bool validate(ParserInfo res) {
         //move to info
         if (res.year > -1) {
-            res.year = self.convertyear(res.year, res.century_specified);
+            res.year = this.convertyear(res.year, res.century_specified);
         }
 
         if (res.tzoffset == 0 && res.tzname == -1 || res.tzname == 'Z') {
             res.tzname = "UTC";
             res.tzoffset = 0;
-        } else if (res.tzoffset != 0 and res.tzname and self.utczone(res.tzname)) {
+        } else if (res.tzoffset != 0 && res.tzname && this.utczone(res.tzname)) {
             res.tzoffset = 0;
         }
 

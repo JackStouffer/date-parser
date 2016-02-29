@@ -6,7 +6,7 @@ package struct YMD {
     private string tzstr;
 
     this(string tzstr) {
-        self.tzstr = tzstr;
+        this.tzstr = tzstr;
     }
 
     static bool token_could_be_year(string token, int year) {
@@ -45,7 +45,7 @@ package struct YMD {
 
     void put(int val) {
         if (val > 100) {
-            self.century_specified = true;
+            this.century_specified = true;
         }
 
         data ~= val;
@@ -55,8 +55,8 @@ package struct YMD {
         import std.conv;
         import std.string : isNumeric;
 
-        if (val.isNumeric() and len(val) > 2) {
-            self.century_specified = true;
+        if (val.isNumeric() && len(val) > 2) {
+            this.century_specified = true;
         }
 
         data ~= to!int(val);
@@ -156,7 +156,7 @@ package struct YMD {
                     year = data[0];
                     month = data[1];
                     day = data[2];
-                } else if (self[0] > 12 or (dayfirst && self[1] <= 12)) {
+                } else if (self[0] > 12 || (dayfirst && self[1] <= 12)) {
                     //13-01-01
                     day = data[0];
                     month = data[1];
@@ -167,6 +167,7 @@ package struct YMD {
                     day = data[1];
                     year = data[2];
                 }
+            }
         }
 
         return tuple(year, month, day);
