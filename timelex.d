@@ -152,4 +152,16 @@ package final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(
 
         return token;
     }
+
+    string[] split() {
+        string[] data;
+        string element = "test"; // FIXME
+
+        while (element.length != 0) {
+            element = get_token();
+            data ~= element;
+        }
+
+        return data;
+    }
 }
