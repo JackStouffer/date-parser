@@ -2,14 +2,15 @@ import std.datetime;
 import std.string;
 import std.regex;
 import std.range;
+import std.traits;
 
 private enum split_decimal = ctRegex!(`([\.,])`);
 
-package final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(ElementType!Range)) {
+package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(ElementType!Range)) {
     //Fractional seconds are sometimes split by a comma
     private Range instream;
-    private dchar[] charstack;
-    private dchar[] tokenstack;
+    private string charstack;
+    private string[] tokenstack;
 
     this(Range r) {
         instream = r;
@@ -29,10 +30,10 @@ package final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(
      demands that multiple tokens be parsed at once.
      */
     string get_token() {
-        import std.algorithm.iteration : count;
+        import std.algorithm.searching : count;
         import std.uni : isNumber, isSpace, isAlpha;
 
-        if (this.tokenstack) {
+        if (tokenstack) {
             auto f = tokenstack.front;
             tokenstack.popFront;
             return f;
@@ -82,7 +83,7 @@ package final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(
                 // letters until we find something that's not part of a word.
                 seenletters = true;
                 if (isAlpha(nextchar)) {
-                    token += nextchar;
+                    token ~= nextchar;
                 } else if (nextchar == '.') {
                     token ~= nextchar;
                     state = "a.";
@@ -90,13 +91,13 @@ package final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(
                     charstack ~= nextchar;
                     break;  //emit token
                 }
-            } else if (state == '0') {
+            } else if (state == "0") {
                 // If we've already started reading a number, we keep reading
                 // numbers until we find something that doesn't fit.
                 if (isNumber(nextchar)) {
                     token ~= nextchar;
-                } else if (nextchar == '.' || (nextchar == ',' && len(token) >= 2)) {
-                    token += nextchar;
+                } else if (nextchar == '.' || (nextchar == ',' && token.length >= 2)) {
+                    token ~= nextchar;
                     state = "0.";
                 } else {
                     charstack ~= nextchar;
@@ -107,9 +108,9 @@ package final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(
                 // parsing, and the tokens will be broken up later.
                 seenletters = true;
                 if (nextchar == '.' || isAlpha(nextchar)) {
-                    token += nextchar;
+                    token ~= nextchar;
                 } else if (isNumber(nextchar) && token[$ - 1] == '.') {
-                    token += nextchar;
+                    token ~= nextchar;
                     state = "0.";
                 } else {
                     charstack ~= nextchar;
@@ -146,7 +147,7 @@ package final class TimeLex(Range) if (isRandomAccessRange!Range && isSomeChar!(
         }
 
         if (state == "0." && token.count('.') == 0) {
-            token = token.replace(',', '.');
+            token = token.replace(",", ".");
         }
 
         return token;

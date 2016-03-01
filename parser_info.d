@@ -1,4 +1,6 @@
 import std.typecons;
+import std.range;
+import std.traits;
 
 package:
 
@@ -14,18 +16,18 @@ enum WEEKDAYS = [tuple("Mon", "Monday"),
             tuple("Fri", "Friday"),
             tuple("Sat", "Saturday"),
             tuple("Sun", "Sunday")];
-enum MONTHS = [tuple("Jan", "January"),
-          tuple("Feb", "February"),
-          tuple("Mar", "March"),
-          tuple("Apr", "April"),
-          tuple("May", "May"),
-          tuple("Jun", "June"),
-          tuple("Jul", "July"),
-          tuple("Aug", "August"),
-          tuple("Sep", "Sept", "September"),
-          tuple("Oct", "October"),
-          tuple("Nov", "November"),
-          tuple("Dec", "December")];
+enum MONTHS = [["Jan", "January"],
+          ["Feb", "February"],
+          ["Mar", "March"],
+          ["Apr", "April"],
+          ["May", "May"],
+          ["Jun", "June"],
+          ["Jul", "July"],
+          ["Aug", "August"],
+          ["Sep", "Sept", "September"],
+          ["Oct", "October"],
+          ["Nov", "November"],
+          ["Dec", "December"]];
 enum HMS = [tuple("h", "hour", "hours"),
        tuple("m", "minute", "minutes"),
        tuple("s", "second", "seconds")];
@@ -33,7 +35,7 @@ enum AMPM = [tuple("am", "a"),
         tuple("pm", "p")];
 enum UTCZONE = ["UTC", "GMT", "Z"];
 enum PERTAIN = ["of"];
-enum string[string] TZOFFSET = [];
+string[string] TZOFFSET;
 
 /**
 Class which handles what inputs are accepted. Subclass this to customize
@@ -60,20 +62,20 @@ class ParserInfo {
     bool yearfirst;
     short year;
     short century;
-    auto jump = convert(JUMP);
-    auto weekdays = convert(WEEKDAYS);
-    auto months = convert(MONTHS);
-    auto hms = convert(HMS);
-    auto ampm = convert(AMPM);
-    auto utczone = convert(UTCZONE);
-    auto pertain = convert(PERTAIN); 
+    ulong[string] jump_dict;
+    ulong[string] weekdays;
+    ulong[string] months;
+    ulong[string] hms_dict;
+    ulong[string] ampm_dict;
+    ulong[string] utczone_dict;
+    ulong[string] pertain_dict; 
 
-    int[string] convert(Range)(list) if (isInputRange!Range) {
-        int[string] dictionary;
+    ulong[string] convert(Range)(Range list) if (isInputRange!Range) {
+        ulong[string] dictionary;
 
         foreach (i, value; list)
         {
-            static if (isInstanceOf(Tuple, typeof(value)))
+            static if (isInstanceOf!(Tuple, ElementType!(Range)) || is(ElementType!(Range) : string[]))
             {
                 foreach (item; value)
                 {
@@ -91,16 +93,23 @@ class ParserInfo {
 
     public:
     this(bool dayfirst = false, bool yearfirst = false) {
-
         dayfirst = dayfirst;
         yearfirst = yearfirst;
 
         year = Clock.currTime.year;
         century = year / 10_000;
+
+        jump_dict = convert(JUMP);
+        weekdays = convert(WEEKDAYS);
+        months = convert(MONTHS);
+        hms_dict = convert(HMS);
+        ampm_dict = convert(AMPM);
+        utczone_dict = convert(UTCZONE);
+        pertain_dict = convert(PERTAIN); 
     }
 
     bool jump(string name) @safe @property pure nothrow {
-        return name.toLower() in jump;
+        return name.toLower() in jump_dict;
     }
 
     int weekday(string name) @property {
@@ -118,25 +127,25 @@ class ParserInfo {
     }
 
     int hms(string name) @property {
-        if (name.toLower() in hms) {
-            return hms[name.toLower()];
+        if (name.toLower() in hms_dict) {
+            return hms_dict[name.toLower()];
         }
         return -1;
     }
 
     int ampm(string name) @property {
-        if (name.toLower() in ampm) {
-            return ampm[name.toLower()];
+        if (name.toLower() in ampm_dict) {
+            return ampm_dict[name.toLower()];
         }
         return -1;
     }
 
     bool pertain(string name) @property {
-        return name.toLower() in pertain;
+        return name.toLower() in pertain_dict;
     }
 
     bool utczone(string name) @property {
-        return name.toLower() in utczone;
+        return name.toLower() in utczone_dict;
     }
 
     int tzoffset(string name) @property {

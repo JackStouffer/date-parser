@@ -1,5 +1,7 @@
 import std.traits;
 
+import timelex;
+
 package struct YMD {
     private bool century_specified = false;
     private int[] data;
@@ -9,6 +11,7 @@ package struct YMD {
         this.tzstr = tzstr;
     }
 
+    ///
     static bool token_could_be_year(string token, int year) {
         import std.conv : to, ConvOverflowException, ConvException;
 
@@ -21,7 +24,8 @@ package struct YMD {
         }
     }
 
-    static string[] find_potential_year_tokens(int year, string tokens) {
+    ///
+    static string[] find_potential_year_tokens(int year, string[] tokens) {
         import std.algorithm.interation : filter;
         import std.array : array;
         return tokens
@@ -33,7 +37,7 @@ package struct YMD {
      * Attempt to deduce if a pre 100 year was lost due to padded zeros being
      * taken off
      */
-    size_t find_probable_year_index(tokens) {
+    size_t find_probable_year_index(string[] tokens) {
         foreach (index, token; data) {
             auto potential_year_tokens = YMD.find_potential_year_tokens(token, tokens);
 
@@ -43,6 +47,7 @@ package struct YMD {
         }
     }
 
+    ///
     void put(int val) {
         if (val > 100) {
             this.century_specified = true;
@@ -51,6 +56,12 @@ package struct YMD {
         data ~= val;
     }
 
+    ///
+    void put(float val) {
+        put(to!int(val));
+    }
+
+    ///
     void put(string val) {
         import std.conv;
         import std.string : isNumeric;
@@ -60,6 +71,16 @@ package struct YMD {
         }
 
         data ~= to!int(val);
+    }
+
+    ///
+    size_t length() @property const {
+        return data.length;
+    }
+
+    ///
+    bool centurySpecified() @property const {
+        return century_specified;
     }
 
     /**
@@ -149,14 +170,14 @@ package struct YMD {
                     month = data[2];
                 }
             } else {
-                if (self[0] > 31 ||
-                    find_probable_year_index(TimeLex.split(tzstr)) == 0
+                if (data[0] > 31 ||
+                    find_probable_year_index(new TimeLex!string(tzstr).split()) == 0
                     || (yearfirst && data[1] <= 12 && data[2] <= 31)) {
                     //99-01-01
                     year = data[0];
                     month = data[1];
                     day = data[2];
-                } else if (self[0] > 12 || (dayfirst && self[1] <= 12)) {
+                } else if (data[0] > 12 || (dayfirst && data[1] <= 12)) {
                     //13-01-01
                     day = data[0];
                     month = data[1];

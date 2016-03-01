@@ -36,7 +36,7 @@ import parser;
 import parser_info;
 
 static this() {
-    defaultParser = Parser(new ParserInfo());
+    Parser defaultParser = new Parser(new ParserInfo());
 }
 
 public:
@@ -94,7 +94,7 @@ Throws:
     `ConvOverflowException` if the parsed date exceeds `int.max`
 */
 auto parse(string timestr, ParserInfo parser_info = null, bool ignoretz = false,
-           int[string] tzinfos = [], bool dayfirst = false, bool yearfirst = false,
+           int[string] tzinfos = ["": 0], bool dayfirst = false, bool yearfirst = false,
            bool fuzzy = false, bool fuzzy_with_tokens = false) {
     if (parser_info !is null)
         return new Parser(parser_info).parse(
@@ -118,4 +118,8 @@ auto parse(string timestr, ParserInfo parser_info = null, bool ignoretz = false,
         );
 }
 
-void main() {}
+void main() {
+    import std.stdio;
+    auto s = parse("Thu Sep 25 10:36:28 BRST 2003");
+    s.writeln;
+}
