@@ -6,13 +6,15 @@ import std.traits;
 
 private enum split_decimal = ctRegex!(`([\.,])`);
 
-package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(ElementType!Range)) {
+package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(ElementType!Range))
+{
     //Fractional seconds are sometimes split by a comma
     private Range instream;
     private string charstack;
     private string[] tokenstack;
 
-    this(Range r) {
+    this(Range r)
+    {
         instream = r;
     }
 
@@ -29,11 +31,13 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
      function maintains a "token stack", for when the ambiguous context
      demands that multiple tokens be parsed at once.
      */
-    string get_token() {
+    string get_token()
+    {
         import std.algorithm.searching : count;
         import std.uni : isNumber, isSpace, isAlpha;
 
-        if (tokenstack) {
+        if (tokenstack)
+        {
             auto f = tokenstack.front;
             tokenstack.popFront;
             return f;
@@ -44,120 +48,163 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
         string state;
 
         // This is just a state machine, use enums and switch to speed up
-        while (!instream.empty) {
+        while (!instream.empty)
+        {
             // We only realize that we've reached the end of a token when we
             // find a character that's not part of the current token - since
             // that character may be part of the next token, it's stored in the
             // charstack.
             dchar nextchar;
 
-            if (!charstack.empty) {
+            if (!charstack.empty)
+            {
                 nextchar = charstack.front;
                 charstack.popFront;
-            } else {
+            }
+            else
+            {
                 nextchar = instream.front;
                 instream.popFront;
 
-                while (nextchar == '\x00') {
+                while (nextchar == '\x00')
+                {
                     nextchar = instream.front;
                     instream.popFront;
                 }
             }
 
-            if (state.empty) {
+            if (state.empty)
+            {
                 // First character of the token - determines if we're starting
                 // to parse a word, a number or something else.
                 token ~= nextchar;
-                if (isAlpha(nextchar)) {
+                if (isAlpha(nextchar))
+                {
                     state = "a";
-                } else if (isNumber(nextchar)) {
-                    state = "0";
-                } else if (isSpace(nextchar)) {
-                    token = " ";
-                    break;  //emit token
-                } else {
-                    break;  //emit token
                 }
-            } else if (state == "a") {
+                else if (isNumber(nextchar))
+                {
+                    state = "0";
+                }
+                else if (isSpace(nextchar))
+                {
+                    token = " ";
+                    break; //emit token
+                }
+                else
+                {
+                    break; //emit token
+                }
+            }
+            else if (state == "a")
+            {
                 // If we've already started reading a word, we keep reading
                 // letters until we find something that's not part of a word.
                 seenletters = true;
-                if (isAlpha(nextchar)) {
+                if (isAlpha(nextchar))
+                {
                     token ~= nextchar;
-                } else if (nextchar == '.') {
+                }
+                else if (nextchar == '.')
+                {
                     token ~= nextchar;
                     state = "a.";
-                } else {
-                    charstack ~= nextchar;
-                    break;  //emit token
                 }
-            } else if (state == "0") {
+                else
+                {
+                    charstack ~= nextchar;
+                    break; //emit token
+                }
+            }
+            else if (state == "0")
+            {
                 // If we've already started reading a number, we keep reading
                 // numbers until we find something that doesn't fit.
-                if (isNumber(nextchar)) {
+                if (isNumber(nextchar))
+                {
                     token ~= nextchar;
-                } else if (nextchar == '.' || (nextchar == ',' && token.length >= 2)) {
+                }
+                else if (nextchar == '.' || (nextchar == ',' && token.length >= 2))
+                {
                     token ~= nextchar;
                     state = "0.";
-                } else {
-                    charstack ~= nextchar;
-                    break;  //emit token
                 }
-            } else if (state == "a.") {
+                else
+                {
+                    charstack ~= nextchar;
+                    break; //emit token
+                }
+            }
+            else if (state == "a.")
+            {
                 // If we've seen some letters and a dot separator, continue
                 // parsing, and the tokens will be broken up later.
                 seenletters = true;
-                if (nextchar == '.' || isAlpha(nextchar)) {
+                if (nextchar == '.' || isAlpha(nextchar))
+                {
                     token ~= nextchar;
-                } else if (isNumber(nextchar) && token[$ - 1] == '.') {
+                }
+                else if (isNumber(nextchar) && token[$ - 1] == '.')
+                {
                     token ~= nextchar;
                     state = "0.";
-                } else {
-                    charstack ~= nextchar;
-                    break;  //emit token
                 }
-            } else if (state == "0.") {
+                else
+                {
+                    charstack ~= nextchar;
+                    break; //emit token
+                }
+            }
+            else if (state == "0.")
+            {
                 // If we've seen at least one dot separator, keep going, we'll
                 // break up the tokens later.
-                if (nextchar == '.' || isNumber(nextchar)) {
+                if (nextchar == '.' || isNumber(nextchar))
+                {
                     token ~= nextchar;
-                } else if (isAlpha(nextchar) && token[-1] == '.') {
+                }
+                else if (isAlpha(nextchar) && token[-1] == '.')
+                {
                     token ~= nextchar;
                     state = "a.";
-                } else {
+                }
+                else
+                {
                     charstack ~= nextchar;
-                    break;  //emit token
+                    break; //emit token
                 }
             }
         }
 
-        if (
-            (state == "a." || state == "0.") ||
-            (seenletters || token.count('.') > 1 ||
-                (token[$ - 1] == '.' || token[$ - 1] == ',')
-            )
-        ) {
+        if ((state == "a." || state == "0.") || (seenletters
+                || token.count('.') > 1 || (token[$ - 1] == '.' || token[$ - 1] == ',')))
+        {
             auto l = token.split(split_decimal);
             token = l[0];
-            foreach (tok; l[1 .. $]) {
-                if (tok) {
+            foreach (tok; l[1 .. $])
+            {
+                if (tok)
+                {
                     tokenstack ~= tok;
                 }
             }
         }
 
-        if (state == "0." && token.count('.') == 0) {
+        if (state == "0." && token.count('.') == 0)
+        {
             token = token.replace(",", ".");
         }
 
         return token;
     }
 
-    string[] split() {
+    string[] split()
+    {
         string[] data;
         string element = "test"; // FIXME
 
-        while (element.length != 0) {
+        while (element.length != 0)
+        {
             element = get_token();
             data ~= element;
         }
