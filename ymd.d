@@ -1,4 +1,5 @@
 import std.traits;
+import std.conv;
 
 import timelex;
 
@@ -13,20 +14,16 @@ package struct YMD {
 
     ///
     static bool token_could_be_year(string token, int year) {
-        import std.conv : to, ConvOverflowException, ConvException;
-
         try {
             return to!int(token) == year;
         } catch (ConvException) {
-            return false;
-        } catch (ConvOverflowException) {
             return false;
         }
     }
 
     ///
     static string[] find_potential_year_tokens(int year, string[] tokens) {
-        import std.algorithm.interation : filter;
+        import std.algorithm.iteration : filter;
         import std.array : array;
         return tokens
             .filter!(a => YMD.token_could_be_year(a, year))
@@ -45,6 +42,7 @@ package struct YMD {
                 return index;
             }
         }
+        assert(0);
     }
 
     ///
@@ -63,10 +61,9 @@ package struct YMD {
 
     ///
     void put(string val) {
-        import std.conv;
         import std.string : isNumeric;
 
-        if (val.isNumeric() && len(val) > 2) {
+        if (val.isNumeric() && val.length > 2) {
             this.century_specified = true;
         }
 

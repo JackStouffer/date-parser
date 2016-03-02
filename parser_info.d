@@ -1,6 +1,9 @@
 import std.typecons;
 import std.range;
 import std.traits;
+import std.conv;
+
+import parser;
 
 package:
 
@@ -9,13 +12,13 @@ enum JUMP = [" ", ".", ",", ";", "-", "/", "'",
         "at", "on", "and", "ad", "m", "t", "of",
         "st", "nd", "rd", "th"];
 
-enum WEEKDAYS = [tuple("Mon", "Monday"),
-            tuple("Tue", "Tuesday"),
-            tuple("Wed", "Wednesday"),
-            tuple("Thu", "Thursday"),
-            tuple("Fri", "Friday"),
-            tuple("Sat", "Saturday"),
-            tuple("Sun", "Sunday")];
+enum WEEKDAYS = [["Mon", "Monday"],
+            ["Tue", "Tuesday"],
+            ["Wed", "Wednesday"],
+            ["Thu", "Thursday"],
+            ["Fri", "Friday"],
+            ["Sat", "Saturday"],
+            ["Sun", "Sunday"]];
 enum MONTHS = [["Jan", "January"],
           ["Feb", "February"],
           ["Mar", "March"],
@@ -28,14 +31,14 @@ enum MONTHS = [["Jan", "January"],
           ["Oct", "October"],
           ["Nov", "November"],
           ["Dec", "December"]];
-enum HMS = [tuple("h", "hour", "hours"),
-       tuple("m", "minute", "minutes"),
-       tuple("s", "second", "seconds")];
-enum AMPM = [tuple("am", "a"),
-        tuple("pm", "p")];
+enum HMS = [["h", "hour", "hours"],
+       ["m", "minute", "minutes"],
+       ["s", "second", "seconds"]];
+enum AMPM = [["am", "a"],
+        ["pm", "p"]];
 enum UTCZONE = ["UTC", "GMT", "Z"];
 enum PERTAIN = ["of"];
-string[string] TZOFFSET;
+int[string] TZOFFSET;
 
 /**
 Class which handles what inputs are accepted. Subclass this to customize
@@ -62,18 +65,18 @@ class ParserInfo {
     bool yearfirst;
     short year;
     short century;
-    ulong[string] jump_dict;
-    ulong[string] weekdays;
-    ulong[string] months;
-    ulong[string] hms_dict;
-    ulong[string] ampm_dict;
-    ulong[string] utczone_dict;
-    ulong[string] pertain_dict; 
+    int[string] jump_dict;
+    int[string] weekdays;
+    int[string] months;
+    int[string] hms_dict;
+    int[string] ampm_dict;
+    int[string] utczone_dict;
+    int[string] pertain_dict; 
 
-    ulong[string] convert(Range)(Range list) if (isInputRange!Range) {
-        ulong[string] dictionary;
+    int[string] convert(Range)(Range list) if (isInputRange!Range) {
+        int[string] dictionary;
 
-        foreach (i, value; list)
+        foreach (int i, value; list)
         {
             static if (isInstanceOf!(Tuple, ElementType!(Range)) || is(ElementType!(Range) : string[]))
             {
@@ -108,8 +111,8 @@ class ParserInfo {
         pertain_dict = convert(PERTAIN); 
     }
 
-    bool jump(string name) @safe @property pure nothrow {
-        return name.toLower() in jump_dict;
+    bool jump(string name) @safe @property pure {
+        return name.toLower() in jump_dict ? true : false;
     }
 
     int weekday(string name) @property {
@@ -141,15 +144,15 @@ class ParserInfo {
     }
 
     bool pertain(string name) @property {
-        return name.toLower() in pertain_dict;
+        return name.toLower() in pertain_dict ? true : false;
     }
 
     bool utczone(string name) @property {
-        return name.toLower() in utczone_dict;
+        return name.toLower() in utczone_dict ? true : false;
     }
 
     int tzoffset(string name) @property {
-        if (name in utczone) {
+        if (name in utczone_dict) {
             return 0;
         }
 
@@ -173,13 +176,13 @@ class ParserInfo {
         return convert_year;
     }
 
-    static bool validate(ParserInfo res) {
+    bool validate(Result res) {
         //move to info
         if (res.year > -1) {
             res.year = this.convertyear(res.year, res.century_specified);
         }
 
-        if (res.tzoffset == 0 && res.tzname == -1 || res.tzname == 'Z') {
+        if (res.tzoffset == 0 && res.tzname.length == 0 || res.tzname == "Z") {
             res.tzname = "UTC";
             res.tzoffset = 0;
         } else if (res.tzoffset != 0 && res.tzname && this.utczone(res.tzname)) {

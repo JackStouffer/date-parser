@@ -28,15 +28,12 @@ Additional resources about date/time string formats can be found below:
 */
 
 import std.datetime;
-import std.string;
-import std.regex;
-import std.range;
-
 import parser;
 import parser_info;
 
+Parser defaultParser;
 static this() {
-    Parser defaultParser = new Parser(new ParserInfo());
+    defaultParser = new Parser(new ParserInfo());
 }
 
 public:

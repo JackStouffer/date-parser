@@ -8,20 +8,64 @@ import timelex;
 import ymd;
 
 package:
-interface ResultBase {}
+interface ResultBase {} // FIXME
 
 private class Result : ResultBase {
-    Nullable!uint year;
-    Nullable!uint month;
-    Nullable!uint day;
-    Nullable!uint weekday;
-    Nullable!uint hour;
-    Nullable!uint minute;
-    Nullable!uint second;
-    Nullable!uint microsecond;
+    Nullable!int year;
+    Nullable!int month;
+    Nullable!int day;
+    Nullable!int weekday;
+    Nullable!int hour;
+    Nullable!int minute;
+    Nullable!int second;
+    Nullable!int microsecond;
+    bool century_specified;
     string tzname;
     uint tzoffset;
     uint ampm;
+
+    // FIXME
+    // In order to replicate Python's ability to get any part of an object
+    // via a string at runtime, I am using this AA in order to return the
+    // getter function
+    Nullable!int delegate() @property[string] getter_dict;
+
+    Nullable!int getYear() @property {
+        return year;
+    }
+    Nullable!int getMonth() @property {
+        return month;
+    }
+    Nullable!int getDay() @property {
+        return day;
+    }
+    Nullable!int getWeekDay() @property {
+        return weekday;
+    }
+    Nullable!int getHour() @property {
+        return hour;
+    }
+    Nullable!int getMinute() @property {
+        return minute;
+    }
+    Nullable!int getSecond() @property {
+        return second;
+    }
+    Nullable!int getMicrosecond() @property {
+        return microsecond;
+    }
+
+    this()
+    {
+        getter_dict["year"] = &getYear;
+        getter_dict["month"] = &getMonth;
+        getter_dict["day"] = &getDay;
+        getter_dict["weekday"] = &getWeekDay;
+        getter_dict["hour"] = &getHour;
+        getter_dict["minute"] = &getMinute;
+        getter_dict["second"] = &getSecond;
+        getter_dict["microsecond"] = &getMicrosecond;
+    }
 }
 
 /**
@@ -81,27 +125,26 @@ package class Parser {
         }
     }
 
-    auto parse(string timestr, bool ignoretz = false, int[string] tzinfos = ["": 0], bool dayfirst = false, bool yearfirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false) {
-        //DateTime effective_dt = cast(DateTime) Clock.currTime();
-        DateTime defaultDate = DateTime(cast(Date) Clock.currTime());
+    Tuple!(SysTime, string[]) parse(string timestr, bool ignoretz = false, int[string] tzinfos = ["": 0], bool dayfirst = false, bool yearfirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false) {
+        SysTime defaultDate = Clock.currTime();
 
         auto parsed_string = _parse(timestr, dayfirst, yearfirst, fuzzy, fuzzy_with_tokens);
-        res = parsed_string[0];
-        skipped_tokens = parsed_string[1];
+        auto res = parsed_string[0];
+        auto skipped_tokens = parsed_string[1];
 
         if (res is null) {
             throw new Exception("Unknown string format");
         }
 
-        if (res.length == 0) {
+        if (res.year.isNull() && res.month.isNull() && res.day.isNull() && res.hour.isNull() && res.minute.isNull() && res.second.isNull()) {
             throw new Exception("String does not contain a date.");
         }
 
-        string[string] repl;
+        Nullable!int[string] repl;
         static immutable attrs = ["year", "month", "day", "hour", "minute", "second", "microsecond"];
         foreach (attr; attrs) {
-            if (attr in res) {
-                repl[attr] = res[attr];
+            if (attr in res.getter_dict) {
+                repl[attr] = res.getter_dict[attr](); // FIXME
             }
         }
 
@@ -112,47 +155,38 @@ package class Parser {
             uint cmonth = res.month.isNull() ? defaultDate.month : res.month;
             immutable uint cday = res.day.isNull() ? defaultDate.day : res.day;
 
-            if (cday > monthrange(cyear, cmonth)[1]) {
-                repl["day"] = monthrange(cyear, cmonth)[1];
+            auto days = Date(cyear, cmonth, 1).daysInMonth;
+            if (cday > days) {
+                repl["day"] = days;
             }
         }
 
-        auto ret = defaultDate.replace(**repl);
+        foreach (item; repl.byKeyValue()) {
+            setAttribute(defaultDate, item.key, item.value);
+        }
 
-        if (res.weekday !is null && !res.day) {
-            ret = ret + relativedelta.relativedelta(weekday=res.weekday);
+        if (!res.weekday.isNull() && !res.day) {
+            defaultDate = defaultDate + relativedelta.relativedelta(weekday=res.weekday);
         }
 
         if (!ignoretz) {
-            if (isinstance(tzinfos, collections.Callable) || tzinfos && res.tzname in tzinfos) {
-                if (isinstance(tzinfos, collections.Callable))
-                    tzdata = tzinfos(res.tzname, res.tzoffset);
-                else
-                    tzdata = tzinfos.get(res.tzname);
-
-                if (isinstance(tzdata, datetime.tzinfo)) {
-                    tzinfo = tzdata;
-                } else if (isinstance(tzdata, text_type)) {
-                    tzinfo = tz.tzstr(tzdata);
-                } else if (isinstance(tzdata, integer_types)) {
-                    tzinfo = tz.tzoffset(res.tzname, tzdata);
-                } else {
-                    throw new Exception("Offset must be tzinfo subclass, tz string, or int offset.");
-                }
-                ret = ret.replace(tzinfo=tzinfo);
-            } else if (res.tzname && res.tzname in time.tzname) {
-                ret = ret.replace(tzinfo=tz.tzlocal());
+            if (res.tzname in tzinfos) {
+                tzdata = tzinfos.get(res.tzname);
+                tzinfo = tz.tzoffset(res.tzname, tzdata);
+                defaultDate = defaultDate.replace(tzinfo=tzinfo);
+            } else if (res.tzname.length > 0 && res.tzname in time.tzname) {
+                defaultDate = defaultDate.replace(tzinfo=tz.tzlocal());
             } else if (res.tzoffset == 0) {
-                ret = ret.replace(tzinfo=tz.tzutc());
-            } else if (res.tzoffset) {
-                ret = ret.replace(tzinfo=tz.tzoffset(res.tzname, res.tzoffset));
+                defaultDate = defaultDate.replace(tzinfo=tz.tzutc());
+            } else if (res.tzoffset != 0) {
+                defaultDate = defaultDate.replace(tzinfo=tz.tzoffset(res.tzname, res.tzoffset));
             }
         }
 
         if (kwargs.get("fuzzy_with_tokens", false)) {
-            return ret, skipped_tokens;
+            return tuple(defaultDate, skipped_tokens);
         } else {
-            return ret;
+            return tuple(defaultDate, []);
         }
     }
 
@@ -175,6 +209,21 @@ package class Parser {
             string f = value.split(".")[1]; // FIXME
             return tuple(to!int(i), to!int(f.leftJustify(6, '0')[0 .. 6]));
         }
+    }
+
+    void setAttribute(P, T)(ref P p, string name, auto ref T value)
+    {
+        foreach (mem; __traits(allMembers, P)) {
+            static if (is(typeof(__traits(getMember, p, mem)) Q)) {
+                static if (is(T : Q)) {
+                    if (mem == name) {
+                        __traits(getMember, p, mem) = value;
+                        return;
+                    }
+                }
+            }
+        }
+        assert(0, P.stringof ~ " has no member " ~ name);
     }
 
     /**
@@ -209,7 +258,7 @@ package class Parser {
         :class:`datetime.datetime` datetimestamp and the second element is
         a tuple containing the portions of the string which were ignored
     */
-    private auto _parse(string timestr, bool dayfirst=false, bool yearfirst=false, bool fuzzy=false, bool fuzzy_with_tokens=false) {
+    private Tuple!(Result, string[]) _parse(string timestr, bool dayfirst=false, bool yearfirst=false, bool fuzzy=false, bool fuzzy_with_tokens=false) {
         import std.string : indexOf;
         import std.algorithm.iteration : filter;
         import std.uni : isUpper;
@@ -392,9 +441,9 @@ package class Parser {
                                 if (value.isNull()) {
                                     ymd.put(value.get());
                                     assert(mstridx == -1);
-                                    mstridx = to!long(ymd.length - 1);
+                                    mstridx = to!long(ymd.length == 0 ? 0 : ymd.length - 1);
                                 } else {
-                                    return null, null;
+                                    return tuple(null, null);
                                 }
                             }
 
@@ -443,7 +492,7 @@ package class Parser {
                         }
                         i += 1;
                     } else if (!fuzzy) {
-                        return null, null;
+                        return tuple(null, null);
                     } else {
                         i += 1;
                     }
@@ -579,7 +628,7 @@ package class Parser {
                         //-[0]3
                         res.tzoffset = to!int(l[i][0 .. 2]) * 3600;
                     } else {
-                        return null, null;
+                        return tuple(null, null);
                     }
                     ++i;
 
@@ -597,7 +646,7 @@ package class Parser {
 
                 //Check jumps
                 if (!(info.jump(l[i]) || fuzzy)) {
-                    return null, null;
+                    return tuple(null, null);
                 }
 
                 if (last_skipped_token_i == i - 1) {
@@ -629,44 +678,54 @@ package class Parser {
                 res.day = day;
             }
         } catch (Exception) {
-            return null, null;
+            return tuple(null, null);
         }
 
         if (!info.validate(res)) {
-            return null, null;
+            return tuple(null, null);
         }
 
         if (fuzzy_with_tokens) {
-            return res, skipped_tokens;
+            return tuple(res, skipped_tokens);
         } else {
-            return res, null;
+            return tuple(res, []);
         }
 
         class TZParser {
             class Result : ResultBase {
-                auto __slots__ = ["stdabbr", "stdoffset", "dstabbr", "dstoffset",
-                             "start", "end"];
-                auto start = new _attr();
-                auto end = new _attr();
+                auto start = new Attr();
+                auto end = new Attr();
+                string stdabbr;
+                string dstabbr;
+                int stdoffset;
+                int dstoffset;
 
-                class _attr : ResultBase {
-                    auto __slots__ = ["month", "week", "weekday",
-                                 "yday", "jyday", "day", "time"];
+                class Attr : ResultBase {
+                    uint month;
+                    uint week;
+                    uint weekday;
+                    uint yday;
+                    uint jyday;
+                    uint day;
+                    uint time;
                 }
             }
 
             auto parse(string tzstr) {
+                import std.algorithm.searching : count, canFind;
+                import std.range : iota;
+
                 auto res = new Result();
-                string[] l = TimeLex.split(tzstr);
-                
+                string[] l = new TimeLex!string(tzstr).split();
+
                 try {
-                    size_t len_l = l.length;
+                    immutable size_t len_l = l.length;
 
                     size_t i = 0;
                     while (i < len_l) {
                         //BRST+3[BRDT[+2]]
                         auto j = i;
-                        while (j < len_l && l[j].filter!(a => "0123456789:,-+".indexOf(a) > -1).length == 0) {
+                        while (j < len_l && l[j].filter!(a => "0123456789:,-+".indexOf(a) > -1).array.length == 0) {
                             ++j;
                         }
 
@@ -680,11 +739,12 @@ package class Parser {
                                 res.dstabbr = l[i .. j].join("");
                             }
                             i = j;
-                            if (i < len_l && ((l[i] == '+' || l[i] == '-') || "0123456789".canFind(l[i][0]))) {
-                                if (l[i] == '+' || l[i] == '-') {
+                            if (i < len_l && ((l[i] == "+" || l[i] == "-") || "0123456789".indexOf(l[i][0]) > -1)) {
+                                int signal;
+                                if (l[i] == "+" || l[i] == "-") {
                                     //Yes, that's right.  See the TZ variable
                                     //documentation.
-                                    signal = l[i] == '+' ? -1 : 1;
+                                    signal = l[i] == "+" ? -1 : 1;
                                     ++i;
                                 } else {
                                     signal = -1;
@@ -693,20 +753,21 @@ package class Parser {
                                 immutable len_li = l[i].length;
                                 if (len_li == 4) {
                                     //-0300
-                                    setattr(res, offattr, (to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60) * signal);
-                                } else if (i + 1 < len_l && l[i + 1] == ':') {
+                                    setAttribute(res, offattr, (to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60) * signal);
+                                } else if (i + 1 < len_l && l[i + 1] == ":") {
                                     //-03:00
-                                    setattr(res, offattr, (to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60) * signal);
+                                    setAttribute(res, offattr, (to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60) * signal);
                                     i += 2;
                                 } else if (len_li <= 2) {
                                     //-[0]3
-                                    setattr(res, offattr, to!int(l[i][0 .. 2]) * 3600 * signal);
+                                    setAttribute(res, offattr, to!int(l[i][0 .. 2]) * 3600 * signal);
                                 } else {
                                     return null;
                                 }
                                 ++i;
                             }
-                            if (res.dstabbr) {
+
+                            if (res.dstabbr.length > 0) {
                                 break;
                             }
                         } else {
@@ -716,29 +777,36 @@ package class Parser {
 
                     if (i < len_l) {
                         foreach (j; iota(i, len_l)) {
-                            if (l[j] == ';') {
-                                l[j] = ',';
+                            if (l[j] == ";") {
+                                l[j] = ",";
                             }
                         }
 
-                        assert(l[i] == ',');
+                        assert(l[i] == ",");
 
-                        i += 1;
+                        ++i;
                     }
 
                     if (i >= len_l) {
                         // do nothing on purpose FIXME
-                    } else if (8 <= l.count(',') && l.count(',') <= 9 && l[i .. $].filter!(a => a != ",").filter!(a => !"0123456789".canFind(a)).array.length == 0) {
+                    } else if (8 <= l.count(",") && l.count(",") <= 9 && l[i .. $]
+                        .filter!(a => a != ",")
+                        .filter!(a => !"0123456789".canFind(a))
+                        .array.length == 0) {
                         //GMT0BST,3,0,30,3600,10,0,26,7200[,3600]
                         foreach (x; [res.start, res.end]) {
+                            int value;
+
                             x.month = to!int(l[i]);
                             i += 2;
-                            if (l[i] == '-') {
+
+                            if (l[i] == "-") {
                                 value = to!int(l[i+1]) * -1;
                                 i += 1;
                             } else {
                                 value = to!int(l[i]);
                             }
+
                             i += 2;
                             if (value) {
                                 x.week = value;
@@ -746,60 +814,62 @@ package class Parser {
                             } else {
                                 x.day = to!int(l[i]);
                             }
+
                             i += 2;
                             x.time = to!int(l[i]);
                             i += 2;
                         }
 
                         if (i < len_l) {
-                            if (l[i] == '+' || l[i] == '-') {
-                                signal = (-1, 1)[l[i] == "+"];
+                            int signal;
+                            if (l[i] == "+" || l[i] == "-") {
+                                signal = l[i] == "+" ? 1 : -1;
                                 ++i;
                             } else {
                                 signal = 1;
                             }
                             res.dstoffset = (res.stdoffset + to!int(l[i])) * signal;
                         }
-                    } else if (l.count(',') == 2 && l[i .. $].count('/') <= 2 && l[i .. $].filter!(a => !(",/JM.-:".canFind(a))).filter!(a => !"0123456789".canFind(a)).array.length == 0) {
-                        foreach (x; [res.start, res.end]) {
-                            if (l[i] == 'J') {
+                    } else if (l.count(",") == 2 && l[i .. $].count("/") <= 2 && l[i .. $].filter!(a => !(",/JM.-:".canFind(a))).filter!(a => !"0123456789".canFind(a)).array.length == 0) {
+                        foreach (ref x; [res.start, res.end]) {
+                            if (l[i] == "J") {
                                 //non-leap year day (1 based)
                                 i += 1;
                                 x.jyday = to!int(l[i]);
-                            } else if (l[i] == 'M') {
+                            } else if (l[i] == "M") {
                                 //month[-.]week[-.]weekday
                                 ++i;
                                 x.month = to!int(l[i]);
                                 ++i;
-                                assert(l[i] == '-' || l[i] == '.');
+                                assert(l[i] == "-" || l[i] == ".");
                                 ++i;
                                 x.week = to!int(l[i]);
                                 if (x.week == 5) {
                                     x.week = -1;
                                 }
                                 ++i;
-                                assert(l[i] in ('-', '.'));
+                                assert(l[i] == "-" || l[i] == ".");
                                 ++i;
                                 x.weekday = (to!int(l[i]) - 1) % 7;
                             } else {
                                 //year day (zero based)
-                                x.yday = to!int(l[i])+1;
+                                x.yday = to!int(l[i]) + 1;
                             }
 
                             ++i;
 
-                            if (i < len_l && l[i] == '/') {
+                            if (i < len_l && l[i] == "/") {
                                 ++i;
                                 //start time
                                 immutable len_li = l[i].length;
                                 if (len_li == 4) {
                                     //-0300
                                     x.time = (to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60);
-                                } else if (i+1 < len_l && l[i+1] == ':') {
+                                } else if (i+1 < len_l && l[i+1] == ":") {
                                     //-03:00
                                     x.time = to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60;
                                     i += 2;
-                                    if (i+1 < len_l && l[i+1] == ':') {
+                                    if (i+1 < len_l && l[i+1] == ":") {
                                         i += 2;
                                         x.time += to!int(l[i]);
                                     }
@@ -812,7 +882,7 @@ package class Parser {
                                 i += 1;
                             }
 
-                            assert(i == len_l || l[i] == ',');
+                            assert(i == len_l || l[i] == ",");
 
                             i += 1;
                         }
