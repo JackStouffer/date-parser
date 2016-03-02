@@ -68,6 +68,236 @@ private class Result : ResultBase {
     }
 }
 
+class TZParser {
+    class Result : ResultBase {
+        Attr start;
+        Attr end;
+        string stdabbr;
+        string dstabbr;
+        int stdoffset;
+        int dstoffset;
+
+        class Attr : ResultBase {
+            uint month;
+            uint week;
+            uint weekday;
+            uint yday;
+            uint jyday;
+            uint day;
+            uint time;
+        }
+
+        this() {
+            start = new Attr();
+            end = new Attr();
+        }
+    }
+
+    void setAttribute(P, T)(ref P p, string name, auto ref T value)
+    {
+        foreach (mem; __traits(allMembers, P)) {
+            static if (is(typeof(__traits(getMember, p, mem)) Q)) {
+                static if (is(T : Q)) {
+                    if (mem == name) {
+                        __traits(getMember, p, mem) = value;
+                        return;
+                    }
+                }
+            }
+        }
+        assert(0, P.stringof ~ " has no member " ~ name);
+    }
+
+    auto parse(string tzstr) {
+        import std.algorithm.searching : count, canFind;
+        import std.range : iota;
+        import std.string : indexOf;
+        import std.algorithm.iteration : filter;
+
+        auto res = new Result();
+        string[] l = new TimeLex!string(tzstr).split();
+
+        try {
+            immutable size_t len_l = l.length;
+
+            size_t i = 0;
+            while (i < len_l) {
+                //BRST+3[BRDT[+2]]
+                auto j = i;
+                while (j < len_l && l[j].filter!(a => "0123456789:,-+".indexOf(a) > -1).array.length == 0) {
+                    ++j;
+                }
+
+                string offattr;
+                if (j != i) {
+                    if (!res.stdabbr) {
+                        offattr = "stdoffset";
+                        res.stdabbr = l[i .. j].join("");
+                    } else {
+                        offattr = "dstoffset";
+                        res.dstabbr = l[i .. j].join("");
+                    }
+                    i = j;
+                    if (i < len_l && ((l[i] == "+" || l[i] == "-") || "0123456789".indexOf(l[i][0]) > -1)) {
+                        int signal;
+                        if (l[i] == "+" || l[i] == "-") {
+                            //Yes, that's right.  See the TZ variable
+                            //documentation.
+                            signal = l[i] == "+" ? -1 : 1;
+                            ++i;
+                        } else {
+                            signal = -1;
+                        }
+
+                        immutable len_li = l[i].length;
+                        if (len_li == 4) {
+                            //-0300
+                            setAttribute(res, offattr, (to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60) * signal);
+                        } else if (i + 1 < len_l && l[i + 1] == ":") {
+                            //-03:00
+                            setAttribute(res, offattr, (to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60) * signal);
+                            i += 2;
+                        } else if (len_li <= 2) {
+                            //-[0]3
+                            setAttribute(res, offattr, to!int(l[i][0 .. 2]) * 3600 * signal);
+                        } else {
+                            return null;
+                        }
+                        ++i;
+                    }
+
+                    if (res.dstabbr.length > 0) {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            if (i < len_l) {
+                foreach (j; iota(i, len_l)) {
+                    if (l[j] == ";") {
+                        l[j] = ",";
+                    }
+                }
+
+                assert(l[i] == ",");
+
+                ++i;
+            }
+
+            if (i >= len_l) {
+                // do nothing on purpose FIXME
+            } else if (8 <= l.count(",") && l.count(",") <= 9 && l[i .. $]
+                .filter!(a => a != ",")
+                .filter!(a => !"0123456789".canFind(a))
+                .array.length == 0) {
+                //GMT0BST,3,0,30,3600,10,0,26,7200[,3600]
+                foreach (x; [res.start, res.end]) {
+                    int value;
+
+                    x.month = to!int(l[i]);
+                    i += 2;
+
+                    if (l[i] == "-") {
+                        value = to!int(l[i+1]) * -1;
+                        i += 1;
+                    } else {
+                        value = to!int(l[i]);
+                    }
+
+                    i += 2;
+                    if (value) {
+                        x.week = value;
+                        x.weekday = (to!int(l[i])-1) % 7;
+                    } else {
+                        x.day = to!int(l[i]);
+                    }
+
+                    i += 2;
+                    x.time = to!int(l[i]);
+                    i += 2;
+                }
+
+                if (i < len_l) {
+                    int signal;
+                    if (l[i] == "+" || l[i] == "-") {
+                        signal = l[i] == "+" ? 1 : -1;
+                        ++i;
+                    } else {
+                        signal = 1;
+                    }
+                    res.dstoffset = (res.stdoffset + to!int(l[i])) * signal;
+                }
+            } else if (l.count(",") == 2 && l[i .. $].count("/") <= 2 && l[i .. $].filter!(a => !(",/JM.-:".canFind(a))).filter!(a => !"0123456789".canFind(a)).array.length == 0) {
+                foreach (ref x; [res.start, res.end]) {
+                    if (l[i] == "J") {
+                        //non-leap year day (1 based)
+                        i += 1;
+                        x.jyday = to!int(l[i]);
+                    } else if (l[i] == "M") {
+                        //month[-.]week[-.]weekday
+                        ++i;
+                        x.month = to!int(l[i]);
+                        ++i;
+                        assert(l[i] == "-" || l[i] == ".");
+                        ++i;
+                        x.week = to!int(l[i]);
+                        if (x.week == 5) {
+                            x.week = -1;
+                        }
+                        ++i;
+                        assert(l[i] == "-" || l[i] == ".");
+                        ++i;
+                        x.weekday = (to!int(l[i]) - 1) % 7;
+                    } else {
+                        //year day (zero based)
+                        x.yday = to!int(l[i]) + 1;
+                    }
+
+                    ++i;
+
+                    if (i < len_l && l[i] == "/") {
+                        ++i;
+                        //start time
+                        immutable len_li = l[i].length;
+                        if (len_li == 4) {
+                            //-0300
+                            x.time = (to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60);
+                        } else if (i+1 < len_l && l[i+1] == ":") {
+                            //-03:00
+                            x.time = to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60;
+                            i += 2;
+                            if (i+1 < len_l && l[i+1] == ":") {
+                                i += 2;
+                                x.time += to!int(l[i]);
+                            }
+                        } else if (len_li <= 2) {
+                            //-[0]3
+                            x.time = (to!int(l[i][0 .. 2]) * 3600);
+                        } else {
+                            return null;
+                        }
+                        i += 1;
+                    }
+
+                    assert(i == len_l || l[i] == ",");
+
+                    i += 1;
+                }
+
+                assert(i >= len_l);
+            }
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+
+        return res;
+    }
+}
+
 /**
 * Parse the date/time string into a :class:`datetime.datetime` object.
 * 
@@ -140,11 +370,12 @@ package class Parser {
             throw new Exception("String does not contain a date.");
         }
 
-        Nullable!int[string] repl;
+        // FIXME get rid of me
+        int[string] repl;
         static immutable attrs = ["year", "month", "day", "hour", "minute", "second", "microsecond"];
         foreach (attr; attrs) {
-            if (attr in res.getter_dict) {
-                repl[attr] = res.getter_dict[attr](); // FIXME
+            if (attr in res.getter_dict && !res.getter_dict[attr]().isNull()) {
+                repl[attr] = res.getter_dict[attr]().get(); // FIXME
             }
         }
 
@@ -161,32 +392,49 @@ package class Parser {
             }
         }
 
-        foreach (item; repl.byKeyValue()) {
-            setAttribute(defaultDate, item.key, item.value);
-        }
+        //foreach (item; repl.byKeyValue()) {
+        //    setAttribute(defaultDate, item.key, item.value.get());
+        //}
+        // FUCK IT, DO IT MANUALLY
+        if ("year" in repl)
+            defaultDate.year(repl["year"]);
+        if ("month" in repl)
+            defaultDate.month(to!Month(repl["month"]));
+        if ("day" in repl)
+            defaultDate.day(repl["day"]);
+        if ("hour" in repl)
+            defaultDate.hour(repl["hour"]);
+        if ("minute" in repl)
+            defaultDate.minute(repl["minute"]);
+        if ("second" in repl)
+            defaultDate.second(repl["second"]);
+        if ("microsecond" in repl)
+            defaultDate.fracSecs(usecs(repl["microsecond"]));
 
         if (!res.weekday.isNull() && !res.day) {
-            defaultDate = defaultDate + relativedelta.relativedelta(weekday=res.weekday);
+            int delta_days = daysToDayOfWeek(defaultDate.dayOfWeek(), to!DayOfWeek(res.weekday));
+            defaultDate += dur!"days"(delta_days);
         }
 
         if (!ignoretz) {
-            if (res.tzname in tzinfos) {
-                tzdata = tzinfos.get(res.tzname);
-                tzinfo = tz.tzoffset(res.tzname, tzdata);
-                defaultDate = defaultDate.replace(tzinfo=tzinfo);
-            } else if (res.tzname.length > 0 && res.tzname in time.tzname) {
-                defaultDate = defaultDate.replace(tzinfo=tz.tzlocal());
-            } else if (res.tzoffset == 0) {
-                defaultDate = defaultDate.replace(tzinfo=tz.tzutc());
-            } else if (res.tzoffset != 0) {
-                defaultDate = defaultDate.replace(tzinfo=tz.tzoffset(res.tzname, res.tzoffset));
-            }
+            //FIXME
+            //if (res.tzname in tzinfos) {
+            //    int tzdata = tzinfos[res.tzname];
+            //    tzinfo = tz.tzoffset(res.tzname, tzdata);
+            //    defaultDate = defaultDate.replace(tzinfo=tzinfo);
+            //} else if (res.tzname.length > 0 && res.tzname in time.tzname) {
+            //    defaultDate = defaultDate.replace(tzinfo=tz.tzlocal());
+            //} else if (res.tzoffset == 0) {
+            //    defaultDate = defaultDate.replace(tzinfo=tz.tzutc());
+            //} else if (res.tzoffset != 0) {
+            //    defaultDate = defaultDate.replace(tzinfo=tz.tzoffset(res.tzname, res.tzoffset));
+            //}
         }
 
-        if (kwargs.get("fuzzy_with_tokens", false)) {
+        if (fuzzy_with_tokens == false) {
             return tuple(defaultDate, skipped_tokens);
         } else {
-            return tuple(defaultDate, []);
+            return tuple(defaultDate, string[].init);
         }
     }
 
@@ -272,7 +520,7 @@ package class Parser {
         //keep up with the last token skipped so we can recombine
         //consecutively skipped tokens (-2 for when i begins at 0).
         int last_skipped_token_i = -2;
-        string[] skipped_tokens = [];
+        string[] skipped_tokens;
 
         try {
             //year/month/day list
@@ -443,7 +691,7 @@ package class Parser {
                                     assert(mstridx == -1);
                                     mstridx = to!long(ymd.length == 0 ? 0 : ymd.length - 1);
                                 } else {
-                                    return tuple(null, null);
+                                    return tuple(cast(Result) null, string[].init);
                                 }
                             }
 
@@ -492,7 +740,7 @@ package class Parser {
                         }
                         i += 1;
                     } else if (!fuzzy) {
-                        return tuple(null, null);
+                        return tuple(cast(Result) null, string[].init);
                     } else {
                         i += 1;
                     }
@@ -628,7 +876,7 @@ package class Parser {
                         //-[0]3
                         res.tzoffset = to!int(l[i][0 .. 2]) * 3600;
                     } else {
-                        return tuple(null, null);
+                        return tuple(cast(Result) null, string[].init);
                     }
                     ++i;
 
@@ -646,12 +894,12 @@ package class Parser {
 
                 //Check jumps
                 if (!(info.jump(l[i]) || fuzzy)) {
-                    return tuple(null, null);
+                    return tuple(cast(Result) null, string[].init);
                 }
 
                 if (last_skipped_token_i == i - 1) {
                     //recombine the tokens
-                    skipped_tokens[$-1] += l[i];
+                    skipped_tokens[$-1] ~= l[i];
                 } else {
                     //just append
                     skipped_tokens ~= l[i];
@@ -678,225 +926,17 @@ package class Parser {
                 res.day = day;
             }
         } catch (Exception) {
-            return tuple(null, null);
+            return tuple(cast(Result) null, string[].init);
         }
 
         if (!info.validate(res)) {
-            return tuple(null, null);
+            return tuple(cast(Result) null, string[].init);
         }
 
         if (fuzzy_with_tokens) {
             return tuple(res, skipped_tokens);
         } else {
-            return tuple(res, []);
-        }
-
-        class TZParser {
-            class Result : ResultBase {
-                auto start = new Attr();
-                auto end = new Attr();
-                string stdabbr;
-                string dstabbr;
-                int stdoffset;
-                int dstoffset;
-
-                class Attr : ResultBase {
-                    uint month;
-                    uint week;
-                    uint weekday;
-                    uint yday;
-                    uint jyday;
-                    uint day;
-                    uint time;
-                }
-            }
-
-            auto parse(string tzstr) {
-                import std.algorithm.searching : count, canFind;
-                import std.range : iota;
-
-                auto res = new Result();
-                string[] l = new TimeLex!string(tzstr).split();
-
-                try {
-                    immutable size_t len_l = l.length;
-
-                    size_t i = 0;
-                    while (i < len_l) {
-                        //BRST+3[BRDT[+2]]
-                        auto j = i;
-                        while (j < len_l && l[j].filter!(a => "0123456789:,-+".indexOf(a) > -1).array.length == 0) {
-                            ++j;
-                        }
-
-                        string offattr;
-                        if (j != i) {
-                            if (!res.stdabbr) {
-                                offattr = "stdoffset";
-                                res.stdabbr = l[i .. j].join("");
-                            } else {
-                                offattr = "dstoffset";
-                                res.dstabbr = l[i .. j].join("");
-                            }
-                            i = j;
-                            if (i < len_l && ((l[i] == "+" || l[i] == "-") || "0123456789".indexOf(l[i][0]) > -1)) {
-                                int signal;
-                                if (l[i] == "+" || l[i] == "-") {
-                                    //Yes, that's right.  See the TZ variable
-                                    //documentation.
-                                    signal = l[i] == "+" ? -1 : 1;
-                                    ++i;
-                                } else {
-                                    signal = -1;
-                                }
-
-                                immutable len_li = l[i].length;
-                                if (len_li == 4) {
-                                    //-0300
-                                    setAttribute(res, offattr, (to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60) * signal);
-                                } else if (i + 1 < len_l && l[i + 1] == ":") {
-                                    //-03:00
-                                    setAttribute(res, offattr, (to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60) * signal);
-                                    i += 2;
-                                } else if (len_li <= 2) {
-                                    //-[0]3
-                                    setAttribute(res, offattr, to!int(l[i][0 .. 2]) * 3600 * signal);
-                                } else {
-                                    return null;
-                                }
-                                ++i;
-                            }
-
-                            if (res.dstabbr.length > 0) {
-                                break;
-                            }
-                        } else {
-                            break;
-                        }
-                    }
-
-                    if (i < len_l) {
-                        foreach (j; iota(i, len_l)) {
-                            if (l[j] == ";") {
-                                l[j] = ",";
-                            }
-                        }
-
-                        assert(l[i] == ",");
-
-                        ++i;
-                    }
-
-                    if (i >= len_l) {
-                        // do nothing on purpose FIXME
-                    } else if (8 <= l.count(",") && l.count(",") <= 9 && l[i .. $]
-                        .filter!(a => a != ",")
-                        .filter!(a => !"0123456789".canFind(a))
-                        .array.length == 0) {
-                        //GMT0BST,3,0,30,3600,10,0,26,7200[,3600]
-                        foreach (x; [res.start, res.end]) {
-                            int value;
-
-                            x.month = to!int(l[i]);
-                            i += 2;
-
-                            if (l[i] == "-") {
-                                value = to!int(l[i+1]) * -1;
-                                i += 1;
-                            } else {
-                                value = to!int(l[i]);
-                            }
-
-                            i += 2;
-                            if (value) {
-                                x.week = value;
-                                x.weekday = (to!int(l[i])-1) % 7;
-                            } else {
-                                x.day = to!int(l[i]);
-                            }
-
-                            i += 2;
-                            x.time = to!int(l[i]);
-                            i += 2;
-                        }
-
-                        if (i < len_l) {
-                            int signal;
-                            if (l[i] == "+" || l[i] == "-") {
-                                signal = l[i] == "+" ? 1 : -1;
-                                ++i;
-                            } else {
-                                signal = 1;
-                            }
-                            res.dstoffset = (res.stdoffset + to!int(l[i])) * signal;
-                        }
-                    } else if (l.count(",") == 2 && l[i .. $].count("/") <= 2 && l[i .. $].filter!(a => !(",/JM.-:".canFind(a))).filter!(a => !"0123456789".canFind(a)).array.length == 0) {
-                        foreach (ref x; [res.start, res.end]) {
-                            if (l[i] == "J") {
-                                //non-leap year day (1 based)
-                                i += 1;
-                                x.jyday = to!int(l[i]);
-                            } else if (l[i] == "M") {
-                                //month[-.]week[-.]weekday
-                                ++i;
-                                x.month = to!int(l[i]);
-                                ++i;
-                                assert(l[i] == "-" || l[i] == ".");
-                                ++i;
-                                x.week = to!int(l[i]);
-                                if (x.week == 5) {
-                                    x.week = -1;
-                                }
-                                ++i;
-                                assert(l[i] == "-" || l[i] == ".");
-                                ++i;
-                                x.weekday = (to!int(l[i]) - 1) % 7;
-                            } else {
-                                //year day (zero based)
-                                x.yday = to!int(l[i]) + 1;
-                            }
-
-                            ++i;
-
-                            if (i < len_l && l[i] == "/") {
-                                ++i;
-                                //start time
-                                immutable len_li = l[i].length;
-                                if (len_li == 4) {
-                                    //-0300
-                                    x.time = (to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60);
-                                } else if (i+1 < len_l && l[i+1] == ":") {
-                                    //-03:00
-                                    x.time = to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60;
-                                    i += 2;
-                                    if (i+1 < len_l && l[i+1] == ":") {
-                                        i += 2;
-                                        x.time += to!int(l[i]);
-                                    }
-                                } else if (len_li <= 2) {
-                                    //-[0]3
-                                    x.time = (to!int(l[i][0 .. 2]) * 3600);
-                                } else {
-                                    return null;
-                                }
-                                i += 1;
-                            }
-
-                            assert(i == len_l || l[i] == ",");
-
-                            i += 1;
-                        }
-
-                        assert(i >= len_l);
-                    }
-                }
-                catch (Exception)
-                {
-                    return null;
-                }
-
-                return res;
-            }
+            return tuple(res, string[].init);
         }
 
         auto DEFAULTTZPARSER = new TZParser();

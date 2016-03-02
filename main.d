@@ -89,6 +89,10 @@ Throws:
 
 Throws:
     `ConvOverflowException` if the parsed date exceeds `int.max`
+
+Bugs:
+    Currently ignores timezone info and returns `SysTime`s in the timezone
+    set on the computer running the code
 */
 auto parse(string timestr, ParserInfo parser_info = null, bool ignoretz = false,
            int[string] tzinfos = ["": 0], bool dayfirst = false, bool yearfirst = false,
