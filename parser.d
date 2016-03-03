@@ -1,3 +1,4 @@
+debug import std.stdio;
 import std.datetime;
 import std.conv;
 import std.typecons;
@@ -24,7 +25,7 @@ private class Result : ResultBase
     Nullable!int microsecond;
     bool century_specified;
     string tzname;
-    uint tzoffset;
+    Nullable!int tzoffset;
     uint ampm;
 
     // FIXME
@@ -452,7 +453,7 @@ package class Parser
         int[string] tzinfos = ["" : 0], bool dayfirst = false,
         bool yearfirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false)
     {
-        SysTime defaultDate = Clock.currTime();
+        SysTime defaultDate = SysTime(0);
 
         auto parsed_string = _parse(timestr, dayfirst, yearfirst, fuzzy, fuzzy_with_tokens);
         auto res = parsed_string[0];
@@ -496,24 +497,48 @@ package class Parser
             }
         }
 
-        //foreach (item; repl.byKeyValue()) {
-        //    setAttribute(defaultDate, item.key, item.value.get());
-        //}
-        // FUCK IT, DO IT MANUALLY
         if ("year" in repl)
             defaultDate.year(repl["year"]);
-        if ("month" in repl)
-            defaultDate.month(to!Month(repl["month"]));
         if ("day" in repl)
             defaultDate.day(repl["day"]);
+        if ("month" in repl)
+            defaultDate.month(to!Month(repl["month"]));
+        
         if ("hour" in repl)
+        {
             defaultDate.hour(repl["hour"]);
+        }
+        else
+        {
+            defaultDate.hour(0);
+        }
+        
         if ("minute" in repl)
+        {
             defaultDate.minute(repl["minute"]);
+        }
+        else
+        {
+            defaultDate.minute(0);
+        }
+
         if ("second" in repl)
+        {
             defaultDate.second(repl["second"]);
+        }
+        else
+        {
+            defaultDate.second(0);
+        }
+
         if ("microsecond" in repl)
+        {
             defaultDate.fracSecs(usecs(repl["microsecond"]));
+        }
+        else
+        {
+            defaultDate.fracSecs(usecs(0));
+        }
 
         if (!res.weekday.isNull() && !res.day)
         {
@@ -635,6 +660,7 @@ package class Parser
 
         auto res = new Result();
         string[] l = new TimeLex!string(timestr).split(); //Splits the timestr into tokens
+        debug writeln("l: ", l);
 
         //keep up with the last token skipped so we can recombine
         //consecutively skipped tokens (-2 for when i begins at 0).
@@ -650,16 +676,20 @@ package class Parser
             long mstridx = -1;
 
             immutable size_t len_l = l.length;
+            debug writeln("len_l: ", len_l);
             int i = 0;
             while (i < len_l)
             {
                 //Check if it's a number
                 Nullable!float value;
                 string value_repr;
+                debug writeln("i: ", i);
+                debug writeln("li: ", l[i]);
 
                 try
                 {
                     value_repr = l[i];
+                    debug writeln("value_repr: ", value_repr);
                     value = to!float(value_repr);
                 }
                 catch (Exception)
@@ -667,16 +697,17 @@ package class Parser
                     value.nullify();
                 }
 
-                if (value.isNull)
+                if (!value.isNull())
                 {
                     //Token is a number
-                    immutable size_t len_li = l[i].length;
+                    immutable len_li = l[i].length;
                     ++i;
 
                     if (ymd.length == 3 && (len_li == 2 || len_li == 4)
                             && res.hour.isNull && (i >= len_l || (l[i] != ":"
                             && info.hms(l[i]) == -1)))
                     {
+                        debug writeln("branch 1");
                         //19990101T23[59]
                         auto s = l[i - 1];
                         res.hour = to!int(s[0 .. 2]);
@@ -688,6 +719,7 @@ package class Parser
                     }
                     else if (len_li == 6 || (len_li > 6 && l[i - 1].indexOf(".") == 6))
                     {
+                        debug writeln("branch 2");
                         //YYMMDD || HHMMSS[.ss]
                         auto s = l[i - 1];
 
@@ -708,6 +740,7 @@ package class Parser
                     }
                     else if (len_li == 8 || len_li == 12 || len_li == 14)
                     {
+                        debug writeln("branch 3");
                         //YYYYMMDD
                         auto s = l[i - 1];
                         ymd.put(s[0 .. 4]);
@@ -728,6 +761,7 @@ package class Parser
                     else if ((i < len_l && info.hms(l[i]) > -1)
                             || (i + 1 < len_l && l[i] == " " && info.hms(l[i + 1]) > -1))
                     {
+                        debug writeln("branch 4");
                         //HH[ ]h or MM[ ]m or SS[.ss][ ]s
                         if (l[i] == " ")
                         {
@@ -795,8 +829,9 @@ package class Parser
                             }
                         }
                     }
-                    else if (i == len_l && l[i - 2] == " " && !info.hms(l[i - 3]) > -1)
+                    else if (i == len_l && l[i - 2] == " " && info.hms(l[i - 3]) > -1)
                     {
+                        debug writeln("branch 5");
                         //X h MM or X m SS
                         immutable idx = info.hms(l[i - 3]) + 1;
 
@@ -819,6 +854,7 @@ package class Parser
                     }
                     else if (i + 1 < len_l && l[i] == ":")
                     {
+                        debug writeln("branch 6");
                         //HH:MM[:SS[.ss]]
                         res.hour = to!int(value.get());
                         ++i;
@@ -840,8 +876,9 @@ package class Parser
                             i += 2;
                         }
                     }
-                    else if (i < len_l && l[i] == "-" || l[i] == "/" || l[i] == ".")
+                    else if (i < len_l && (l[i] == "-" || l[i] == "/" || l[i] == "."))
                     {
+                        debug writeln("branch 7");
                         immutable string sep = l[i];
                         ymd.put(value_repr);
                         ++i;
@@ -895,6 +932,7 @@ package class Parser
                     }
                     else if (i >= len_l || info.jump(l[i]))
                     {
+                        debug writeln("branch 8");
                         if (i + 1 < len_l && info.ampm(l[i + 1]) > -1)
                         {
                             //12 am
@@ -909,7 +947,7 @@ package class Parser
                                 res.hour = 0;
                             }
 
-                            i += 1;
+                            ++i;
                         }
                         else
                         {
@@ -920,6 +958,7 @@ package class Parser
                     }
                     else if (info.ampm(l[i]) > -1)
                     {
+                        debug writeln("branch 9");
                         //12am
                         res.hour = to!int(value.get());
                         if (res.hour < 12 && info.ampm(l[i]) == 1)
@@ -934,27 +973,33 @@ package class Parser
                     }
                     else if (!fuzzy)
                     {
+                        debug writeln("branch 10");
                         return tuple(cast(Result) null, string[].init);
                     }
                     else
                     {
+                        debug writeln("branch 11");
                         i += 1;
                     }
                     continue;
                 }
+
                 //Check weekday
                 value = info.weekday(l[i]);
-                if (!value.isNull())
+                if (value > -1)
                 {
+                    debug writeln("branch 12");
                     res.weekday = to!uint(value.get());
                     ++i;
                     continue;
                 }
 
+
                 //Check month name
                 value = info.month(l[i]);
                 if (value > -1)
                 {
+                    debug writeln("branch 13");
                     ymd.put(value);
                     assert(mstridx == -1);
                     mstridx = ymd.length - 1;
@@ -1000,8 +1045,9 @@ package class Parser
 
                 //Check am/pm
                 value = info.ampm(l[i]);
-                if (value.isNull)
+                if (value > -1)
                 {
+                    debug writeln("branch 14");
                     //For fuzzy parsing, 'a' or 'am' (both valid English words)
                     //may erroneously trigger the AM/PM flag. Deal with that
                     //here.
@@ -1057,9 +1103,10 @@ package class Parser
 
                 //Check for a timezone name
                 auto itemUpper = l[i].filter!(a => !isUpper(a)).array;
-                if (res.hour > -1 && l[i].length <= 5 && res.tzname.length == 0
-                        && res.tzoffset > -1 && itemUpper.length == 0)
+                if (!res.hour.isNull && l[i].length <= 5 && res.tzname.length == 0
+                        && res.tzoffset.isNull && itemUpper.length == 0)
                 {
+                    debug writeln("branch 15");
                     res.tzname = l[i];
                     res.tzoffset = info.tzoffset(res.tzname);
                     i += 1;
@@ -1087,6 +1134,7 @@ package class Parser
                 //Check for a numbered timezone
                 if (!res.hour.isNull && (l[i] == "+" || l[i] == "-"))
                 {
+                    debug writeln("branch 16");
                     immutable int signal = l[i] == "+" ? 1 : -1;
                     ++i;
                     immutable size_t len_li = l[i].length;
@@ -1131,16 +1179,19 @@ package class Parser
                 //Check jumps
                 if (!(info.jump(l[i]) || fuzzy))
                 {
+                    debug writeln("branch 17");
                     return tuple(cast(Result) null, string[].init);
                 }
 
                 if (last_skipped_token_i == i - 1)
                 {
+                    debug writeln("branch 18");
                     //recombine the tokens
                     skipped_tokens[$ - 1] ~= l[i];
                 }
                 else
                 {
+                    debug writeln("branch 19");
                     //just append
                     skipped_tokens ~= l[i];
                 }

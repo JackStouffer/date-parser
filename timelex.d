@@ -1,3 +1,4 @@
+debug import std.stdio;
 import std.datetime;
 import std.string;
 import std.regex;
@@ -35,6 +36,9 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
     {
         import std.algorithm.searching : count;
         import std.uni : isNumber, isSpace, isAlpha;
+
+        if (instream.empty)
+            return string.init;
 
         if (tokenstack)
         {
@@ -183,7 +187,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
             token = l[0];
             foreach (tok; l[1 .. $])
             {
-                if (tok)
+                if (tok.length > 0)
                 {
                     tokenstack ~= tok;
                 }
@@ -201,12 +205,15 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
     string[] split()
     {
         string[] data;
-        string element = "test"; // FIXME
 
-        while (element.length != 0)
+        while (true)
         {
-            element = get_token();
-            data ~= element;
+            auto element = get_token();
+
+            if (element.length != 0)
+                data ~= element;
+            else
+                break;
         }
 
         return data;

@@ -1,3 +1,4 @@
+debug import std.stdio;
 import std.typecons;
 import std.range;
 import std.traits;
@@ -207,12 +208,12 @@ public:
             res.year = this.convertyear(res.year, res.century_specified);
         }
 
-        if (res.tzoffset == 0 && res.tzname.length == 0 || res.tzname == "Z")
+        if (!res.tzoffset.isNull && res.tzoffset == 0 && res.tzname.length == 0 || res.tzname == "Z")
         {
             res.tzname = "UTC";
             res.tzoffset = 0;
         }
-        else if (res.tzoffset != 0 && res.tzname && this.utczone(res.tzname))
+        else if (!res.tzoffset.isNull && res.tzoffset != 0 && res.tzname && this.utczone(res.tzname))
         {
             res.tzoffset = 0;
         }

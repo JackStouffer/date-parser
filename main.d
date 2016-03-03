@@ -28,6 +28,8 @@ Additional resources about date/time string formats can be found below:
 */
 
 import std.datetime;
+import std.typecons;
+
 import parser;
 import parser_info;
 
@@ -95,7 +97,14 @@ Bugs:
     Currently ignores timezone info and returns `SysTime`s in the timezone
     set on the computer running the code
 */
-auto parse(string timestr, ParserInfo parser_info = null, bool ignoretz = false,
+SysTime parse(string timestr)
+{
+    return defaultParser.parse(timestr, false, ["" : 0], false,
+        false, false, false)[0];
+}
+
+///
+Tuple!(SysTime, string[]) parse(string timestr, ParserInfo parser_info = null, bool ignoretz = false,
     int[string] tzinfos = ["" : 0], bool dayfirst = false, bool yearfirst = false,
     bool fuzzy = false, bool fuzzy_with_tokens = false)
 {
@@ -111,6 +120,7 @@ void main()
 {
     import std.stdio;
 
-    auto s = parse("Thu Sep 25 10:36:28 BRST 2003");
-    s.writeln;
+    parse("20030925T1049").writeln;
+    parse("199709020908").writeln;
+    parse("2003-09-25").writeln;
 }
