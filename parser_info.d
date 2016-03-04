@@ -105,7 +105,7 @@ public:
         yearfirst = yearfirst;
 
         year = Clock.currTime.year;
-        century = year / 10_000;
+        century = (year / 100) * 100;
 
         jump_dict = convert(JUMP);
         weekdays = convert(WEEKDAYS);
@@ -203,9 +203,9 @@ public:
     bool validate(Result res)
     {
         //move to info
-        if (res.year > -1)
+        if (!res.year.isNull)
         {
-            res.year = this.convertyear(res.year, res.century_specified);
+            res.year = convertyear(res.year, res.century_specified);
         }
 
         if (!res.tzoffset.isNull && res.tzoffset == 0 && res.tzname.length == 0 || res.tzname == "Z")

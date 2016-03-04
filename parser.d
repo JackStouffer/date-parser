@@ -387,52 +387,7 @@ class TZParser
     }
 }
 
-/**
-* Parse the date/time string into a :class:`datetime.datetime` object.
-* 
-* :param timestr:
-*     Any date/time string using the supported formats.
-* 
-* :param defaultDate:
-*     The defaultDate datetime object, if this is a datetime object and not
-*     `null`, elements specified in `timestr` replace elements in the
-*     defaultDate object.
-* 
-* :param ignoretz:
-*     If set `true`, time zones in parsed strings are ignored and a
-*     naive :class:`datetime.datetime` object is returned.
-* 
-* :param tzinfos:
-*     Additional time zone names / aliases which may be present in the
-*     string. This argument maps time zone names (and optionally offsets
-*     from those time zones) to time zones. This parameter can be a
-*     dictionary with timezone aliases mapping time zone names to time
-*    zones or a function taking two parameters (`tzname` and
-*    `tzoffset`) and returning a time zone.
-*
-*    The timezones to which the names are mapped can be an integer
-*    offset from UTC in minutes or a :class:`tzinfo` object.
-*
-*    This parameter is ignored if `ignoretz` is set.
-*
-*:param **kwargs:
-*    Keyword arguments as passed to `_parse()`.
-*
-*:return:
-*    Returns a :class:`datetime.datetime` object or, if the
-*    `fuzzy_with_tokens` option is `true`, returns a tuple, the
-*    first element being a :class:`datetime.datetime` object, the second
-*    a tuple containing the fuzzy tokens.
-*
-*:raises ValueError:
-*    Raised for invalid or unknown string format, if the provided
-*    :class:`tzinfo` is not in a valid format, or if an invalid date
-*    would be created.
-*
-*:raises OverflowError:
-*    Raised if the parsed date exceeds the largest valid C integer on
-*    your system.
- */
+
 package class Parser
 {
     ParserInfo info;
@@ -449,13 +404,54 @@ package class Parser
         }
     }
 
+    /**
+    * Parse the date/time string into a SysTime.
+    * 
+    * :param timestr:
+    *     Any date/time string using the supported formats.
+    *
+    * :param ignoretz:
+    *     If set `true`, time zones in parsed strings are ignored and a
+    *     naive :class:`datetime.datetime` object is returned.
+    * 
+    * :param tzinfos:
+    *     Additional time zone names / aliases which may be present in the
+    *     string. This argument maps time zone names (and optionally offsets
+    *     from those time zones) to time zones. This parameter can be a
+    *     dictionary with timezone aliases mapping time zone names to time
+    *    zones or a function taking two parameters (`tzname` and
+    *    `tzoffset`) and returning a time zone.
+    *
+    *    The timezones to which the names are mapped can be an integer
+    *    offset from UTC in minutes or a :class:`tzinfo` object.
+    *
+    *    This parameter is ignored if `ignoretz` is set.
+    *
+    *:param **kwargs:
+    *    Keyword arguments as passed to `parseImpl()`.
+    *
+    *:return:
+    *    Returns a :class:`datetime.datetime` object or, if the
+    *    `fuzzy_with_tokens` option is `true`, returns a tuple, the
+    *    first element being a :class:`datetime.datetime` object, the second
+    *    a tuple containing the fuzzy tokens.
+    *
+    *:raises ValueError:
+    *    Raised for invalid or unknown string format, if the provided
+    *    :class:`tzinfo` is not in a valid format, or if an invalid date
+    *    would be created.
+    *
+    *:raises OverflowError:
+    *    Raised if the parsed date exceeds the largest valid C integer on
+    *    your system.
+     */
     Tuple!(SysTime, string[]) parse(string timestr, bool ignoretz = false,
-        int[string] tzinfos = ["" : 0], bool dayfirst = false,
+        SimpleTimeZone[string] tzinfos = null, bool dayfirst = false,
         bool yearfirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false)
     {
-        SysTime defaultDate = SysTime(0);
+        SysTime returnDate = SysTime(0);
 
-        auto parsed_string = _parse(timestr, dayfirst, yearfirst, fuzzy, fuzzy_with_tokens);
+        auto parsed_string = parseImpl(timestr, dayfirst, yearfirst, fuzzy, fuzzy_with_tokens);
         auto res = parsed_string[0];
         auto skipped_tokens = parsed_string[1];
 
@@ -484,11 +480,11 @@ package class Parser
 
         if (!("day" in repl))
         {
-            //If the defaultDate day exceeds the last day of the month, fall back to
+            //If the returnDate day exceeds the last day of the month, fall back to
             //the end of the month.
-            uint cyear = res.year.isNull() ? defaultDate.year : res.year;
-            uint cmonth = res.month.isNull() ? defaultDate.month : res.month;
-            immutable uint cday = res.day.isNull() ? defaultDate.day : res.day;
+            immutable cyear = res.year.isNull() ? returnDate.year : res.year;
+            immutable cmonth = res.month.isNull() ? returnDate.month : res.month;
+            immutable cday = res.day.isNull() ? returnDate.day : res.day;
 
             auto days = Date(cyear, cmonth, 1).daysInMonth;
             if (cday > days)
@@ -498,77 +494,98 @@ package class Parser
         }
 
         if ("year" in repl)
-            defaultDate.year(repl["year"]);
+            returnDate.year(repl["year"]);
+
         if ("day" in repl)
-            defaultDate.day(repl["day"]);
-        if ("month" in repl)
-            defaultDate.month(to!Month(repl["month"]));
-        
-        if ("hour" in repl)
         {
-            defaultDate.hour(repl["hour"]);
+            returnDate.day(repl["day"]);
         }
         else
         {
-            defaultDate.hour(0);
+            returnDate.day(1);
+        }
+
+        if ("month" in repl)
+        {
+            returnDate.month(to!Month(repl["month"]));
+        }
+        else
+        {
+            returnDate.month(to!Month(1));
+        }
+        
+        if ("hour" in repl)
+        {
+            returnDate.hour(repl["hour"]);
+        }
+        else
+        {
+            returnDate.hour(0);
         }
         
         if ("minute" in repl)
         {
-            defaultDate.minute(repl["minute"]);
+            returnDate.minute(repl["minute"]);
         }
         else
         {
-            defaultDate.minute(0);
+            returnDate.minute(0);
         }
 
         if ("second" in repl)
         {
-            defaultDate.second(repl["second"]);
+            returnDate.second(repl["second"]);
         }
         else
         {
-            defaultDate.second(0);
+            returnDate.second(0);
         }
 
         if ("microsecond" in repl)
         {
-            defaultDate.fracSecs(usecs(repl["microsecond"]));
+            returnDate.fracSecs(usecs(repl["microsecond"]));
         }
         else
         {
-            defaultDate.fracSecs(usecs(0));
+            returnDate.fracSecs(usecs(0));
         }
 
-        if (!res.weekday.isNull() && !res.day)
+        if (!res.weekday.isNull() && (res.day.isNull || !res.day))
         {
-            int delta_days = daysToDayOfWeek(defaultDate.dayOfWeek(), to!DayOfWeek(res.weekday));
-            defaultDate += dur!"days"(delta_days);
+            int delta_days = daysToDayOfWeek(returnDate.dayOfWeek(), to!DayOfWeek(res.weekday));
+            returnDate += dur!"days"(delta_days);
         }
 
         if (!ignoretz)
         {
             //FIXME
-            //if (res.tzname in tzinfos) {
-            //    int tzdata = tzinfos[res.tzname];
+            //if (res.tzname in tzinfos)
+            //{
+            //    SimpleTimeZone tzdata = tzinfos[res.tzname];
             //    tzinfo = tz.tzoffset(res.tzname, tzdata);
-            //    defaultDate = defaultDate.replace(tzinfo=tzinfo);
-            //} else if (res.tzname.length > 0 && res.tzname in time.tzname) {
-            //    defaultDate = defaultDate.replace(tzinfo=tz.tzlocal());
-            //} else if (res.tzoffset == 0) {
-            //    defaultDate = defaultDate.replace(tzinfo=tz.tzutc());
-            //} else if (res.tzoffset != 0) {
-            //    defaultDate = defaultDate.replace(tzinfo=tz.tzoffset(res.tzname, res.tzoffset));
+            //    returnDate = returnDate.replace(tzinfo=tzinfo);
+            //}
+            //else if (res.tzname.length > 0 && res.tzname in time.tzname)
+            //{
+            //    returnDate = returnDate.replace(tzinfo=tz.tzlocal());
+            //}
+            //else if (res.tzoffset == 0)
+            //{
+            //    returnDate = returnDate.replace(tzinfo=tz.tzutc());
+            //}
+            //else if (res.tzoffset != 0)
+            //{
+            //    returnDate = returnDate.replace(tzinfo=tz.tzoffset(res.tzname, res.tzoffset));
             //}
         }
 
         if (fuzzy_with_tokens == false)
         {
-            return tuple(defaultDate, skipped_tokens);
+            return tuple(returnDate, skipped_tokens);
         }
         else
         {
-            return tuple(defaultDate, string[].init);
+            return tuple(returnDate, string[].init);
         }
     }
 
@@ -648,7 +665,7 @@ package class Parser
         :class:`datetime.datetime` datetimestamp and the second element is
         a tuple containing the portions of the string which were ignored
     */
-    private Tuple!(Result, string[]) _parse(string timestr, bool dayfirst = false,
+    private Tuple!(Result, string[]) parseImpl(string timestr, bool dayfirst = false,
         bool yearfirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false)
     {
         import std.string : indexOf;
@@ -1204,18 +1221,18 @@ package class Parser
             auto month = temp[1];
             auto day = temp[2];
 
-            if (year > -1)
+            if (year > 0)
             {
                 res.year = year;
                 res.century_specified = ymd.centurySpecified;
             }
 
-            if (month > -1)
+            if (month > 0)
             {
                 res.month = month;
             }
 
-            if (day > -1)
+            if (day > 0)
             {
                 res.day = day;
             }
