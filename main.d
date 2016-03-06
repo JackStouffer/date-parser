@@ -29,7 +29,7 @@ Additional resources about date/time string formats can be found below:
 
 import std.datetime;
 import std.typecons;
-debug import std.stdio;
+import std.stdio;
 
 import parser;
 import parser_info;
@@ -104,23 +104,23 @@ SysTime parse(string timestr)
 }
 
 ///
-Tuple!(SysTime, string[]) parse(string timestr, ParserInfo parser_info = null,
+SysTime parse(string timestr, ParserInfo parser_info = null,
     bool ignoretz = false, SimpleTimeZone[string] tzinfos = null,
     bool dayfirst = false, bool yearfirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false)
 {
     if (parser_info !is null)
         return new Parser(parser_info).parse(timestr, ignoretz, tzinfos,
-            dayfirst, yearfirst, fuzzy, fuzzy_with_tokens);
+            dayfirst, yearfirst, fuzzy, fuzzy_with_tokens)[0];
     else
         return defaultParser.parse(timestr, ignoretz, tzinfos, dayfirst,
-            yearfirst, fuzzy, fuzzy_with_tokens);
+            yearfirst, fuzzy, fuzzy_with_tokens)[0];
 }
 
 ///
 unittest
 {
     assert(parse("Thu Sep 25 10:36:28 BRST 2003") == SysTime(DateTime(2003, 9, 25, 10, 36, 28)));
-    assert(parse("Thu Sep 25 10:36:28 BRST 2003", null, true)[0] == SysTime(DateTime(2003, 9, 25, 10, 36, 28)));
+    assert(parse("Thu Sep 25 10:36:28 BRST 2003", null, true) == SysTime(DateTime(2003, 9, 25, 10, 36, 28)));
     assert(parse("2003 10:36:28 BRST 25 Sep Thu") == SysTime(DateTime(2003, 9, 25, 10, 36, 28)));
     assert(parse("Thu Sep 25 10:36:28") == SysTime(DateTime(0, 9, 25, 10, 36, 28)));
     assert(parse("10:36:28") == SysTime(DateTime(0, 1, 1, 10, 36, 28)));
@@ -142,65 +142,97 @@ unittest
     import std.exception : assertThrown;
 
     assertThrown!Exception(parse(""));
+    assertThrown!Exception(parse("The quick brown fox jumps over the lazy dog"));
 
     assert(parse("Thu 10:36:28") == SysTime(DateTime(0, 1, 5, 10, 36, 28)));
     assert(parse("20030925T104941") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
     assert(parse("20030925T1049") == SysTime(DateTime(2003, 9, 25, 10, 49, 0)));
     assert(parse("20030925T10") == SysTime(DateTime(2003, 9, 25, 10)));
     assert(parse("20030925") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("2003-09-25 10:49:41,502") == SysTime(DateTime(2003, 9, 25, 10, 49, 41, 502000)));
+    // FIXME msecs
+    assert(parse("2003-09-25 10:49:41,502") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
     assert(parse("199709020908") == SysTime(DateTime(1997, 9, 2, 9, 8)));
     assert(parse("19970902090807") == SysTime(DateTime(1997, 9, 2, 9, 8, 7)));
 }
 
 unittest
 {
-    //assert(parse("2003 09 25") == datetime(2003, 9, 25));
-    //assert(parse("2003 Sep 25") == datetime(2003, 9, 25));
-    //assert(parse("25 Sep 2003") == datetime(2003, 9, 25));
-    //assert(parse("25 Sep 2003") == datetime(2003, 9, 25));
-    //assert(parse("Sep 25 2003") == datetime(2003, 9, 25));
-    //assert(parse("09 25 2003") == datetime(2003, 9, 25));
-    //assert(parse("25 09 2003") == datetime(2003, 9, 25));
-    //assert(parse("10 09 2003", dayfirst=True) == datetime(2003, 9, 10));
-    //assert(parse("10 09 2003") == datetime(2003, 10, 9));
-    //assert(parse("10 09 03") == datetime(2003, 10, 9));
-    //assert(parse("10 09 03", yearfirst=True) == datetime(2010, 9, 3));
-    //assert(parse("25 09 03") == datetime(2003, 9, 25));
+    assert(parse("2003 09 25") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("2003 Sep 25") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25 Sep 2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25 Sep 2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("Sep 25 2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("09 25 2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25 09 2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("10 09 2003", null, false, null, true) == SysTime(DateTime(2003, 9, 10)));
+    assert(parse("10 09 2003") == SysTime(DateTime(2003, 10, 9)));
+    assert(parse("10 09 03") == SysTime(DateTime(2003, 10, 9)));
+    assert(parse("10 09 03", null, false, null, false, true) == SysTime(DateTime(2010, 9, 3)));
+    assert(parse("25 09 03") == SysTime(DateTime(2003, 9, 25)));
 }
 
 unittest
 {
-    //assert(parse("03 25 Sep") == datetime(2003, 9, 25));
-    //assert(parse("2003 25 Sep") == datetime(2003, 9, 25));
-    //assert(parse("25 03 Sep") == datetime(2025, 9, 3));
-    //assert(parse("Thu Sep 25 2003") == datetime(2003, 9, 25));
-    //assert(parse("Sep 25 2003") == datetime(2003, 9, 25));
+    assert(parse("03 25 Sep") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("2003 25 Sep") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25 03 Sep") == SysTime(DateTime(2025, 9, 3)));
+    assert(parse("Thu Sep 25 2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("Sep 25 2003") == SysTime(DateTime(2003, 9, 25)));
 }
 
 unittest
 {
-    //assert(parse("10h36m28.5s") == datetime(2003, 9, 25, 10, 36, 28, 500000));
-    //assert(parse("10h36m28s") == datetime(2003, 9, 25, 10, 36, 28));
-    //assert(parse("10h36m") == datetime(2003, 9, 25, 10, 36));
-    //assert(parse("10h") == datetime(2003, 9, 25, 10));
-    //assert(parse("10 h 36") == datetime(2003, 9, 25, 10, 36));
+    assert(parse("10h36m28.5s") == SysTime(DateTime(0, 1, 1, 10, 36, 28)));
+    assert(parse("10h36m28s") == SysTime(DateTime(0, 1, 1, 10, 36, 28)));
+    assert(parse("10h36m") == SysTime(DateTime(0, 1, 1, 10, 36)));
+    //assert(parse("10h") == SysTime(DateTime(0, 1, 1, 10, 0, 0)));
+    //assert(parse("10 h 36") == SysTime(DateTime(0, 1, 1, 10, 36, 0)));
 }
 
 unittest
 {
     //assert(parse("2003-09-25T10:49:41.5-03:00") == datetime(2003, 9, 25, 10, 49, 41, 500000, tzinfo=self.brsttz))
     //assert(parse("2003-09-25T10:49:41-03:00") == datetime(2003, 9, 25, 10, 49, 41, tzinfo=self.brsttz))
-    //assert(parse("2003-09-25T10:49:41") == datetime(2003, 9, 25, 10, 49, 41))
-    //assert(parse("2003-09-25T10:49") == datetime(2003, 9, 25, 10, 49))
-    //assert(parse("2003-09-25T10") == datetime(2003, 9, 25, 10))
-    //assert(parse("2003-09-25") == datetime(2003, 9, 25))
+    assert(parse("2003-09-25T10:49:41") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+    assert(parse("2003-09-25T10:49") == SysTime(DateTime(2003, 9, 25, 10, 49)));
+    assert(parse("2003-09-25T10") == SysTime(DateTime(2003, 9, 25, 10)));
+    assert(parse("2003-09-25") == SysTime(DateTime(2003, 9, 25)));
     //assert(parse("20030925T104941.5-0300") == datetime(2003, 9, 25, 10, 49, 41, 500000, tzinfo=self.brsttz))
     //assert(parse("20030925T104941-0300") == datetime(2003, 9, 25, 10, 49, 41, tzinfo=self.brsttz))
-    //assert(parse("20030925T104941") == datetime(2003, 9, 25, 10, 49, 41))
-    //assert(parse("20030925T1049") == datetime(2003, 9, 25, 10, 49, 0))
-    //assert(parse("20030925T10") == datetime(2003, 9, 25, 10))
-    //assert(parse("20030925") == datetime(2003, 9, 25))
+    assert(parse("20030925T104941") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+    assert(parse("20030925T1049") == SysTime(DateTime(2003, 9, 25, 10, 49, 0)));
+    assert(parse("20030925T10") == SysTime(DateTime(2003, 9, 25, 10)));
+    assert(parse("20030925") == SysTime(DateTime(2003, 9, 25)));
+}
+
+unittest
+{
+    assert(parse("2003-09-25") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("2003-Sep-25") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("25-Sep-2003") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("25-Sep-2003") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("Sep-25-2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("09-25-2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25-09-2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("10-09-2003", null, false, null, true) == SysTime(DateTime(2003, 9, 10)));
+    assert(parse("10-09-2003") == SysTime(DateTime(2003, 10, 9)));
+    assert(parse("10-09-03") == SysTime(DateTime(2003, 10, 9)));
+    assert(parse("10-09-03", null, false, null, false, true) == SysTime(DateTime(2010, 9, 3)));
+}
+
+unittest
+{
+    //assert(parse("2003.09.25") == datetime(2003, 9, 25))
+    //assert(parse("2003.Sep.25") == datetime(2003, 9, 25))
+    //assert(parse("25.Sep.2003") == datetime(2003, 9, 25))
+    //assert(parse("25.Sep.2003") == datetime(2003, 9, 25))
+    //assert(parse("Sep.25.2003") == datetime(2003, 9, 25))
+    //assert(parse("09.25.2003") == datetime(2003, 9, 25))
+    //assert(parse("25.09.2003") == datetime(2003, 9, 25))
+    //assert(parse("10.09.2003", dayfirst=True) == datetime(2003, 9, 10))
+    //assert(parse("10.09.2003") == datetime(2003, 10, 9))
+    //assert(parse("10.09.03") == datetime(2003, 10, 9))
+    //assert(parse("10.09.03", yearfirst=True) == datetime(2010, 9, 3))
 }
 
 /**
@@ -219,102 +251,6 @@ class ParserTest(unittest.TestCase):
         except NameError:
             self.uni_str = str(base_str)
             self.str_str = bytes(base_str.encode())
-
-    auto testNoSeparator1(self):
-        self.assert(parse("199709020908"),
-                         datetime(1997, 9, 2, 9, 8))
-
-    auto testNoSeparator2(self):
-        self.assert(parse("19970902090807"),
-                         datetime(1997, 9, 2, 9, 8, 7))
-
-    auto testDateWithDash1(self):
-        self.assert(parse("2003-09-25"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDash2(self):
-        self.assert(parse("2003-Sep-25"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDash3(self):
-        self.assert(parse("25-Sep-2003"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDash4(self):
-        self.assert(parse("25-Sep-2003"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDash5(self):
-        self.assert(parse("Sep-25-2003"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDash6(self):
-        self.assert(parse("09-25-2003"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDash7(self):
-        self.assert(parse("25-09-2003"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDash8(self):
-        self.assert(parse("10-09-2003", dayfirst=True),
-                         datetime(2003, 9, 10))
-
-    auto testDateWithDash9(self):
-        self.assert(parse("10-09-2003"),
-                         datetime(2003, 10, 9))
-
-    auto testDateWithDash10(self):
-        self.assert(parse("10-09-03"),
-                         datetime(2003, 10, 9))
-
-    auto testDateWithDash11(self):
-        self.assert(parse("10-09-03", yearfirst=True),
-                         datetime(2010, 9, 3))
-
-    auto testDateWithDot1(self):
-        self.assert(parse("2003.09.25"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDot2(self):
-        self.assert(parse("2003.Sep.25"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDot3(self):
-        self.assert(parse("25.Sep.2003"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDot4(self):
-        self.assert(parse("25.Sep.2003"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDot5(self):
-        self.assert(parse("Sep.25.2003"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDot6(self):
-        self.assert(parse("09.25.2003"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDot7(self):
-        self.assert(parse("25.09.2003"),
-                         datetime(2003, 9, 25))
-
-    auto testDateWithDot8(self):
-        self.assert(parse("10.09.2003", dayfirst=True),
-                         datetime(2003, 9, 10))
-
-    auto testDateWithDot9(self):
-        self.assert(parse("10.09.2003"),
-                         datetime(2003, 10, 9))
-
-    auto testDateWithDot10(self):
-        self.assert(parse("10.09.03"),
-                         datetime(2003, 10, 9))
-
-    auto testDateWithDot11(self):
-        self.assert(parse("10.09.03", yearfirst=True),
-                         datetime(2010, 9, 3))
 
     auto testDateWithSlash1(self):
         self.assert(parse("2003/09/25"),

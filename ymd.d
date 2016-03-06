@@ -15,7 +15,7 @@ package struct YMD
     }
 
     ///
-    static bool token_could_be_year(string token, int year)
+    static bool token_could_be_year(Range)(Range token, int year) if (isNarrowString!Range)
     {
         try
         {
@@ -28,7 +28,7 @@ package struct YMD
     }
 
     ///
-    static string[] find_potential_year_tokens(int year, string[] tokens)
+    static string[] find_potential_year_tokens()(int year, string[] tokens)
     {
         import std.algorithm.iteration : filter;
         import std.array : array;
@@ -40,7 +40,7 @@ package struct YMD
      * Attempt to deduce if a pre 100 year was lost due to padded zeros being
      * taken off
      */
-    size_t find_probable_year_index(string[] tokens)
+    size_t find_probable_year_index(string[] tokens) const
     {
         foreach (index, token; data)
         {
@@ -51,11 +51,12 @@ package struct YMD
                 return index;
             }
         }
-        assert(0);
+        
+        return -1;
     }
 
     ///
-    void put(int val)
+    void put(int val) @safe pure nothrow
     {
         if (val > 100)
         {
@@ -72,7 +73,7 @@ package struct YMD
     }
 
     ///
-    void put(string val)
+    void put(const string val)
     {
         import std.string : isNumeric;
 
@@ -85,13 +86,13 @@ package struct YMD
     }
 
     ///
-    size_t length() @property const
+    size_t length() @property const @safe pure nothrow @nogc
     {
         return data.length;
     }
 
     ///
-    bool centurySpecified() @property const
+    bool centurySpecified() @property const @safe pure nothrow @nogc
     {
         return century_specified;
     }

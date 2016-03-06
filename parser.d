@@ -9,11 +9,8 @@ import timelex;
 import ymd;
 
 package:
-interface ResultBase
-{
-} // FIXME
 
-private class Result : ResultBase
+private final class Result
 {
     Nullable!int year;
     Nullable!int month;
@@ -87,9 +84,9 @@ private class Result : ResultBase
     }
 }
 
-class TZParser
+final class TZParser
 {
-    class Result : ResultBase
+    final class Result
     {
         Attr start;
         Attr end;
@@ -98,7 +95,7 @@ class TZParser
         int stdoffset;
         int dstoffset;
 
-        class Attr : ResultBase
+        struct Attr
         {
             uint month;
             uint week;
@@ -111,8 +108,8 @@ class TZParser
 
         this()
         {
-            start = new Attr();
-            end = new Attr();
+            start = Attr();
+            end = Attr();
         }
     }
 
@@ -543,11 +540,11 @@ package class Parser
 
         if ("microsecond" in repl)
         {
-            returnDate.fracSecs(usecs(repl["microsecond"]));
+            returnDate.fracSecs(msecs(repl["microsecond"]));
         }
         else
         {
-            returnDate.fracSecs(usecs(0));
+            returnDate.fracSecs(msecs(0));
         }
 
         if (!res.weekday.isNull() && (res.day.isNull || !res.day))
@@ -672,6 +669,7 @@ package class Parser
         import std.algorithm.iteration : filter;
         import std.uni : isUpper;
 
+        // FIXME remove tokens return completely
         if (fuzzy_with_tokens)
             fuzzy = true;
 
@@ -862,6 +860,7 @@ package class Parser
                             }
                             else if (idx == 2)
                             {
+                                //FIXME
                                 auto temp = parseMS(value_repr);
                                 res.second = temp[0];
                                 res.microsecond = temp[1];

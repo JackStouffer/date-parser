@@ -32,7 +32,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
      function maintains a "token stack", for when the ambiguous context
      demands that multiple tokens be parsed at once.
      */
-    string get_token()
+    string get_token() @safe
     {
         import std.algorithm.searching : count;
         import std.uni : isNumber, isSpace, isAlpha;
@@ -40,7 +40,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
         if (instream.empty)
             return string.init;
 
-        if (tokenstack)
+        if (tokenstack.length > 0)
         {
             auto f = tokenstack.front;
             tokenstack.popFront;
@@ -167,7 +167,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
                 {
                     token ~= nextchar;
                 }
-                else if (isAlpha(nextchar) && token[-1] == '.')
+                else if (isAlpha(nextchar) && token[$-1] == '.')
                 {
                     token ~= nextchar;
                     state = "a.";

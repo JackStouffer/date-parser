@@ -1,3 +1,6 @@
 *.o
 .dub/
 main
+*.lst
+*.def
+*.log

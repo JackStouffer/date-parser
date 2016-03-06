@@ -9,10 +9,10 @@ import parser;
 package:
 
 //m from a.m/p.m, t from ISO T separator
-enum JUMP = [" ", ".", ",", ";", "-", "/", "'", "at", "on", "and", "ad", "m",
-        "t", "of", "st", "nd", "rd", "th"];
+enum JUMP_DEFAULT = ParserInfo.convert([" ", ".", ",", ";", "-", "/", "'", "at", "on", "and", "ad", "m",
+        "t", "of", "st", "nd", "rd", "th"]);
 
-enum WEEKDAYS = [
+enum WEEKDAYS_DEFAULT = ParserInfo.convert([
     ["Mon", "Monday"],
     ["Tue", "Tuesday"], 
     ["Wed", "Wednesday"],
@@ -20,8 +20,8 @@ enum WEEKDAYS = [
     ["Fri", "Friday"],
     ["Sat", "Saturday"],
     ["Sun", "Sunday"]
-];
-enum MONTHS = [
+]);
+enum MONTHS_DEFAULT = ParserInfo.convert([
     ["Jan", "January"],
     ["Feb", "February"],
     ["Mar", "March"],
@@ -34,11 +34,11 @@ enum MONTHS = [
     ["Oct", "October"],
     ["Nov", "November"],
     ["Dec","December"]
-];
-enum HMS = [["h", "hour", "hours"], ["m", "minute", "minutes"], ["s", "second", "seconds"]];
-enum AMPM = [["am", "a"], ["pm", "p"]];
-enum UTCZONE = ["UTC", "GMT", "Z"];
-enum PERTAIN = ["of"];
+]);
+enum HMS_DEFAULT = ParserInfo.convert([["h", "hour", "hours"], ["m", "minute", "minutes"], ["s", "second", "seconds"]]);
+enum AMPM_DEFAULT = ParserInfo.convert([["am", "a"], ["pm", "p"]]);
+enum UTCZONE_DEFAULT = ParserInfo.convert(["UTC", "GMT", "Z"]);
+enum PERTAIN_DEFAULT = ParserInfo.convert(["of"]);
 int[string] TZOFFSET;
 
 /**
@@ -75,7 +75,7 @@ private:
     int[string] utczone_dict;
     int[string] pertain_dict;
 
-    int[string] convert(Range)(Range list) if (isInputRange!Range)
+    static int[string] convert(Range)(Range list) if (isInputRange!Range)
     {
         int[string] dictionary;
 
@@ -107,13 +107,13 @@ public:
         year = Clock.currTime.year;
         century = (year / 100) * 100;
 
-        jump_dict = convert(JUMP);
-        weekdays = convert(WEEKDAYS);
-        months = convert(MONTHS);
-        hms_dict = convert(HMS);
-        ampm_dict = convert(AMPM);
-        utczone_dict = convert(UTCZONE);
-        pertain_dict = convert(PERTAIN);
+        jump_dict = JUMP_DEFAULT;
+        weekdays = WEEKDAYS_DEFAULT;
+        months = MONTHS_DEFAULT;
+        hms_dict = HMS_DEFAULT;
+        ampm_dict = AMPM_DEFAULT;
+        utczone_dict = UTCZONE_DEFAULT;
+        pertain_dict = PERTAIN_DEFAULT;
     }
 
     bool jump(string name) @safe @property pure
@@ -121,7 +121,7 @@ public:
         return name.toLower() in jump_dict ? true : false;
     }
 
-    int weekday(string name) @property
+    int weekday(string name) @safe @property pure
     {
         if (name.length >= 3 && name.toLower() in weekdays)
         {
@@ -130,7 +130,7 @@ public:
         return -1;
     }
 
-    int month(string name) @property
+    int month(string name) @safe @property pure
     {
         if (name.length >= 3 && name.toLower() in months)
         {
@@ -139,7 +139,7 @@ public:
         return -1;
     }
 
-    int hms(string name) @property
+    int hms(string name) @safe @property pure
     {
         if (name.toLower() in hms_dict)
         {
@@ -148,7 +148,7 @@ public:
         return -1;
     }
 
-    int ampm(string name) @property
+    int ampm(string name) @safe @property pure
     {
         if (name.toLower() in ampm_dict)
         {
@@ -157,17 +157,17 @@ public:
         return -1;
     }
 
-    bool pertain(string name) @property
+    bool pertain(string name) @safe @property pure
     {
         return name.toLower() in pertain_dict ? true : false;
     }
 
-    bool utczone(string name) @property
+    bool utczone(string name) @safe @property pure
     {
         return name.toLower() in utczone_dict ? true : false;
     }
 
-    int tzoffset(string name) @property
+    int tzoffset(string name) @safe @property
     {
         if (name in utczone_dict)
         {
@@ -177,7 +177,7 @@ public:
         return name in TZOFFSET ? TZOFFSET[name] : -1;
     }
 
-    int convertyear(int convert_year, bool century_specified = false)
+    int convertyear(int convert_year, bool century_specified = false) @safe @nogc pure nothrow
     {
         import std.math : abs;
 
@@ -200,7 +200,7 @@ public:
         return convert_year;
     }
 
-    bool validate(Result res)
+    bool validate(Result res) @safe pure
     {
         //move to info
         if (!res.year.isNull)
