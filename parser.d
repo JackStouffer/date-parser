@@ -10,7 +10,7 @@ import ymd;
 
 package:
 
-private final class Result
+final class Result
 {
     Nullable!int year;
     Nullable!int month;
@@ -31,42 +31,42 @@ private final class Result
     // getter function
     Nullable!int delegate() @property[string] getter_dict;
 
-    Nullable!int getYear() @property
+    Nullable!int getYear() @property const
     {
         return year;
     }
 
-    Nullable!int getMonth() @property
+    Nullable!int getMonth() @property const
     {
         return month;
     }
 
-    Nullable!int getDay() @property
+    Nullable!int getDay() @property const
     {
         return day;
     }
 
-    Nullable!int getWeekDay() @property
+    Nullable!int getWeekDay() @property const
     {
         return weekday;
     }
 
-    Nullable!int getHour() @property
+    Nullable!int getHour() @property const
     {
         return hour;
     }
 
-    Nullable!int getMinute() @property
+    Nullable!int getMinute() @property const
     {
         return minute;
     }
 
-    Nullable!int getSecond() @property
+    Nullable!int getSecond() @property const
     {
         return second;
     }
 
-    Nullable!int getMicrosecond() @property
+    Nullable!int getMicrosecond() @property const
     {
         return microsecond;
     }
@@ -104,12 +104,6 @@ final class TZParser
             uint jyday;
             uint day;
             uint time;
-        }
-
-        this()
-        {
-            start = Attr();
-            end = Attr();
         }
     }
 
@@ -385,7 +379,7 @@ final class TZParser
 }
 
 
-package class Parser
+final class Parser
 {
     ParserInfo info;
 
@@ -442,15 +436,13 @@ package class Parser
     *    Raised if the parsed date exceeds the largest valid C integer on
     *    your system.
      */
-    Tuple!(SysTime, string[]) parse(string timestr, bool ignoretz = false,
+    SysTime parse(string timestr, bool ignoretz = false,
         SimpleTimeZone[string] tzinfos = null, bool dayfirst = false,
         bool yearfirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false)
     {
         SysTime returnDate = SysTime(0);
 
-        auto parsed_string = parseImpl(timestr, dayfirst, yearfirst, fuzzy, fuzzy_with_tokens);
-        auto res = parsed_string[0];
-        auto skipped_tokens = parsed_string[1];
+        auto res = parseImpl(timestr, dayfirst, yearfirst, fuzzy, fuzzy_with_tokens);
 
         if (res is null)
         {
@@ -483,7 +475,7 @@ package class Parser
             immutable cmonth = res.month.isNull() ? returnDate.month : res.month;
             immutable cday = res.day.isNull() ? returnDate.day : res.day;
 
-            auto days = Date(cyear, cmonth, 1).daysInMonth;
+            immutable days = Date(cyear, cmonth, 1).daysInMonth;
             if (cday > days)
             {
                 repl["day"] = days;
@@ -576,14 +568,7 @@ package class Parser
             //}
         }
 
-        if (fuzzy_with_tokens == false)
-        {
-            return tuple(returnDate, skipped_tokens);
-        }
-        else
-        {
-            return tuple(returnDate, string[].init);
-        }
+        return returnDate;
     }
 
     /**
@@ -662,7 +647,7 @@ package class Parser
         :class:`datetime.datetime` datetimestamp and the second element is
         a tuple containing the portions of the string which were ignored
     */
-    private Tuple!(Result, string[]) parseImpl(string timestr, bool dayfirst = false,
+    private Result parseImpl(string timestr, bool dayfirst = false,
         bool yearfirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false)
     {
         import std.string : indexOf;
@@ -680,7 +665,6 @@ package class Parser
         //keep up with the last token skipped so we can recombine
         //consecutively skipped tokens (-2 for when i begins at 0).
         int last_skipped_token_i = -2;
-        string[] skipped_tokens;
 
         try
         {
@@ -919,7 +903,7 @@ package class Parser
                                 }
                                 else
                                 {
-                                    return tuple(cast(Result) null, string[].init);
+                                    return cast(Result) null;
                                 }
                             }
 
@@ -990,7 +974,7 @@ package class Parser
                     else if (!fuzzy)
                     {
                         debug writeln("branch 10");
-                        return tuple(cast(Result) null, string[].init);
+                        return cast(Result) null;
                     }
                     else
                     {
@@ -1173,7 +1157,7 @@ package class Parser
                     }
                     else
                     {
-                        return tuple(cast(Result) null, string[].init);
+                        return cast(Result) null;
                     }
                     ++i;
 
@@ -1196,20 +1180,16 @@ package class Parser
                 if (!(info.jump(l[i]) || fuzzy))
                 {
                     debug writeln("branch 17");
-                    return tuple(cast(Result) null, string[].init);
+                    return cast(Result) null;
                 }
 
                 if (last_skipped_token_i == i - 1)
                 {
                     debug writeln("branch 18");
-                    //recombine the tokens
-                    skipped_tokens[$ - 1] ~= l[i];
                 }
                 else
                 {
                     debug writeln("branch 19");
-                    //just append
-                    skipped_tokens ~= l[i];
                 }
                 last_skipped_token_i = i;
                 ++i;
@@ -1238,22 +1218,15 @@ package class Parser
         }
         catch (Exception)
         {
-            return tuple(cast(Result) null, string[].init);
+            return cast(Result) null;
         }
 
         if (!info.validate(res))
         {
-            return tuple(cast(Result) null, string[].init);
+            return cast(Result) null;
         }
 
-        if (fuzzy_with_tokens)
-        {
-            return tuple(res, skipped_tokens);
-        }
-        else
-        {
-            return tuple(res, string[].init);
-        }
+        return res;
 
         auto DEFAULTTZPARSER = new TZParser();
 

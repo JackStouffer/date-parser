@@ -6,7 +6,7 @@ import std.conv;
 
 import parser;
 
-package:
+private:
 
 //m from a.m/p.m, t from ISO T separator
 enum JUMP_DEFAULT = ParserInfo.convert([" ", ".", ",", ";", "-", "/", "'", "at", "on", "and", "ad", "m",
@@ -41,6 +41,7 @@ enum UTCZONE_DEFAULT = ParserInfo.convert(["UTC", "GMT", "Z"]);
 enum PERTAIN_DEFAULT = ParserInfo.convert(["of"]);
 int[string] TZOFFSET;
 
+public:
 /**
 Class which handles what inputs are accepted. Subclass this to customize
 the language and acceptable values for each parameter.
@@ -62,7 +63,7 @@ class ParserInfo
     import std.datetime : Clock;
     import std.uni : toLower;
 
-private:
+public:
     bool dayfirst;
     bool yearfirst;
     short year;
@@ -98,7 +99,6 @@ private:
         return dictionary;
     }
 
-public:
     this(bool dayfirst = false, bool yearfirst = false)
     {
         dayfirst = dayfirst;
@@ -177,7 +177,7 @@ public:
         return name in TZOFFSET ? TZOFFSET[name] : -1;
     }
 
-    int convertyear(int convert_year, bool century_specified = false) @safe @nogc pure nothrow
+    final int convertyear(int convert_year, bool century_specified = false) @safe @nogc pure nothrow
     {
         import std.math : abs;
 
@@ -200,7 +200,7 @@ public:
         return convert_year;
     }
 
-    bool validate(Result res) @safe pure
+    final bool validate(Result res) @safe pure
     {
         //move to info
         if (!res.year.isNull)
@@ -208,7 +208,7 @@ public:
             res.year = convertyear(res.year, res.century_specified);
         }
 
-        if (!res.tzoffset.isNull && res.tzoffset == 0 && res.tzname.length == 0 || res.tzname == "Z")
+        if (!res.tzoffset.isNull && res.tzoffset == 0 && (res.tzname.length == 0 || res.tzname == "Z"))
         {
             res.tzname = "UTC";
             res.tzoffset = 0;

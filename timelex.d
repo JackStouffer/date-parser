@@ -202,13 +202,13 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
         return token;
     }
 
-    string[] split()
+    string[] split() @safe
     {
         string[] data;
 
         while (true)
         {
-            auto element = get_token();
+            immutable element = get_token();
 
             if (element.length != 0)
                 data ~= element;

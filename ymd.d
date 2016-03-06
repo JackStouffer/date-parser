@@ -110,7 +110,7 @@ package struct YMD
         import std.algorithm.mutation : remove;
         import std.typecons : tuple;
 
-        size_t lenYMD = data.length;
+        immutable lenYMD = data.length;
         int year;
         int month;
         int day;
