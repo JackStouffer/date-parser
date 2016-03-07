@@ -11,7 +11,7 @@ import ymd;
 Parser defaultParser;
 static this()
 {
-    defaultParser = new Parser(new ParserInfo());
+    defaultParser = new Parser();
 }
 
 package:
@@ -133,10 +133,7 @@ final class Parser
     *    Keyword arguments as passed to `parseImpl()`.
     *
     *:return:
-    *    Returns a :class:`datetime.datetime` object or, if the
-    *    `fuzzy_with_tokens` option is `true`, returns a tuple, the
-    *    first element being a :class:`datetime.datetime` object, the second
-    *    a tuple containing the fuzzy tokens.
+    *    Returns a :class:`datetime.datetime` object
     *
     *:raises ValueError:
     *    Raised for invalid or unknown string format, if the provided
@@ -149,11 +146,11 @@ final class Parser
      */
     SysTime parse(string timeString, bool ignoreTimezone = false,
         TimeZone[string] timezoneInfos = null, bool dayFirst = false,
-        bool yearFirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false)
+        bool yearFirst = false, bool fuzzy = false)
     {
         SysTime returnDate = SysTime(0);
 
-        auto res = parseImpl(timeString, dayFirst, yearFirst, fuzzy, fuzzy_with_tokens);
+        auto res = parseImpl(timeString, dayFirst, yearFirst, fuzzy);
 
         if (res is null)
         {
@@ -243,11 +240,11 @@ final class Parser
 
         if ("microsecond" in repl)
         {
-            returnDate.fracSecs(msecs(repl["microsecond"]));
+            returnDate.fracSecs(usecs(repl["microsecond"]));
         }
         else
         {
-            returnDate.fracSecs(msecs(0));
+            returnDate.fracSecs(usecs(0));
         }
 
         if (!res.weekday.isNull() && (res.day.isNull || !res.day))
@@ -303,9 +300,11 @@ final class Parser
         }
         else
         {
-            string i = value.split(".")[0]; // FIXME
-            string f = value.split(".")[1]; // FIXME
-            return tuple(to!int(i), to!int(f.leftJustify(6, '0')[0 .. 6]));
+            auto splitValue = value.split(".");
+            return tuple(
+                to!int(splitValue[0]),
+                to!int(splitValue[1].leftJustify(6, '0')[0 .. 6])
+            );
         }
     }
 
@@ -353,23 +352,13 @@ final class Parser
     :param fuzzy:
         Whether to allow fuzzy parsing, allowing for string like "Today is
         January 1, 2047 at 8:21:00AM".
-
-    :param fuzzy_with_tokens:
-        If `true`, `fuzzy` is automatically set to true, and the Parser
-        will return a tuple where the first element is the parsed
-        :class:`datetime.datetime` datetimestamp and the second element is
-        a tuple containing the portions of the string which were ignored
     */
     private Result parseImpl(string timeString, bool dayFirst = false,
-        bool yearFirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false)
+        bool yearFirst = false, bool fuzzy = false)
     {
         import std.string : indexOf;
         import std.algorithm.iteration : filter;
         import std.uni : isUpper;
-
-        // FIXME remove tokens return completely
-        if (fuzzy_with_tokens)
-            fuzzy = true;
 
         auto res = new Result();
         string[] l = new TimeLex!string(timeString).split(); //Splits the timeString into tokens
@@ -974,8 +963,9 @@ Params:
     timeString = A string containing a date/time stamp.
     parserInfo = containing parameters for the Parser. If `null` the default
                  arguments to the :class:`ParserInfo` constructor are used.
-    ignoreTimezone = Set to `true` by default, time zones in parsed strings are ignored and a
-               `SysTime` with the local time zone is returned.
+    ignoreTimezone = Set to `false` by default, time zones in parsed strings are ignored and a
+               `SysTime` with the local time zone is returned. If timezone information
+               is not important, setting this to `true` is slightly faster.
     timezoneInfos = Time zone names / aliases which may be present in the
               string. This argument maps time zone names (and optionally offsets
               from those time zones) to time zones. This parameter is ignored if
@@ -1004,7 +994,7 @@ Throws:
     `ConvOverflowException` if one of the numbers in the parsed date exceeds
     `int.max`
 */
-SysTime parse(string timeString, ParserInfo parserInfo = null, bool ignoreTimezone = true,
+SysTime parse(string timeString, ParserInfo parserInfo = null, bool ignoreTimezone = false,
     TimeZone[string] timezoneInfos = null, bool dayFirst = false,
     bool yearFirst = false, bool fuzzy = false)
 {

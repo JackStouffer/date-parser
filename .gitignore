@@ -2,6 +2,9 @@
 .dub/
 main
 parser
+dateparse
+libdateparse.a
+bench
 *.lst
 *.def
 *.log

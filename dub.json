@@ -1,5 +1,17 @@
 {
-    "name": "date_parser",
-    "sourcePaths": ["."],
-    "targetType": "executable"
+    "name": "Date Parser",
+    "targetName": "dateparse",
+    "description": "Library for parsing randomly formated date strings",
+    "sourcePaths": ["src/"],
+    "license": "BSL-1.0",
+    "targetType": "library",
+    "authors": ["Jack Stouffer"],
+    "configurations": [
+        {
+            "name": "unittest",
+            "targetType": "executable",
+            "buildOptions": ["coverage", "unittests"],
+            "dflags": ["-main"]
+        }
+    ]
 }
