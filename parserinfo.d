@@ -8,9 +8,12 @@ import parser;
 
 private:
 
+// dfmt off
 //m from a.m/p.m, t from ISO T separator
-enum JUMP_DEFAULT = ParserInfo.convert([" ", ".", ",", ";", "-", "/", "'", "at", "on", "and", "ad", "m",
-        "t", "of", "st", "nd", "rd", "th"]);
+enum JUMP_DEFAULT = ParserInfo.convert([
+    " ", ".", ",", ";", "-", "/", "'", "at", "on",
+    "and", "ad", "m", "t", "of", "st", "nd", "rd",
+    "th"]);
 
 enum WEEKDAYS_DEFAULT = ParserInfo.convert([
     ["Mon", "Monday"],
@@ -35,11 +38,16 @@ enum MONTHS_DEFAULT = ParserInfo.convert([
     ["Nov", "November"],
     ["Dec","December"]
 ]);
-enum HMS_DEFAULT = ParserInfo.convert([["h", "hour", "hours"], ["m", "minute", "minutes"], ["s", "second", "seconds"]]);
+enum HMS_DEFAULT = ParserInfo.convert([
+    ["h", "hour", "hours"],
+    ["m", "minute", "minutes"],
+    ["s", "second", "seconds"]
+]);
 enum AMPM_DEFAULT = ParserInfo.convert([["am", "a"], ["pm", "p"]]);
 enum UTCZONE_DEFAULT = ParserInfo.convert(["UTC", "GMT", "Z"]);
 enum PERTAIN_DEFAULT = ParserInfo.convert(["of"]);
 int[string] TZOFFSET;
+// dfmt on
 
 public:
 /**
@@ -99,7 +107,7 @@ public:
         return dictionary;
     }
 
-    this(bool dayfirst = false, bool yearfirst = false)
+    this(bool dayfirst = false, bool yearfirst = false) @safe
     {
         dayfirst = dayfirst;
         yearfirst = yearfirst;
@@ -116,12 +124,12 @@ public:
         pertain_dict = PERTAIN_DEFAULT;
     }
 
-    bool jump(string name) @safe @property pure
+    final bool jump(const ref string name) @safe pure const
     {
         return name.toLower() in jump_dict ? true : false;
     }
 
-    int weekday(string name) @safe @property pure
+    final int weekday(const ref string name) @safe pure const
     {
         if (name.length >= 3 && name.toLower() in weekdays)
         {
@@ -130,7 +138,7 @@ public:
         return -1;
     }
 
-    int month(string name) @safe @property pure
+    final int month(const ref string name) @safe pure const
     {
         if (name.length >= 3 && name.toLower() in months)
         {
@@ -139,7 +147,7 @@ public:
         return -1;
     }
 
-    int hms(string name) @safe @property pure
+    final int hms(const ref string name) @safe pure const
     {
         if (name.toLower() in hms_dict)
         {
@@ -148,7 +156,7 @@ public:
         return -1;
     }
 
-    int ampm(string name) @safe @property pure
+    final int ampm(const ref string name) @safe pure const
     {
         if (name.toLower() in ampm_dict)
         {
@@ -157,17 +165,17 @@ public:
         return -1;
     }
 
-    bool pertain(string name) @safe @property pure
+    final bool pertain(const ref string name) @safe pure const
     {
         return name.toLower() in pertain_dict ? true : false;
     }
 
-    bool utczone(string name) @safe @property pure
+    final bool utczone(const ref string name) @safe pure const
     {
         return name.toLower() in utczone_dict ? true : false;
     }
 
-    int tzoffset(string name) @safe @property
+    final int tzoffset(const ref string name) @safe const 
     {
         if (name in utczone_dict)
         {
@@ -177,7 +185,7 @@ public:
         return name in TZOFFSET ? TZOFFSET[name] : -1;
     }
 
-    final int convertyear(int convert_year, bool century_specified = false) @safe @nogc pure nothrow
+    final int convertyear(int convert_year, bool century_specified = false) @safe @nogc pure nothrow const
     {
         import std.math : abs;
 
@@ -200,7 +208,7 @@ public:
         return convert_year;
     }
 
-    final bool validate(Result res) @safe pure
+    final bool validate(Result res) @safe pure const
     {
         //move to info
         if (!res.year.isNull)
@@ -208,12 +216,14 @@ public:
             res.year = convertyear(res.year, res.century_specified);
         }
 
-        if (!res.tzoffset.isNull && res.tzoffset == 0 && (res.tzname.length == 0 || res.tzname == "Z"))
+        if (!res.tzoffset.isNull && res.tzoffset == 0 && (res.tzname.length == 0 || res.tzname
+                == "Z"))
         {
             res.tzname = "UTC";
             res.tzoffset = 0;
         }
-        else if (!res.tzoffset.isNull && res.tzoffset != 0 && res.tzname && this.utczone(res.tzname))
+        else if (!res.tzoffset.isNull && res.tzoffset != 0 && res.tzname && this.utczone(
+                res.tzname))
         {
             res.tzoffset = 0;
         }

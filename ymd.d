@@ -117,7 +117,7 @@ package struct YMD
 
         if (lenYMD > 3)
         {
-            throw new Exception("More than three YMD values");
+            throw new ConvException("More than three YMD values");
         }
         else if (lenYMD == 1 || (mstridx != -1 && lenYMD == 2))
         {

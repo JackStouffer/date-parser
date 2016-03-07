@@ -4,9 +4,15 @@ import std.conv;
 import std.typecons;
 import std.array;
 
-import parser_info;
+import parserinfo;
 import timelex;
 import ymd;
+
+Parser defaultParser;
+static this()
+{
+    defaultParser = new Parser(new ParserInfo());
+}
 
 package:
 
@@ -84,301 +90,6 @@ final class Result
     }
 }
 
-final class TZParser
-{
-    final class Result
-    {
-        Attr start;
-        Attr end;
-        string stdabbr;
-        string dstabbr;
-        int stdoffset;
-        int dstoffset;
-
-        struct Attr
-        {
-            uint month;
-            uint week;
-            uint weekday;
-            uint yday;
-            uint jyday;
-            uint day;
-            uint time;
-        }
-    }
-
-    void setAttribute(P, T)(ref P p, string name, auto ref T value)
-    {
-        foreach (mem; __traits(allMembers, P))
-        {
-            static if (is(typeof(__traits(getMember, p, mem)) Q))
-            {
-                static if (is(T : Q))
-                {
-                    if (mem == name)
-                    {
-                        __traits(getMember, p, mem) = value;
-                        return;
-                    }
-                }
-            }
-        }
-        assert(0, P.stringof ~ " has no member " ~ name);
-    }
-
-    auto parse(string tzstr)
-    {
-        import std.algorithm.searching : count, canFind;
-        import std.range : iota;
-        import std.string : indexOf;
-        import std.algorithm.iteration : filter;
-
-        auto res = new Result();
-        string[] l = new TimeLex!string(tzstr).split();
-
-        try
-        {
-            immutable size_t len_l = l.length;
-
-            size_t i = 0;
-            while (i < len_l)
-            {
-                //BRST+3[BRDT[+2]]
-                auto j = i;
-                while (j < len_l
-                        && l[j].filter!(a => "0123456789:,-+".indexOf(a) > -1).array.length == 0)
-                {
-                    ++j;
-                }
-
-                string offattr;
-                if (j != i)
-                {
-                    if (!res.stdabbr)
-                    {
-                        offattr = "stdoffset";
-                        res.stdabbr = l[i .. j].join("");
-                    }
-                    else
-                    {
-                        offattr = "dstoffset";
-                        res.dstabbr = l[i .. j].join("");
-                    }
-                    i = j;
-                    if (i < len_l && ((l[i] == "+" || l[i] == "-")
-                            || "0123456789".indexOf(l[i][0]) > -1))
-                    {
-                        int signal;
-                        if (l[i] == "+" || l[i] == "-")
-                        {
-                            //Yes, that's right.  See the TZ variable
-                            //documentation.
-                            signal = l[i] == "+" ? -1 : 1;
-                            ++i;
-                        }
-                        else
-                        {
-                            signal = -1;
-                        }
-
-                        immutable len_li = l[i].length;
-                        if (len_li == 4)
-                        {
-                            //-0300
-                            setAttribute(res, offattr,
-                                (to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60) * signal);
-                        }
-                        else if (i + 1 < len_l && l[i + 1] == ":")
-                        {
-                            //-03:00
-                            setAttribute(res, offattr,
-                                (to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60) * signal);
-                            i += 2;
-                        }
-                        else if (len_li <= 2)
-                        {
-                            //-[0]3
-                            setAttribute(res, offattr, to!int(l[i][0 .. 2]) * 3600 * signal);
-                        }
-                        else
-                        {
-                            return null;
-                        }
-                        ++i;
-                    }
-
-                    if (res.dstabbr.length > 0)
-                    {
-                        break;
-                    }
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            if (i < len_l)
-            {
-                foreach (j; iota(i, len_l))
-                {
-                    if (l[j] == ";")
-                    {
-                        l[j] = ",";
-                    }
-                }
-
-                assert(l[i] == ",");
-
-                ++i;
-            }
-
-            if (i >= len_l)
-            {
-                // do nothing on purpose FIXME
-            }
-            else if (8 <= l.count(",") && l.count(",") <= 9
-                    && l[i .. $].filter!(a => a != ",")
-                    .filter!(a => !"0123456789".canFind(a)).array.length == 0)
-            {
-                //GMT0BST,3,0,30,3600,10,0,26,7200[,3600]
-                foreach (x; [res.start, res.end])
-                {
-                    int value;
-
-                    x.month = to!int(l[i]);
-                    i += 2;
-
-                    if (l[i] == "-")
-                    {
-                        value = to!int(l[i + 1]) * -1;
-                        i += 1;
-                    }
-                    else
-                    {
-                        value = to!int(l[i]);
-                    }
-
-                    i += 2;
-                    if (value)
-                    {
-                        x.week = value;
-                        x.weekday = (to!int(l[i]) - 1) % 7;
-                    }
-                    else
-                    {
-                        x.day = to!int(l[i]);
-                    }
-
-                    i += 2;
-                    x.time = to!int(l[i]);
-                    i += 2;
-                }
-
-                if (i < len_l)
-                {
-                    int signal;
-                    if (l[i] == "+" || l[i] == "-")
-                    {
-                        signal = l[i] == "+" ? 1 : -1;
-                        ++i;
-                    }
-                    else
-                    {
-                        signal = 1;
-                    }
-                    res.dstoffset = (res.stdoffset + to!int(l[i])) * signal;
-                }
-            }
-            else if (l.count(",") == 2 && l[i .. $].count("/") <= 2
-                    && l[i .. $].filter!(a => !(",/JM.-:".canFind(a)))
-                    .filter!(a => !"0123456789".canFind(a)).array.length == 0)
-            {
-                foreach (ref x; [res.start, res.end])
-                {
-                    if (l[i] == "J")
-                    {
-                        //non-leap year day (1 based)
-                        i += 1;
-                        x.jyday = to!int(l[i]);
-                    }
-                    else if (l[i] == "M")
-                    {
-                        //month[-.]week[-.]weekday
-                        ++i;
-                        x.month = to!int(l[i]);
-                        ++i;
-                        assert(l[i] == "-" || l[i] == ".");
-                        ++i;
-                        x.week = to!int(l[i]);
-                        if (x.week == 5)
-                        {
-                            x.week = -1;
-                        }
-                        ++i;
-                        assert(l[i] == "-" || l[i] == ".");
-                        ++i;
-                        x.weekday = (to!int(l[i]) - 1) % 7;
-                    }
-                    else
-                    {
-                        //year day (zero based)
-                        x.yday = to!int(l[i]) + 1;
-                    }
-
-                    ++i;
-
-                    if (i < len_l && l[i] == "/")
-                    {
-                        ++i;
-                        //start time
-                        immutable len_li = l[i].length;
-                        if (len_li == 4)
-                        {
-                            //-0300
-                            x.time = (to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60);
-                        }
-                        else if (i + 1 < len_l && l[i + 1] == ":")
-                        {
-                            //-03:00
-                            x.time = to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60;
-                            i += 2;
-                            if (i + 1 < len_l && l[i + 1] == ":")
-                            {
-                                i += 2;
-                                x.time += to!int(l[i]);
-                            }
-                        }
-                        else if (len_li <= 2)
-                        {
-                            //-[0]3
-                            x.time = (to!int(l[i][0 .. 2]) * 3600);
-                        }
-                        else
-                        {
-                            return null;
-                        }
-                        i += 1;
-                    }
-
-                    assert(i == len_l || l[i] == ",");
-
-                    i += 1;
-                }
-
-                assert(i >= len_l);
-            }
-        }
-        catch (Exception)
-        {
-            return null;
-        }
-
-        return res;
-    }
-}
-
-
 final class Parser
 {
     ParserInfo info;
@@ -398,14 +109,14 @@ final class Parser
     /**
     * Parse the date/time string into a SysTime.
     * 
-    * :param timestr:
+    * :param timeString:
     *     Any date/time string using the supported formats.
     *
-    * :param ignoretz:
+    * :param ignoreTimezone:
     *     If set `true`, time zones in parsed strings are ignored and a
     *     naive :class:`datetime.datetime` object is returned.
     * 
-    * :param tzinfos:
+    * :param timezoneInfos:
     *     Additional time zone names / aliases which may be present in the
     *     string. This argument maps time zone names (and optionally offsets
     *     from those time zones) to time zones. This parameter can be a
@@ -416,7 +127,7 @@ final class Parser
     *    The timezones to which the names are mapped can be an integer
     *    offset from UTC in minutes or a :class:`tzinfo` object.
     *
-    *    This parameter is ignored if `ignoretz` is set.
+    *    This parameter is ignored if `ignoreTimezone` is set.
     *
     *:param **kwargs:
     *    Keyword arguments as passed to `parseImpl()`.
@@ -436,23 +147,23 @@ final class Parser
     *    Raised if the parsed date exceeds the largest valid C integer on
     *    your system.
      */
-    SysTime parse(string timestr, bool ignoretz = false,
-        SimpleTimeZone[string] tzinfos = null, bool dayfirst = false,
-        bool yearfirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false)
+    SysTime parse(string timeString, bool ignoreTimezone = false,
+        TimeZone[string] timezoneInfos = null, bool dayFirst = false,
+        bool yearFirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false)
     {
         SysTime returnDate = SysTime(0);
 
-        auto res = parseImpl(timestr, dayfirst, yearfirst, fuzzy, fuzzy_with_tokens);
+        auto res = parseImpl(timeString, dayFirst, yearFirst, fuzzy, fuzzy_with_tokens);
 
         if (res is null)
         {
-            throw new Exception("Unknown string format");
+            throw new ConvException("Unknown string format");
         }
 
         if (res.year.isNull() && res.month.isNull() && res.day.isNull()
                 && res.hour.isNull() && res.minute.isNull() && res.second.isNull())
         {
-            throw new Exception("String does not contain a date.");
+            throw new ConvException("String does not contain a date.");
         }
 
         // FIXME get rid of me
@@ -545,27 +256,29 @@ final class Parser
             returnDate += dur!"days"(delta_days);
         }
 
-        if (!ignoretz)
+        if (!ignoreTimezone)
         {
-            //FIXME
-            //if (res.tzname in tzinfos)
-            //{
-            //    SimpleTimeZone tzdata = tzinfos[res.tzname];
-            //    tzinfo = tz.tzoffset(res.tzname, tzdata);
-            //    returnDate = returnDate.replace(tzinfo=tzinfo);
-            //}
-            //else if (res.tzname.length > 0 && res.tzname in time.tzname)
-            //{
-            //    returnDate = returnDate.replace(tzinfo=tz.tzlocal());
-            //}
-            //else if (res.tzoffset == 0)
-            //{
-            //    returnDate = returnDate.replace(tzinfo=tz.tzutc());
-            //}
-            //else if (res.tzoffset != 0)
-            //{
-            //    returnDate = returnDate.replace(tzinfo=tz.tzoffset(res.tzname, res.tzoffset));
-            //}
+            if (res.tzname in timezoneInfos)
+            {
+                returnDate = returnDate.toOtherTZ(
+                    cast(immutable) timezoneInfos[res.tzname]
+                );
+            }
+            else if (res.tzname.length > 0 && (res.tzname == LocalTime().stdName ||
+                res.tzname == LocalTime().dstName))
+            {
+                returnDate = returnDate.toLocalTime();
+            }
+            else if (!res.tzoffset.isNull && res.tzoffset == 0)
+            {
+                returnDate = returnDate.toUTC();
+            }
+            else if (!res.tzoffset.isNull && res.tzoffset != 0)
+            {
+                returnDate = returnDate.toOtherTZ(new immutable SimpleTimeZone(
+                    dur!"seconds"(res.tzoffset), res.tzname
+                ));
+            }
         }
 
         return returnDate;
@@ -619,18 +332,18 @@ final class Parser
     Private method which performs the heavy lifting of parsing, called from
     `parse()`, which passes on its `kwargs` to this function.
 
-    :param timestr:
+    :param timeString:
         The string to parse.
 
-    :param dayfirst:
+    :param dayFirst:
         Whether to interpret the first value in an ambiguous 3-integer date
         (e.g. 01/05/09) as the day (`true`) or month (`false`). If
-        `yearfirst` is set to `true`, this distinguishes between YDM
+        `yearFirst` is set to `true`, this distinguishes between YDM
         and YMD. If set to `null`, this value is retrieved from the
         current :class:`ParserInfo` object (which itself defaults to
         `false`).
 
-    :param yearfirst:
+    :param yearFirst:
         Whether to interpret the first value in an ambiguous 3-integer date
         (e.g. 01/05/09) as the year. If `true`, the first number is taken
         to be the year, otherwise the last number is taken to be the year.
@@ -647,8 +360,8 @@ final class Parser
         :class:`datetime.datetime` datetimestamp and the second element is
         a tuple containing the portions of the string which were ignored
     */
-    private Result parseImpl(string timestr, bool dayfirst = false,
-        bool yearfirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false)
+    private Result parseImpl(string timeString, bool dayFirst = false,
+        bool yearFirst = false, bool fuzzy = false, bool fuzzy_with_tokens = false)
     {
         import std.string : indexOf;
         import std.algorithm.iteration : filter;
@@ -659,7 +372,7 @@ final class Parser
             fuzzy = true;
 
         auto res = new Result();
-        string[] l = new TimeLex!string(timestr).split(); //Splits the timestr into tokens
+        string[] l = new TimeLex!string(timeString).split(); //Splits the timeString into tokens
         debug writeln("l: ", l);
 
         //keep up with the last token skipped so we can recombine
@@ -669,7 +382,7 @@ final class Parser
         try
         {
             //year/month/day list
-            auto ymd = YMD(timestr);
+            auto ymd = YMD(timeString);
 
             //Index of the month string in ymd
             long mstridx = -1;
@@ -1067,7 +780,7 @@ final class Parser
                         }
                         else
                         {
-                            throw new Exception("No hour specified with AM or PM flag.");
+                            throw new ConvException("No hour specified with AM or PM flag.");
                         }
                         else if (!(0 <= res.hour && res.hour <= 12))
                         {
@@ -1079,7 +792,7 @@ final class Parser
                             }
                             else
                             {
-                                throw new Exception("Invalid hour specified for 12-hour clock.");
+                                throw new ConvException("Invalid hour specified for 12-hour clock.");
                             }
                         }
 
@@ -1195,7 +908,7 @@ final class Parser
                 ++i;
             }
             //Process year/month/day
-            auto temp = ymd.resolveYMD(mstridx, yearfirst, dayfirst); // FIXME
+            auto temp = ymd.resolveYMD(mstridx, yearFirst, dayFirst); // FIXME
             auto year = temp[0];
             auto month = temp[1];
             auto day = temp[2];
@@ -1227,12 +940,369 @@ final class Parser
         }
 
         return res;
+    }
+}
 
-        auto DEFAULTTZPARSER = new TZParser();
 
-        auto _parsetz(string tzstr)
+public:
+
+/**
+This function offers a generic date/time string Parser which is able to parse
+most known formats to represent a date and/or time.
+
+This function attempts to be forgiving with regards to unlikely input formats,
+returning a SysTime object even for dates which are ambiguous. If an element
+of a date/time stamp is omitted, the following rules are applied:
+
+$(OL
+    $(LI If AM or PM is left unspecified, a 24-hour clock is assumed, however,
+    an hour on a 12-hour clock (``0 <= hour <= 12``) *must* be specified if
+    AM or PM is specified.)
+    $(LI If a time zone is omitted, a SysTime with the timezone local to the
+    host is returned.)
+)
+
+Missing information is allowed, and what ever is given is applied on top of
+January 1st 1 AD at midnight.
+
+If your date string uses timezone names in place of UTC offsets, then timezone
+information must be user provided, as there is no way to reliably get timezones
+from the OS by abbreviation. But, the timezone will be properly set if an offset
+is given.
+
+Params:
+    timeString = A string containing a date/time stamp.
+    parserInfo = containing parameters for the Parser. If `null` the default
+                 arguments to the :class:`ParserInfo` constructor are used.
+    ignoreTimezone = Set to `true` by default, time zones in parsed strings are ignored and a
+               `SysTime` with the local time zone is returned.
+    timezoneInfos = Time zone names / aliases which may be present in the
+              string. This argument maps time zone names (and optionally offsets
+              from those time zones) to time zones. This parameter is ignored if
+              `ignoreTimezone` is set.
+    dayFirst = Whether to interpret the first value in an ambiguous 3-integer date
+              (e.g. 01/05/09) as the day (`true`) or month (`false`). If
+              `yearFirst` is set to `true`, this distinguishes between YDM and
+              YMD.
+    yearFirst = Whether to interpret the first value in an ambiguous 3-integer date
+                (e.g. 01/05/09) as the year. If ``True``, the first number is taken to
+                be the year, otherwise the last number is taken to be the year.
+    fuzzy = Whether to allow fuzzy parsing, allowing for string like `"Today is
+            January 1, 2047 at 8:21:00AM"`.
+
+Returns:
+    A `SysTime` object representing the parsed string
+
+Throws:
+    `ConvException` will be thrown for invalid or unknown string format
+
+Throws:
+    `TimeException` if the date string is successfully parsed but the created
+    date would be invalid
+
+Throws:
+    `ConvOverflowException` if one of the numbers in the parsed date exceeds
+    `int.max`
+*/
+SysTime parse(string timeString, ParserInfo parserInfo = null, bool ignoreTimezone = true,
+    TimeZone[string] timezoneInfos = null, bool dayFirst = false,
+    bool yearFirst = false, bool fuzzy = false)
+{
+    if (parserInfo !is null)
+        return new Parser(parserInfo).parse(timeString, ignoreTimezone, timezoneInfos,
+            dayFirst, yearFirst, fuzzy);
+    else
+        return defaultParser.parse(timeString, ignoreTimezone, timezoneInfos, dayFirst, yearFirst,
+            fuzzy);
+}
+
+///
+unittest
+{
+    import std.stdio;
+
+    auto brazilTime = new SimpleTimeZone(dur!"seconds"(-10800));
+    TimeZone[string] timezones = ["BRST" : brazilTime];
+
+    // SysTime opEquals ignores timezones
+    assert(parse("Thu Sep 25 10:36:28 BRST 2003", null, false, timezones) == SysTime(
+        DateTime(2003, 9, 25, 10, 36, 28)
+    ));
+    assert(parse("Thu Sep 25 10:36:28 BRST 2003", null, false, timezones
+        ).timezone == brazilTime);
+
+    assert(parse("2003 10:36:28 BRST 25 Sep Thu", null, false, timezones) == SysTime(DateTime(2003, 9, 25, 10, 36, 28)));
+    assert(parse("Thu Sep 25 10:36:28") == SysTime(DateTime(0, 9, 25, 10, 36, 28)));
+    assert(parse("2003-09-25T10:49:41") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+    assert(parse("10:36:28") == SysTime(DateTime(0, 1, 1, 10, 36, 28)));
+    assert(parse("09-25-2003") == SysTime(DateTime(2003, 9, 25)));
+}
+
+/// Exceptions
+unittest
+{
+    import std.exception : assertThrown;
+
+    assertThrown!ConvException(parse(""));
+    assertThrown!ConvException(parse("AM"));
+    assertThrown!ConvException(parse("The quick brown fox jumps over the lazy dog"));
+    assertThrown!TimeException(parse("Feb 30, 2007"));
+    assertThrown!TimeException(parse("Jan 20, 2015 PM"));
+    assertThrown!ConvException(parse("13:44 AM"));
+    assertThrown!ConvException(parse("January 25, 1921 23:13 PM"));
+}
+
+unittest
+{
+    //assert(parse("Thu Sep 10:36:28") == SysTime(DateTime(0, 9, 6, 10, 36, 28)));
+    assert(parse("Thu 10:36:28") == SysTime(DateTime(0, 1, 5, 10, 36, 28)));
+    assert(parse("Sep 10:36:28") == SysTime(DateTime(0, 9, 30, 10, 36, 28)));
+    assert(parse("Sep 2003") == SysTime(DateTime(2003, 9, 30)));
+    assert(parse("Sep") == SysTime(DateTime(0, 9, 30)));
+    //assert(parse("2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("10:36") == SysTime(DateTime(0, 1, 1, 10, 36)));
+}
+
+unittest
+{
+    assert(parse("Thu 10:36:28") == SysTime(DateTime(0, 1, 5, 10, 36, 28)));
+    assert(parse("20030925T104941") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+    assert(parse("20030925T1049") == SysTime(DateTime(2003, 9, 25, 10, 49, 0)));
+    assert(parse("20030925T10") == SysTime(DateTime(2003, 9, 25, 10)));
+    assert(parse("20030925") == SysTime(DateTime(2003, 9, 25)));
+    // FIXME msecs
+    assert(parse("2003-09-25 10:49:41,502") == SysTime(DateTime(2003, 9, 25, 10, 49,
+        41)));
+    assert(parse("199709020908") == SysTime(DateTime(1997, 9, 2, 9, 8)));
+    assert(parse("19970902090807") == SysTime(DateTime(1997, 9, 2, 9, 8, 7)));
+}
+
+unittest
+{
+    assert(parse("2003 09 25") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("2003 Sep 25") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25 Sep 2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25 Sep 2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("Sep 25 2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("09 25 2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25 09 2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("10 09 2003", null, false, null, true) == SysTime(DateTime(2003, 9,
+        10)));
+    assert(parse("10 09 2003") == SysTime(DateTime(2003, 10, 9)));
+    assert(parse("10 09 03") == SysTime(DateTime(2003, 10, 9)));
+    assert(parse("10 09 03", null, false, null, false, true) == SysTime(DateTime(2010,
+        9, 3)));
+    assert(parse("25 09 03") == SysTime(DateTime(2003, 9, 25)));
+}
+
+unittest
+{
+    assert(parse("03 25 Sep") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("2003 25 Sep") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25 03 Sep") == SysTime(DateTime(2025, 9, 3)));
+    assert(parse("Thu Sep 25 2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("Sep 25 2003") == SysTime(DateTime(2003, 9, 25)));
+}
+
+// Naked times
+unittest
+{
+    assert(parse("10h36m28.5s") == SysTime(DateTime(0, 1, 1, 10, 36, 28)));
+    assert(parse("10h36m28s") == SysTime(DateTime(0, 1, 1, 10, 36, 28)));
+    assert(parse("10h36m") == SysTime(DateTime(0, 1, 1, 10, 36)));
+    //assert(parse("10h") == SysTime(DateTime(0, 1, 1, 10, 0, 0)));
+    //assert(parse("10 h 36") == SysTime(DateTime(0, 1, 1, 10, 36, 0)));
+}
+
+// AM vs PM
+unittest
+{
+    assert(parse("10h am") == SysTime(DateTime(0, 1, 1, 10)));
+    assert(parse("10h pm") == SysTime(DateTime(0, 1, 1, 22)));
+    assert(parse("10am") == SysTime(DateTime(0, 1, 1, 10)));
+    assert(parse("10pm") == SysTime(DateTime(0, 1, 1, 22)));
+    assert(parse("10:00 am") == SysTime(DateTime(0, 1, 1, 10)));
+    assert(parse("10:00 pm") == SysTime(DateTime(0, 1, 1, 22)));
+    assert(parse("10:00am") == SysTime(DateTime(0, 1, 1, 10)));
+    assert(parse("10:00pm") == SysTime(DateTime(0, 1, 1, 22)));
+    assert(parse("10:00a.m") == SysTime(DateTime(0, 1, 1, 10)));
+    assert(parse("10:00p.m") == SysTime(DateTime(0, 1, 1, 22)));
+    assert(parse("10:00a.m.") == SysTime(DateTime(0, 1, 1, 10)));
+    assert(parse("10:00p.m.") == SysTime(DateTime(0, 1, 1, 22)));
+}
+
+// ISO and ISO stripped
+unittest
+{
+    //assert(parse("2003-09-25T10:49:41.5-03:00") == SysTime(DateTime(2003, 9, 25, 10, 49, 41, 500000, tzinfo=self.brsttz))
+    //assert(parse("2003-09-25T10:49:41-03:00") == SysTime(DateTime(2003, 9, 25, 10, 49, 41, tzinfo=self.brsttz))
+    assert(parse("2003-09-25T10:49:41") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+    assert(parse("2003-09-25T10:49") == SysTime(DateTime(2003, 9, 25, 10, 49)));
+    assert(parse("2003-09-25T10") == SysTime(DateTime(2003, 9, 25, 10)));
+    assert(parse("2003-09-25") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("20030925T104941.5-0300") == SysTime(DateTime(2003, 9, 25, 10, 49, 41, 500000, tzinfo=self.brsttz))
+    //assert(parse("20030925T104941-0300") == SysTime(DateTime(2003, 9, 25, 10, 49, 41, tzinfo=self.brsttz))
+    assert(parse("20030925T104941") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+    assert(parse("20030925T1049") == SysTime(DateTime(2003, 9, 25, 10, 49, 0)));
+    assert(parse("20030925T10") == SysTime(DateTime(2003, 9, 25, 10)));
+    assert(parse("20030925") == SysTime(DateTime(2003, 9, 25)));
+}
+
+// Dashes
+unittest
+{
+    assert(parse("2003-09-25") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("2003-Sep-25") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("25-Sep-2003") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("25-Sep-2003") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("Sep-25-2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("09-25-2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25-09-2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("10-09-2003", null, false, null, true) == SysTime(DateTime(2003, 9,
+        10)));
+    assert(parse("10-09-2003") == SysTime(DateTime(2003, 10, 9)));
+    assert(parse("10-09-03") == SysTime(DateTime(2003, 10, 9)));
+    assert(parse("10-09-03", null, false, null, false, true) == SysTime(DateTime(2010,
+        9, 3)));
+}
+
+// Dots
+unittest
+{
+    //assert(parse("2003.09.25") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("2003.Sep.25") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("25.Sep.2003") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("25.Sep.2003") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("Sep.25.2003") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("09.25.2003") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("25.09.2003") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("10.09.2003", dayFirst=True) == SysTime(DateTime(2003, 9, 10)));
+    //assert(parse("10.09.2003") == SysTime(DateTime(2003, 10, 9)));
+    //assert(parse("10.09.03") == SysTime(DateTime(2003, 10, 9)));
+    //assert(parse("10.09.03", yearFirst=True) == SysTime(DateTime(2010, 9, 3)));
+}
+
+// Slashes
+unittest
+{
+    assert(parse("2003/09/25") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("2003/Sep/25") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("25/Sep/2003") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("25/Sep/2003") == SysTime(DateTime(2003, 9, 25)));
+    //assert(parse("Sep/25/2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("09/25/2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25/09/2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("10/09/2003", null, false, null, true) == SysTime(
+        DateTime(2003, 9, 10)));
+    assert(parse("10/09/2003") == SysTime(DateTime(2003, 10, 9)));
+    assert(parse("10/09/03") == SysTime(DateTime(2003, 10, 9)));
+    assert(parse("10/09/03", null, false, null, false, true) == SysTime(
+        DateTime(2010, 9, 3)));
+}
+
+// Random formats
+unittest
+{
+    //assert(parse("Wed, July 10, '96") == SysTime(DateTime(1996, 7, 10, 0, 0)));
+    //assert(parse("1996.07.10 AD at 15:08:56 PDT", null, true) == SysTime(
+        //DateTime(1996, 7, 10, 15, 8, 56)));
+    //assert(parse("1996.July.10 AD 12:08 PM") == SysTime(DateTime(1996, 7, 10, 12, 8)));
+    //assert(parse("Tuesday, April 12, 1952 AD 3:30:42pm PST", null, true) == SysTime(
+        //DateTime(1952, 4, 12, 15, 30, 42)));
+    //assert(parse("November 5, 1994, 8:15:30 am EST", null, true) == SysTime(
+        //DateTime(1994, 11, 5, 8, 15, 30)));
+    //assert(parse("1994-11-05T08:15:30-05:00", null, true) == SysTime(
+        //DateTime(1994, 11, 5, 8, 15, 30)));
+    assert(parse("1994-11-05T08:15:30Z", null, true) == SysTime(DateTime(1994, 11,
+        5, 8, 15, 30)));
+    //assert(parse("July 4, 1976") == SysTime(DateTime(1976, 7, 4)));
+    assert(parse("7 4 1976") == SysTime(DateTime(1976, 7, 4)));
+    assert(parse("4 jul 1976") == SysTime(DateTime(1976, 7, 4)));
+    assert(parse("7-4-76") == SysTime(DateTime(1976, 7, 4)));
+    assert(parse("19760704") == SysTime(DateTime(1976, 7, 4)));
+    assert(parse("0:01:02") == SysTime(DateTime(0, 1, 1, 0, 1, 2)));
+    assert(parse("12h 01m02s am") == SysTime(DateTime(0, 1, 1, 0, 1, 2)));
+    //assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
+    //assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
+    assert(parse("1976-07-04T00:01:02Z", null, true) == SysTime(DateTime(1976, 7, 4,
+        0, 1, 2)));
+    //assert(parse("July 4, 1976 12:01:02 am") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
+    assert(parse("Mon Jan  2 04:24:27 1995") == SysTime(DateTime(1995, 1, 2, 4, 24,
+        27)));
+    assert(parse("Tue Apr 4 00:22:12 PDT 1995", null,
+        true) == SysTime(DateTime(1995, 4, 4, 0, 22, 12)));
+    //assert(parse("04.04.95 00:22") == SysTime(DateTime(1995, 4, 4, 0, 22)));
+    // FIXME fix msecs
+    //assert(parse("Jan 1 1999 11:23:34.578") == SysTime(DateTime(1999, 1, 1, 11, 23, 34)));
+    assert(parse("950404 122212") == SysTime(DateTime(1995, 4, 4, 12, 22, 12)));
+    assert(parse("0:00 PM, PST", null, true) == SysTime(DateTime(0, 1, 1, 12, 0)));
+    assert(parse("12:08 PM") == SysTime(DateTime(0, 1, 1, 12, 8)));
+    assert(parse("5:50 A.M. on June 13, 1990") == SysTime(DateTime(1990, 6, 13, 5,
+        50)));
+    assert(parse("3rd of May 2001") == SysTime(DateTime(2001, 5, 3)));
+    assert(parse("5th of March 2001") == SysTime(DateTime(2001, 3, 5)));
+    assert(parse("1st of May 2003") == SysTime(DateTime(2003, 5, 1)));
+    assert(parse("01h02m03") == SysTime(DateTime(0, 1, 1, 1, 2, 3)));
+    assert(parse("01h02") == SysTime(DateTime(0, 1, 1, 1, 2)));
+    //assert(parse("01h02s") == SysTime(DateTime(0, 1, 1, 1, 0, 2)));
+    assert(parse("01m02") == SysTime(DateTime(0, 1, 1, 0, 1, 2)));
+    //assert(parse("01m02h") == SysTime(DateTime(0, 1, 1, 2, 1)));
+    assert(parse("2004 10 Apr 11h30m") == SysTime(DateTime(2004, 4, 10, 11, 30)));
+}
+
+// Pertain, weekday, and month
+unittest
+{
+    assert(parse("Sep 03") == SysTime(DateTime(0, 9, 3)));
+    assert(parse("Sep of 03") == SysTime(DateTime(2003, 9, 30)));
+    //assert(parse("Wed") == SysTime(DateTime(0, 1, 1)));
+    //assert(parse("Wednesday") == SysTime(DateTime(2003, 10, 1)));
+    assert(parse("October") == SysTime(DateTime(0, 10, 1)));
+    //assert(parse("31-Dec-00") == SysTime(DateTime(2000, 12, 31)));
+}
+
+// Fuzzy
+unittest
+{
+    // Sometimes fuzzy parsing results in AM/PM flag being set without
+    // hours - if it's fuzzy it should ignore that.
+    auto s1 = "I have a meeting on March 1 1974.";
+    auto s2 = "On June 8th, 2020, I am going to be the first man on Mars";
+
+    // Also don't want any erroneous AM or PMs changing the parsed time
+    auto s3 = "Meet me at the AM/PM on Sunset at 3:00 AM on December 3rd, 2003";
+    auto s4 = "Meet me at 3:00AM on December 3rd, 2003 at the AM/PM on Sunset";
+    auto s5 = "Today is 25 of September of 2003, exactly at 10:49:41 with timezone -03:00.";
+    auto s6 = "Jan 29, 1945 14:45 AM I going to see you there?";
+
+    // comma problems
+    //assert(parse(s1, null, false, null, false, false, true) == SysTime(DateTime(1974, 3, 1)));
+    //assert(parse(s2, null, false, null, false, false, true) == SysTime(DateTime(2020, 6, 8)));
+    //assert(parse(s3, null, false, null, false, false, true) == SysTime(DateTime(2003, 12, 3, 3)));
+    //assert(parse(s4, null, false, null, false, false, true) == SysTime(DateTime(2003, 12, 3, 3)));
+    //assert(parse(s5, null, false, null, false, false, true) == SysTime(
+        //DateTime(2003, 9, 25, 10, 49, 41, tzinfo=self.brsttz)));
+    assert(parse(s6, null, false, null, false, false, true) == SysTime(DateTime(1945,
+        1, 29, 14, 45)));
+}
+
+/// Custom parser info allows for international time representation
+unittest
+{
+    class RusParserInfo : ParserInfo
+    {
+        this()
         {
-            return DEFAULTTZPARSER.parse(tzstr);
+            super(false, false);
+            months = ParserInfo.convert([("янв", "Январь"), ("фев",
+                "Февраль"), ("мар", "Март"), ("апр",
+                "Апрель"), ("май", "Май"), ("июн", "Июнь"),
+                ("июл", "Июль"), ("авг", "Август"), ("сен",
+                "Сентябрь"), ("окт", "Октябрь"), ("ноя",
+                "Ноябрь"), ("дек", "Декабрь")]);
         }
     }
+
+    assert(parse("10 Сентябрь 2015 10:20",
+        new RusParserInfo()) == SysTime(DateTime(2015, 9, 10, 10, 20)));
 }

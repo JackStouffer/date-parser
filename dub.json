@@ -1,5 +1,5 @@
 {
     "name": "date_parser",
     "sourcePaths": ["."],
-    "library": "executable"
+    "targetType": "executable"
 }

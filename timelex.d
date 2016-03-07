@@ -13,6 +13,14 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
     private Range instream;
     private string charstack;
     private string[] tokenstack;
+    private enum State {
+        EMPTY,
+        ALPHA,
+        NUMERIC,
+        ALPHA_PERIOD,
+        PERIOD,
+        NUMERIC_PERIOD
+    }
 
     this(Range r)
     {
@@ -49,9 +57,8 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
 
         bool seenletters = false;
         string token;
-        string state;
+        State state = State.EMPTY;
 
-        // This is just a state machine, use enums and switch to speed up
         while (!instream.empty)
         {
             // We only realize that we've reached the end of a token when we
@@ -77,18 +84,18 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
                 }
             }
 
-            if (state.empty)
+            if (state == State.EMPTY)
             {
                 // First character of the token - determines if we're starting
                 // to parse a word, a number or something else.
                 token ~= nextchar;
                 if (isAlpha(nextchar))
                 {
-                    state = "a";
+                    state = State.ALPHA;
                 }
                 else if (isNumber(nextchar))
                 {
-                    state = "0";
+                    state = State.NUMERIC;
                 }
                 else if (isSpace(nextchar))
                 {
@@ -100,7 +107,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
                     break; //emit token
                 }
             }
-            else if (state == "a")
+            else if (state == State.ALPHA)
             {
                 // If we've already started reading a word, we keep reading
                 // letters until we find something that's not part of a word.
@@ -112,7 +119,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
                 else if (nextchar == '.')
                 {
                     token ~= nextchar;
-                    state = "a.";
+                    state = State.ALPHA_PERIOD;
                 }
                 else
                 {
@@ -120,7 +127,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
                     break; //emit token
                 }
             }
-            else if (state == "0")
+            else if (state == State.NUMERIC)
             {
                 // If we've already started reading a number, we keep reading
                 // numbers until we find something that doesn't fit.
@@ -131,7 +138,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
                 else if (nextchar == '.' || (nextchar == ',' && token.length >= 2))
                 {
                     token ~= nextchar;
-                    state = "0.";
+                    state = State.NUMERIC_PERIOD;
                 }
                 else
                 {
@@ -139,7 +146,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
                     break; //emit token
                 }
             }
-            else if (state == "a.")
+            else if (state == State.ALPHA_PERIOD)
             {
                 // If we've seen some letters and a dot separator, continue
                 // parsing, and the tokens will be broken up later.
@@ -151,7 +158,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
                 else if (isNumber(nextchar) && token[$ - 1] == '.')
                 {
                     token ~= nextchar;
-                    state = "0.";
+                    state = State.NUMERIC_PERIOD;
                 }
                 else
                 {
@@ -159,7 +166,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
                     break; //emit token
                 }
             }
-            else if (state == "0.")
+            else if (state == State.NUMERIC_PERIOD)
             {
                 // If we've seen at least one dot separator, keep going, we'll
                 // break up the tokens later.
@@ -170,7 +177,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
                 else if (isAlpha(nextchar) && token[$-1] == '.')
                 {
                     token ~= nextchar;
-                    state = "a.";
+                    state = State.ALPHA_PERIOD;
                 }
                 else
                 {
@@ -180,7 +187,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
             }
         }
 
-        if ((state == "a." || state == "0.") || (seenletters
+        if ((state == State.ALPHA_PERIOD || state == State.NUMERIC_PERIOD) || (seenletters
                 || token.count('.') > 1 || (token[$ - 1] == '.' || token[$ - 1] == ',')))
         {
             auto l = token.split(split_decimal);
@@ -194,7 +201,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
             }
         }
 
-        if (state == "0." && token.count('.') == 0)
+        if (state == State.NUMERIC_PERIOD && token.count('.') == 0)
         {
             token = token.replace(",", ".");
         }
