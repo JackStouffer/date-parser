@@ -102,7 +102,7 @@ of a date/time stamp is omitted, the following rules are applied:
 
 $(OL
     $(LI If AM or PM is left unspecified, a 24-hour clock is assumed, however,
-    an hour on a 12-hour clock (``0 <= hour <= 12``) *must* be specified if
+    an hour on a 12-hour clock (0 <= hour <= 12) *must* be specified if
     AM or PM is specified.)
     $(LI If a time zone is omitted, a SysTime with the timezone local to the
     host is returned.)
@@ -118,38 +118,38 @@ is given.
 
 Params:
     timeString = A string containing a date/time stamp.
-    parserInfo = containing parameters for the Parser. If `null` the default
-                 arguments to the :class:`ParserInfo` constructor are used.
-    ignoreTimezone = Set to `false` by default, time zones in parsed strings are ignored and a
-               `SysTime` with the local time zone is returned. If timezone information
-               is not important, setting this to `true` is slightly faster.
+    parserInfo = containing parameters for the Parser. If null the default
+                 arguments to the :class:ParserInfo constructor are used.
+    ignoreTimezone = Set to false by default, time zones in parsed strings are ignored and a
+               SysTime with the local time zone is returned. If timezone information
+               is not important, setting this to true is slightly faster.
     timezoneInfos = Time zone names / aliases which may be present in the
               string. This argument maps time zone names (and optionally offsets
               from those time zones) to time zones. This parameter is ignored if
-              `ignoreTimezone` is set.
+              ignoreTimezone is set.
     dayFirst = Whether to interpret the first value in an ambiguous 3-integer date
-              (e.g. 01/05/09) as the day (`true`) or month (`false`). If
-              `yearFirst` is set to `true`, this distinguishes between YDM and
+              (e.g. 01/05/09) as the day (true) or month (false). If
+              yearFirst is set to true, this distinguishes between YDM and
               YMD.
     yearFirst = Whether to interpret the first value in an ambiguous 3-integer date
-                (e.g. 01/05/09) as the year. If ``True``, the first number is taken to
+                (e.g. 01/05/09) as the year. If true, the first number is taken to
                 be the year, otherwise the last number is taken to be the year.
-    fuzzy = Whether to allow fuzzy parsing, allowing for string like `"Today is
-            January 1, 2047 at 8:21:00AM"`.
+    fuzzy = Whether to allow fuzzy parsing, allowing for string like "Today is
+            January 1, 2047 at 8:21:00AM".
 
 Returns:
-    A `SysTime` object representing the parsed string
+    A SysTime object representing the parsed string
 
 Throws:
-    `ConvException` will be thrown for invalid or unknown string format
+    ConvException will be thrown for invalid or unknown string format
 
 Throws:
-    `TimeException` if the date string is successfully parsed but the created
+    TimeException if the date string is successfully parsed but the created
     date would be invalid
 
 Throws:
-    `ConvOverflowException` if one of the numbers in the parsed date exceeds
-    `int.max`
+    ConvOverflowException if one of the numbers in the parsed date exceeds
+    int.max
 */
 SysTime parse(string timeString, ParserInfo parserInfo = null, bool ignoreTimezone = false,
     TimeZone[string] timezoneInfos = null, bool dayFirst = false,
@@ -461,10 +461,10 @@ unittest
 }
 
 /**
- * Implements the parsing functionality for the `parse` function. If you are
- * using a custom `ParserInfo` many times in the same program, you can avoid
- * unnecessary allocations by using the `Parser.parse` function directly.
- * Otherwise using `parse` or `Parser.parse` makes no difference.
+ * Implements the parsing functionality for the parse function. If you are
+ * using a custom ParserInfo many times in the same program, you can avoid
+ * unnecessary allocations by using the Parser.parse function directly.
+ * Otherwise using parse or Parser.parse makes no difference.
  */
 final class Parser
 {
@@ -489,15 +489,15 @@ public:
     *
     * Params:
     *     timeString = Any date/time string using the supported formats.
-    *     ignoreTimezone = If set `true`, time zones in parsed strings are
+    *     ignoreTimezone = If set true, time zones in parsed strings are
     *     ignored
     *     timezoneInfos = Additional time zone names / aliases which may be
     *     present in the string. This argument maps time zone names (and
     *     optionally offsets from those time zones) to time zones. This
-    *     parameter is ignored if `ignoreTimezone` is set.
+    *     parameter is ignored if ignoreTimezone is set.
     *
     * Returns:
-    *    `SysTime`
+    *    SysTime
     *
     * Throws:
     *     ConvException for invalid or unknown string format
@@ -646,7 +646,7 @@ private:
      * Params:
      *     value = value to parse
      * Returns:
-     *     tuple of two `int`s
+     *     tuple of two ints
      */
     auto parseMS(string value)
     {
@@ -688,22 +688,22 @@ private:
 
     /**
     * Private method which performs the heavy lifting of parsing, called from
-    * `parse()`.
+    * parse().
     *
     * Params:
     *     timeString = the string to parse.
     *     dayFirst = 
     *     Whether to interpret the first value in an ambiguous 3-integer date
-    *     (e.g. 01/05/09) as the day (`true`) or month (`false`). If
-    *     `yearFirst` is set to `true`, this distinguishes between YDM
-    *     and YMD. If set to `null`, this value is retrieved from the
-    *     current :class:`ParserInfo` object (which itself defaults to
-    *     `false`).
+    *     (e.g. 01/05/09) as the day (true) or month (false). If
+    *     yearFirst is set to true, this distinguishes between YDM
+    *     and YMD. If set to null, this value is retrieved from the
+    *     current :class:ParserInfo object (which itself defaults to
+    *     false).
     *     yearFirst = Whether to interpret the first value in an ambiguous 3-integer date
-    *     (e.g. 01/05/09) as the year. If `true`, the first number is taken
+    *     (e.g. 01/05/09) as the year. If true, the first number is taken
     *     to be the year, otherwise the last number is taken to be the year.
-    *     If this is set to `null`, the value is retrieved from the current
-    *     :class:`ParserInfo` object (which itself defaults to `false`).
+    *     If this is set to null, the value is retrieved from the current
+    *     :class:ParserInfo object (which itself defaults to false).
     *     fuzzy = Whether to allow fuzzy parsing, allowing for string like "Today is
     *     January 1, 2047 at 8:21:00AM".
     */

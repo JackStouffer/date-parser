@@ -54,17 +54,15 @@ public:
 Class which handles what inputs are accepted. Subclass this to customize
 the language and acceptable values for each parameter.
 
-:param dayFirst:
-        Whether to interpret the first value in an ambiguous 3-integer date
-        (e.g. 01/05/09) as the day (``True``) or month (``False``). If
-        ``yearFirst`` is set to ``True``, this distinguishes between YDM
-        and YMD. Default is ``False``.
-
-:param yearFirst:
-        Whether to interpret the first value in an ambiguous 3-integer date
-        (e.g. 01/05/09) as the year. If ``True``, the first number is taken
+Params:
+    dayFirst = Whether to interpret the first value in an ambiguous 3-integer date
+        (e.g. 01/05/09) as the day (`true`) or month (`false`). If
+        `yearFirst` is set to `true`, this distinguishes between YDM
+        and YMD. Default is `false`.
+    yearFirst = Whether to interpret the first value in an ambiguous 3-integer date
+        (e.g. 01/05/09) as the year. If `true`, the first number is taken
         to be the year, otherwise the last number is taken to be the year.
-        Default is ``False``.
+        Default is `false`.
 */
 class ParserInfo
 {
