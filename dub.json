@@ -1,5 +1,5 @@
 {
-    "name": "Date Parser",
+    "name": "dateparser",
     "targetName": "dateparse",
     "description": "Library for parsing randomly formated date strings",
     "sourcePaths": ["src/"],
