@@ -169,12 +169,10 @@ unittest
     auto brazilTime = new SimpleTimeZone(dur!"seconds"(-10_800));
     TimeZone[string] timezones = ["BRST" : brazilTime];
 
+    auto parsed = parse("Thu Sep 25 10:36:28 BRST 2003", null, false, timezones);
     // SysTime opEquals ignores timezones
-    assert(parse("Thu Sep 25 10:36:28 BRST 2003", null, false, timezones) == SysTime(
-        DateTime(2003, 9, 25, 10, 36, 28)
-    ));
-    assert(parse("Thu Sep 25 10:36:28 BRST 2003", null, false, timezones
-        ).timezone == brazilTime);
+    assert(parsed == SysTime(DateTime(2003, 9, 25, 10, 36, 28)));
+    assert(parsed.timezone == brazilTime);
 
     assert(parse("2003 10:36:28 BRST 25 Sep Thu", null, false, timezones) == SysTime(DateTime(2003, 9, 25, 10, 36, 28)));
     assert(parse("Thu Sep 25 10:36:28") == SysTime(DateTime(0, 9, 25, 10, 36, 28)));
@@ -456,8 +454,10 @@ unittest
         }
     }
 
-    assert(parse("10 Сентябрь 2015 10:20",
-        new RusParserInfo()) == SysTime(DateTime(2015, 9, 10, 10, 20)));
+    auto rusParser = new Parser(new RusParserInfo());
+    SysTime parsedTime = rusParser.parse("10 Сентябрь 2015 10:20");
+
+    assert(parsedTime == SysTime(DateTime(2015, 9, 10, 10, 20)));
 }
 
 /**
