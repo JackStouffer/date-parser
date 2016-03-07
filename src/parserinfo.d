@@ -54,13 +54,13 @@ public:
 Class which handles what inputs are accepted. Subclass this to customize
 the language and acceptable values for each parameter.
 
-:param dayfirst:
+:param dayFirst:
         Whether to interpret the first value in an ambiguous 3-integer date
         (e.g. 01/05/09) as the day (``True``) or month (``False``). If
-        ``yearfirst`` is set to ``True``, this distinguishes between YDM
+        ``yearFirst`` is set to ``True``, this distinguishes between YDM
         and YMD. Default is ``False``.
 
-:param yearfirst:
+:param yearFirst:
         Whether to interpret the first value in an ambiguous 3-integer date
         (e.g. 01/05/09) as the year. If ``True``, the first number is taken
         to be the year, otherwise the last number is taken to be the year.
@@ -69,151 +69,133 @@ the language and acceptable values for each parameter.
 class ParserInfo
 {
     import std.datetime : Clock;
-    import std.uni : toLower;
+    import std.uni : toLower, asLowerCase;
 
-public:
-    bool dayfirst;
-    bool yearfirst;
+private:
+    bool dayFirst;
+    bool yearFirst;
     short year;
     short century;
-    int[string] jump_dict;
-    int[string] weekdays;
-    int[string] months;
-    int[string] hms_dict;
-    int[string] ampm_dict;
-    int[string] utczone_dict;
-    int[string] pertain_dict;
 
-    static int[string] convert(Range)(Range list) if (isInputRange!Range)
+public:
+    /**
+     * AAs used for matching strings to calendar numbers, e.g. Jan is 1
+     */
+    int[string] jumpAA;
+    ///ditto
+    int[string] weekdaysAA;
+    ///ditto
+    int[string] monthsAA;
+    ///ditto
+    int[string] hmsAA;
+    ///ditto
+    int[string] ampmAA;
+    ///ditto
+    int[string] utczoneAA;
+    ///ditto
+    int[string] pertainAA;
+
+    /**
+     * Take a range of character ranges or a range of ranges of character
+     * ranges and converts it to an associative array that the internal
+     * parser info methods can use.
+     *
+     * Use this method in order to override the default parser info field
+     * values. See the example on the $(REF parse).
+     *
+     * Params:
+     *     list = a range of character ranges
+     *
+     * Returns:
+     *     An associative array of `int`s accessed by strings
+     */
+    static int[string] convert(Range)(Range list) if (
+        isInputRange!Range &&
+        isSomeChar!(ElementEncodingType!(ElementEncodingType!(Range))) ||
+        isSomeChar!(ElementEncodingType!(ElementEncodingType!(ElementEncodingType!(Range)))))
     {
         int[string] dictionary;
 
         foreach (int i, value; list)
         {
-            static if (isInstanceOf!(Tuple, ElementType!(Range))
-                    || is(ElementType!(Range) : string[]))
+            // tuple of strings or multidimensional string array
+            static if (isInputRange!(ElementType!(ElementType!(Range))))
             {
                 foreach (item; value)
                 {
-                    dictionary[item.toLower()] = i;
+                    dictionary[item.asLowerCase.array.to!string] = i;
                 }
             }
             else
             {
-                dictionary[value.toLower()] = i;
+                dictionary[value.asLowerCase.array.to!string] = i;
             }
         }
 
         return dictionary;
     }
 
-    this(bool dayfirst = false, bool yearfirst = false) @safe
+    /// Ctor
+    this(bool dayFirst = false, bool yearFirst = false) @safe
     {
-        dayfirst = dayfirst;
-        yearfirst = yearfirst;
+        dayFirst = dayFirst;
+        yearFirst = yearFirst;
 
         year = Clock.currTime.year;
         century = (year / 100) * 100;
 
-        jump_dict = JUMP_DEFAULT;
-        weekdays = WEEKDAYS_DEFAULT;
-        months = MONTHS_DEFAULT;
-        hms_dict = HMS_DEFAULT;
-        ampm_dict = AMPM_DEFAULT;
-        utczone_dict = UTCZONE_DEFAULT;
-        pertain_dict = PERTAIN_DEFAULT;
+        jumpAA = JUMP_DEFAULT;
+        weekdaysAA = WEEKDAYS_DEFAULT;
+        monthsAA = MONTHS_DEFAULT;
+        hmsAA = HMS_DEFAULT;
+        ampmAA = AMPM_DEFAULT;
+        utczoneAA = UTCZONE_DEFAULT;
+        pertainAA = PERTAIN_DEFAULT;
     }
 
-    final bool jump(const ref string name) @safe pure const
-    {
-        return name.toLower() in jump_dict ? true : false;
-    }
-
-    final int weekday(const ref string name) @safe pure const
-    {
-        if (name.length >= 3 && name.toLower() in weekdays)
-        {
-            return weekdays[name.toLower()];
-        }
-        return -1;
-    }
-
-    final int month(const ref string name) @safe pure const
-    {
-        if (name.length >= 3 && name.toLower() in months)
-        {
-            return months[name.toLower()] + 1;
-        }
-        return -1;
-    }
-
-    final int hms(const ref string name) @safe pure const
-    {
-        if (name.toLower() in hms_dict)
-        {
-            return hms_dict[name.toLower()];
-        }
-        return -1;
-    }
-
-    final int ampm(const ref string name) @safe pure const
-    {
-        if (name.toLower() in ampm_dict)
-        {
-            return ampm_dict[name.toLower()];
-        }
-        return -1;
-    }
-
-    final bool pertain(const ref string name) @safe pure const
-    {
-        return name.toLower() in pertain_dict ? true : false;
-    }
-
-    final bool utczone(const ref string name) @safe pure const
-    {
-        return name.toLower() in utczone_dict ? true : false;
-    }
-
-    final int tzoffset(const ref string name) @safe const 
-    {
-        if (name in utczone_dict)
-        {
-            return 0;
-        }
-
-        return name in TZOFFSET ? TZOFFSET[name] : -1;
-    }
-
-    final int convertyear(int convert_year, bool century_specified = false) @safe @nogc pure nothrow const
+    /**
+     * If the century isn't specified, e.g. `"'07"`, then assume that the year
+     * is in the current century and return it as such. Otherwise do nothing
+     *
+     * Params:
+     *     convertYear = year to be converted
+     *     centurySpecified = is the century given in the year
+     *
+     * Returns:
+     *     the converted year
+     */
+    final int convertYear(int convertYear, bool centurySpecified = false) @safe @nogc pure nothrow const
     {
         import std.math : abs;
 
-        if (convert_year < 100 && !century_specified)
+        if (convertYear < 100 && !centurySpecified)
         {
-            convert_year += century;
-            if (abs(convert_year - year) >= 50)
+            convertYear += century;
+            if (abs(convertYear - year) >= 50)
             {
-                if (convert_year < year)
+                if (convertYear < year)
                 {
-                    convert_year += 100;
+                    convertYear += 100;
                 }
                 else
                 {
-                    convert_year -= 100;
+                    convertYear -= 100;
                 }
             }
         }
 
-        return convert_year;
+        return convertYear;
     }
 
-    final bool validate(Result res) @safe pure const
+    /**
+     * Takes and Result and converts it year and checks if the timezone is UTC
+     */
+    final void validate(Result res) @safe pure const
     {
         //move to info
         if (!res.year.isNull)
         {
-            res.year = convertyear(res.year, res.century_specified);
+            res.year = convertYear(res.year, res.centurySpecified);
         }
 
         if (!res.tzoffset.isNull && res.tzoffset == 0 && (res.tzname.length == 0 || res.tzname
@@ -227,7 +209,67 @@ public:
         {
             res.tzoffset = 0;
         }
+    }
 
-        return true;
+package:
+    final bool jump(S)(const ref S name) const if (isSomeString!S)
+    {
+        return name.toLower() in jumpAA ? true : false;
+    }
+
+    final int weekday(S)(const ref S name) const if (isSomeString!S)
+    {
+        if (name.length >= 3 && name.toLower() in weekdaysAA)
+        {
+            return weekdaysAA[name.toLower()];
+        }
+        return -1;
+    }
+
+    final int month(S)(const ref S name) const if (isSomeString!S)
+    {
+        if (name.length >= 3 && name.toLower() in monthsAA)
+        {
+            return monthsAA[name.toLower()] + 1;
+        }
+        return -1;
+    }
+
+    final int hms(S)(const ref S name) const if (isSomeString!S)
+    {
+        if (name.toLower() in hmsAA)
+        {
+            return hmsAA[name.toLower()];
+        }
+        return -1;
+    }
+
+    final int ampm(S)(const ref S name) const if (isSomeString!S)
+    {
+        if (name.toLower() in ampmAA)
+        {
+            return ampmAA[name.toLower()];
+        }
+        return -1;
+    }
+
+    final bool pertain(S)(const ref S name) const if (isSomeString!S)
+    {
+        return name.toLower() in pertainAA ? true : false;
+    }
+
+    final bool utczone(S)(const ref S name) const if (isSomeString!S)
+    {
+        return name.toLower() in utczoneAA ? true : false;
+    }
+
+    final int tzoffset(S)(const ref S name) const if (isSomeString!S)
+    {
+        if (name in utczoneAA)
+        {
+            return 0;
+        }
+
+        return name in TZOFFSET ? TZOFFSET[name] : -1;
     }
 }

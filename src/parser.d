@@ -8,7 +8,7 @@ import parserinfo;
 import timelex;
 import ymd;
 
-Parser defaultParser;
+private Parser defaultParser;
 static this()
 {
     defaultParser = new Parser();
@@ -26,7 +26,7 @@ final class Result
     Nullable!int minute;
     Nullable!int second;
     Nullable!int microsecond;
-    bool century_specified;
+    bool centurySpecified;
     string tzname;
     Nullable!int tzoffset;
     uint ampm;
@@ -89,849 +89,6 @@ final class Result
         getter_dict["microsecond"] = &getMicrosecond;
     }
 }
-
-final class Parser
-{
-    ParserInfo info;
-
-    this(ParserInfo parserInfo = null)
-    {
-        if (parserInfo is null)
-        {
-            info = new ParserInfo();
-        }
-        else
-        {
-            info = parserInfo;
-        }
-    }
-
-    /**
-    * Parse the date/time string into a SysTime.
-    * 
-    * :param timeString:
-    *     Any date/time string using the supported formats.
-    *
-    * :param ignoreTimezone:
-    *     If set `true`, time zones in parsed strings are ignored and a
-    *     naive :class:`datetime.datetime` object is returned.
-    * 
-    * :param timezoneInfos:
-    *     Additional time zone names / aliases which may be present in the
-    *     string. This argument maps time zone names (and optionally offsets
-    *     from those time zones) to time zones. This parameter can be a
-    *     dictionary with timezone aliases mapping time zone names to time
-    *    zones or a function taking two parameters (`tzname` and
-    *    `tzoffset`) and returning a time zone.
-    *
-    *    The timezones to which the names are mapped can be an integer
-    *    offset from UTC in minutes or a :class:`tzinfo` object.
-    *
-    *    This parameter is ignored if `ignoreTimezone` is set.
-    *
-    *:param **kwargs:
-    *    Keyword arguments as passed to `parseImpl()`.
-    *
-    *:return:
-    *    Returns a :class:`datetime.datetime` object
-    *
-    *:raises ValueError:
-    *    Raised for invalid or unknown string format, if the provided
-    *    :class:`tzinfo` is not in a valid format, or if an invalid date
-    *    would be created.
-    *
-    *:raises OverflowError:
-    *    Raised if the parsed date exceeds the largest valid C integer on
-    *    your system.
-     */
-    SysTime parse(string timeString, bool ignoreTimezone = false,
-        TimeZone[string] timezoneInfos = null, bool dayFirst = false,
-        bool yearFirst = false, bool fuzzy = false)
-    {
-        SysTime returnDate = SysTime(0);
-
-        auto res = parseImpl(timeString, dayFirst, yearFirst, fuzzy);
-
-        if (res is null)
-        {
-            throw new ConvException("Unknown string format");
-        }
-
-        if (res.year.isNull() && res.month.isNull() && res.day.isNull()
-                && res.hour.isNull() && res.minute.isNull() && res.second.isNull())
-        {
-            throw new ConvException("String does not contain a date.");
-        }
-
-        // FIXME get rid of me
-        int[string] repl;
-        static immutable attrs = ["year", "month", "day", "hour", "minute",
-            "second", "microsecond"];
-        foreach (attr; attrs)
-        {
-            if (attr in res.getter_dict && !res.getter_dict[attr]().isNull())
-            {
-                repl[attr] = res.getter_dict[attr]().get(); // FIXME
-            }
-        }
-
-        if (!("day" in repl))
-        {
-            //If the returnDate day exceeds the last day of the month, fall back to
-            //the end of the month.
-            immutable cyear = res.year.isNull() ? returnDate.year : res.year;
-            immutable cmonth = res.month.isNull() ? returnDate.month : res.month;
-            immutable cday = res.day.isNull() ? returnDate.day : res.day;
-
-            immutable days = Date(cyear, cmonth, 1).daysInMonth;
-            if (cday > days)
-            {
-                repl["day"] = days;
-            }
-        }
-
-        if ("year" in repl)
-            returnDate.year(repl["year"]);
-
-        if ("day" in repl)
-        {
-            returnDate.day(repl["day"]);
-        }
-        else
-        {
-            returnDate.day(1);
-        }
-
-        if ("month" in repl)
-        {
-            returnDate.month(to!Month(repl["month"]));
-        }
-        else
-        {
-            returnDate.month(to!Month(1));
-        }
-        
-        if ("hour" in repl)
-        {
-            returnDate.hour(repl["hour"]);
-        }
-        else
-        {
-            returnDate.hour(0);
-        }
-        
-        if ("minute" in repl)
-        {
-            returnDate.minute(repl["minute"]);
-        }
-        else
-        {
-            returnDate.minute(0);
-        }
-
-        if ("second" in repl)
-        {
-            returnDate.second(repl["second"]);
-        }
-        else
-        {
-            returnDate.second(0);
-        }
-
-        if ("microsecond" in repl)
-        {
-            returnDate.fracSecs(usecs(repl["microsecond"]));
-        }
-        else
-        {
-            returnDate.fracSecs(usecs(0));
-        }
-
-        if (!res.weekday.isNull() && (res.day.isNull || !res.day))
-        {
-            int delta_days = daysToDayOfWeek(returnDate.dayOfWeek(), to!DayOfWeek(res.weekday));
-            returnDate += dur!"days"(delta_days);
-        }
-
-        if (!ignoreTimezone)
-        {
-            if (res.tzname in timezoneInfos)
-            {
-                returnDate = returnDate.toOtherTZ(
-                    cast(immutable) timezoneInfos[res.tzname]
-                );
-            }
-            else if (res.tzname.length > 0 && (res.tzname == LocalTime().stdName ||
-                res.tzname == LocalTime().dstName))
-            {
-                returnDate = returnDate.toLocalTime();
-            }
-            else if (!res.tzoffset.isNull && res.tzoffset == 0)
-            {
-                returnDate = returnDate.toUTC();
-            }
-            else if (!res.tzoffset.isNull && res.tzoffset != 0)
-            {
-                returnDate = returnDate.toOtherTZ(new immutable SimpleTimeZone(
-                    dur!"seconds"(res.tzoffset), res.tzname
-                ));
-            }
-        }
-
-        return returnDate;
-    }
-
-    /**
-     * Parse a I[.F] seconds value into (seconds, microseconds)
-     *
-     * Params:
-     *     value = value to parse
-     * Returns:
-     *     tuple of two `int`s
-     */
-    private auto parseMS(string value)
-    {
-        import std.string : indexOf, leftJustify;
-        import std.typecons : tuple;
-
-        if (!(value.indexOf(".") > -1))
-        {
-            return tuple(to!int(value), 0);
-        }
-        else
-        {
-            auto splitValue = value.split(".");
-            return tuple(
-                to!int(splitValue[0]),
-                to!int(splitValue[1].leftJustify(6, '0')[0 .. 6])
-            );
-        }
-    }
-
-    void setAttribute(P, T)(ref P p, string name, auto ref T value)
-    {
-        foreach (mem; __traits(allMembers, P))
-        {
-            static if (is(typeof(__traits(getMember, p, mem)) Q))
-            {
-                static if (is(T : Q))
-                {
-                    if (mem == name)
-                    {
-                        __traits(getMember, p, mem) = value;
-                        return;
-                    }
-                }
-            }
-        }
-        assert(0, P.stringof ~ " has no member " ~ name);
-    }
-
-    /**
-    Private method which performs the heavy lifting of parsing, called from
-    `parse()`, which passes on its `kwargs` to this function.
-
-    :param timeString:
-        The string to parse.
-
-    :param dayFirst:
-        Whether to interpret the first value in an ambiguous 3-integer date
-        (e.g. 01/05/09) as the day (`true`) or month (`false`). If
-        `yearFirst` is set to `true`, this distinguishes between YDM
-        and YMD. If set to `null`, this value is retrieved from the
-        current :class:`ParserInfo` object (which itself defaults to
-        `false`).
-
-    :param yearFirst:
-        Whether to interpret the first value in an ambiguous 3-integer date
-        (e.g. 01/05/09) as the year. If `true`, the first number is taken
-        to be the year, otherwise the last number is taken to be the year.
-        If this is set to `null`, the value is retrieved from the current
-        :class:`ParserInfo` object (which itself defaults to `false`).
-
-    :param fuzzy:
-        Whether to allow fuzzy parsing, allowing for string like "Today is
-        January 1, 2047 at 8:21:00AM".
-    */
-    private Result parseImpl(string timeString, bool dayFirst = false,
-        bool yearFirst = false, bool fuzzy = false)
-    {
-        import std.string : indexOf;
-        import std.algorithm.iteration : filter;
-        import std.uni : isUpper;
-
-        auto res = new Result();
-        string[] l = new TimeLex!string(timeString).split(); //Splits the timeString into tokens
-        debug writeln("l: ", l);
-
-        //keep up with the last token skipped so we can recombine
-        //consecutively skipped tokens (-2 for when i begins at 0).
-        int last_skipped_token_i = -2;
-
-        try
-        {
-            //year/month/day list
-            auto ymd = YMD(timeString);
-
-            //Index of the month string in ymd
-            long mstridx = -1;
-
-            immutable size_t len_l = l.length;
-            debug writeln("len_l: ", len_l);
-            int i = 0;
-            while (i < len_l)
-            {
-                //Check if it's a number
-                Nullable!float value;
-                string value_repr;
-                debug writeln("i: ", i);
-                debug writeln("li: ", l[i]);
-
-                try
-                {
-                    value_repr = l[i];
-                    debug writeln("value_repr: ", value_repr);
-                    value = to!float(value_repr);
-                }
-                catch (Exception)
-                {
-                    value.nullify();
-                }
-
-                if (!value.isNull())
-                {
-                    //Token is a number
-                    immutable len_li = l[i].length;
-                    ++i;
-
-                    if (ymd.length == 3 && (len_li == 2 || len_li == 4)
-                            && res.hour.isNull && (i >= len_l || (l[i] != ":"
-                            && info.hms(l[i]) == -1)))
-                    {
-                        debug writeln("branch 1");
-                        //19990101T23[59]
-                        auto s = l[i - 1];
-                        res.hour = to!int(s[0 .. 2]);
-
-                        if (len_li == 4)
-                        {
-                            res.minute = to!int(s[2 .. $]);
-                        }
-                    }
-                    else if (len_li == 6 || (len_li > 6 && l[i - 1].indexOf(".") == 6))
-                    {
-                        debug writeln("branch 2");
-                        //YYMMDD || HHMMSS[.ss]
-                        auto s = l[i - 1];
-
-                        if (ymd.length == 0 && l[i - 1].indexOf('.') == -1)
-                        {
-                            ymd.put(s[0 .. 2]);
-                            ymd.put(s[2 .. 4]);
-                            ymd.put(s[4 .. $]);
-                        }
-                        else
-                        {
-                            //19990101T235959[.59]
-                            res.hour = to!int(s[0 .. 2]);
-                            res.minute = to!int(s[2 .. 4]);
-                            res.second = parseMS(s[4 .. $])[0];
-                            res.microsecond = parseMS(s[4 .. $])[1];
-                        }
-                    }
-                    else if (len_li == 8 || len_li == 12 || len_li == 14)
-                    {
-                        debug writeln("branch 3");
-                        //YYYYMMDD
-                        auto s = l[i - 1];
-                        ymd.put(s[0 .. 4]);
-                        ymd.put(s[4 .. 6]);
-                        ymd.put(s[6 .. 8]);
-
-                        if (len_li > 8)
-                        {
-                            res.hour = to!int(s[8 .. 10]);
-                            res.minute = to!int(s[10 .. 12]);
-
-                            if (len_li > 12)
-                            {
-                                res.second = to!int(s[12 .. $]);
-                            }
-                        }
-                    }
-                    else if ((i < len_l && info.hms(l[i]) > -1)
-                            || (i + 1 < len_l && l[i] == " " && info.hms(l[i + 1]) > -1))
-                    {
-                        debug writeln("branch 4");
-                        //HH[ ]h or MM[ ]m or SS[.ss][ ]s
-                        if (l[i] == " ")
-                        {
-                            ++i;
-                        }
-
-                        auto idx = info.hms(l[i]);
-
-                        while (true)
-                        {
-                            if (idx == 0)
-                            {
-                                res.hour = to!int(value.get());
-
-                                if (value % 1)
-                                {
-                                    res.minute = to!int(60 * (value % 1));
-                                }
-                            }
-                            else if (idx == 1)
-                            {
-                                res.minute = to!int(value.get());
-
-                                if (value % 1)
-                                {
-                                    res.second = to!int(60 * (value % 1));
-                                }
-                            }
-                            else if (idx == 2)
-                            {
-                                auto temp = parseMS(value_repr);
-                                res.second = temp[0];
-                                res.microsecond = temp[1];
-                            }
-
-                            ++i;
-
-                            if (i >= len_l || idx == 2)
-                            {
-                                break;
-                            }
-
-                            //12h00
-                            try
-                            {
-                                value_repr = l[i];
-                                value = to!float(value_repr);
-                            }
-                            catch (ConvException)
-                            {
-                                break;
-                            }
-
-                            ++i;
-                            ++idx;
-
-                            if (i < len_l)
-                            {
-                                immutable newidx = info.hms(l[i]);
-
-                                if (newidx > -1)
-                                {
-                                    idx = newidx;
-                                }
-                            }
-                        }
-                    }
-                    else if (i == len_l && l[i - 2] == " " && info.hms(l[i - 3]) > -1)
-                    {
-                        debug writeln("branch 5");
-                        //X h MM or X m SS
-                        immutable idx = info.hms(l[i - 3]) + 1;
-
-                        if (idx == 1)
-                        {
-                            res.minute = to!int(value.get());
-
-                            if (value % 1)
-                            {
-                                res.second = to!int(60 * (value % 1));
-                            }
-                            else if (idx == 2)
-                            {
-                                //FIXME
-                                auto temp = parseMS(value_repr);
-                                res.second = temp[0];
-                                res.microsecond = temp[1];
-                                ++i;
-                            }
-                        }
-                    }
-                    else if (i + 1 < len_l && l[i] == ":")
-                    {
-                        debug writeln("branch 6");
-                        //HH:MM[:SS[.ss]]
-                        res.hour = to!int(value.get());
-                        ++i;
-                        value = to!float(l[i]);
-                        res.minute = to!int(value.get());
-
-                        if (value % 1)
-                        {
-                            res.second = to!int(60 * (value % 1));
-                        }
-
-                        ++i;
-
-                        if (i < len_l && l[i] == ":")
-                        {
-                            auto temp = parseMS(l[i + 1]);
-                            res.second = temp[0];
-                            res.microsecond = temp[1];
-                            i += 2;
-                        }
-                    }
-                    else if (i < len_l && (l[i] == "-" || l[i] == "/" || l[i] == "."))
-                    {
-                        debug writeln("branch 7");
-                        immutable string sep = l[i];
-                        ymd.put(value_repr);
-                        ++i;
-
-                        if (i < len_l && !info.jump(l[i]))
-                        {
-                            try
-                            {
-                                //01-01[-01]
-                                ymd.put(l[i]);
-                            }
-                            catch (Exception)
-                            {
-                                //01-Jan[-01]
-                                value = info.month(l[i]);
-
-                                if (value.isNull())
-                                {
-                                    ymd.put(value.get());
-                                    assert(mstridx == -1);
-                                    mstridx = to!long(ymd.length == 0 ? 0 : ymd.length - 1);
-                                }
-                                else
-                                {
-                                    return cast(Result) null;
-                                }
-                            }
-
-                            ++i;
-
-                            if (i < len_l && l[i] == sep)
-                            {
-                                //We have three members
-                                ++i;
-                                value = info.month(l[i]);
-
-                                if (value > -1)
-                                {
-                                    ymd.put(value.get());
-                                    mstridx = ymd.length - 1;
-                                    assert(mstridx == -1);
-                                }
-                                else
-                                {
-                                    ymd.put(l[i]);
-                                }
-
-                                ++i;
-                            }
-                        }
-                    }
-                    else if (i >= len_l || info.jump(l[i]))
-                    {
-                        debug writeln("branch 8");
-                        if (i + 1 < len_l && info.ampm(l[i + 1]) > -1)
-                        {
-                            //12 am
-                            res.hour = to!int(value.get());
-
-                            if (res.hour < 12 && info.ampm(l[i + 1]) == 1)
-                            {
-                                res.hour += 12;
-                            }
-                            else if (res.hour == 12 && info.ampm(l[i + 1]) == 0)
-                            {
-                                res.hour = 0;
-                            }
-
-                            ++i;
-                        }
-                        else
-                        {
-                            //Year, month or day
-                            ymd.put(value.get());
-                        }
-                        ++i;
-                    }
-                    else if (info.ampm(l[i]) > -1)
-                    {
-                        debug writeln("branch 9");
-                        //12am
-                        res.hour = to!int(value.get());
-                        if (res.hour < 12 && info.ampm(l[i]) == 1)
-                        {
-                            res.hour += 12;
-                        }
-                        else if (res.hour == 12 && info.ampm(l[i]) == 0)
-                        {
-                            res.hour = 0;
-                        }
-                        i += 1;
-                    }
-                    else if (!fuzzy)
-                    {
-                        debug writeln("branch 10");
-                        return cast(Result) null;
-                    }
-                    else
-                    {
-                        debug writeln("branch 11");
-                        i += 1;
-                    }
-                    continue;
-                }
-
-                //Check weekday
-                value = info.weekday(l[i]);
-                if (value > -1)
-                {
-                    debug writeln("branch 12");
-                    res.weekday = to!uint(value.get());
-                    ++i;
-                    continue;
-                }
-
-
-                //Check month name
-                value = info.month(l[i]);
-                if (value > -1)
-                {
-                    debug writeln("branch 13");
-                    ymd.put(value);
-                    assert(mstridx == -1);
-                    mstridx = ymd.length - 1;
-
-                    ++i;
-                    if (i < len_l)
-                    {
-                        if (l[i] == "-" || l[i] == "/")
-                        {
-                            //Jan-01[-99]
-                            immutable string sep = l[i];
-                            ++i;
-                            ymd.put(l[i]);
-                            ++i;
-
-                            if (i < len_l && l[i] == sep)
-                            {
-                                //Jan-01-99
-                                ++i;
-                                ymd.put(l[i]);
-                                ++i;
-                            }
-                        }
-                        else if (i + 3 < len_l && l[i] == " " && l[i + 2] == " "
-                                && info.pertain(l[i + 1]))
-                        {
-                            //Jan of 01
-                            //In this case, 01 is clearly year
-                            try
-                            {
-                                value = to!int(l[i + 3]);
-                                //Convert it here to become unambiguous
-                                ymd.put(to!string(info.convertyear(to!int(value.get()))));
-                            }
-                            catch (Exception)
-                            {
-                            }
-                            i += 4;
-                        }
-                    }
-                    continue;
-                }
-
-                //Check am/pm
-                value = info.ampm(l[i]);
-                if (value > -1)
-                {
-                    debug writeln("branch 14");
-                    //For fuzzy parsing, 'a' or 'am' (both valid English words)
-                    //may erroneously trigger the AM/PM flag. Deal with that
-                    //here.
-                    bool val_is_ampm = true;
-
-                    //If there's already an AM/PM flag, this one isn't one.
-                    if (fuzzy && res.ampm > -1)
-                    {
-                        val_is_ampm = false;
-                    }
-
-                    //If AM/PM is found and hour is not, raise a ValueError
-                    if (res.hour.isNull)
-                        if (fuzzy)
-                        {
-                            val_is_ampm = false;
-                        }
-                        else
-                        {
-                            throw new ConvException("No hour specified with AM or PM flag.");
-                        }
-                        else if (!(0 <= res.hour && res.hour <= 12))
-                        {
-                            //If AM/PM is found, it's a 12 hour clock, so raise 
-                            //an error for invalid range
-                            if (fuzzy)
-                            {
-                                val_is_ampm = false;
-                            }
-                            else
-                            {
-                                throw new ConvException("Invalid hour specified for 12-hour clock.");
-                            }
-                        }
-
-                    if (val_is_ampm)
-                    {
-                        if (value == 1 && res.hour < 12)
-                        {
-                            res.hour += 12;
-                        }
-                        else if (value == 0 && res.hour == 12)
-                        {
-                            res.hour = 0;
-                        }
-
-                        res.ampm = to!uint(value.get());
-                    }
-
-                    ++i;
-                    continue;
-                }
-
-                //Check for a timezone name
-                auto itemUpper = l[i].filter!(a => !isUpper(a)).array;
-                if (!res.hour.isNull && l[i].length <= 5 && res.tzname.length == 0
-                        && res.tzoffset.isNull && itemUpper.length == 0)
-                {
-                    debug writeln("branch 15");
-                    res.tzname = l[i];
-                    res.tzoffset = info.tzoffset(res.tzname);
-                    i += 1;
-
-                    //Check for something like GMT+3, or BRST+3. Notice
-                    //that it doesn't mean "I am 3 hours after GMT", but
-                    //"my time +3 is GMT". If found, we reverse the
-                    //logic so that timezone parsing code will get it
-                    //right.
-                    if (i < len_l && (l[i] == "+" || l[i] == "-"))
-                    {
-                        l[i] = l[i] == "+" ? "-" : "+";
-                        res.tzoffset = 0;
-                        if (info.utczone(res.tzname))
-                        {
-                            //With something like GMT+3, the timezone
-                            //is *not* GMT.
-                            res.tzname = [];
-                        }
-                    }
-
-                    continue;
-                }
-
-                //Check for a numbered timezone
-                if (!res.hour.isNull && (l[i] == "+" || l[i] == "-"))
-                {
-                    debug writeln("branch 16");
-                    immutable int signal = l[i] == "+" ? 1 : -1;
-                    ++i;
-                    immutable size_t len_li = l[i].length;
-
-                    if (len_li == 4)
-                    {
-                        //-0300
-                        res.tzoffset = to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60;
-                    }
-                    else if (i + 1 < len_l && l[i + 1] == ":")
-                    {
-                        //-03:00
-                        res.tzoffset = to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60;
-                        i += 2;
-                    }
-                    else if (len_li <= 2)
-                    {
-                        //-[0]3
-                        res.tzoffset = to!int(l[i][0 .. 2]) * 3600;
-                    }
-                    else
-                    {
-                        return cast(Result) null;
-                    }
-                    ++i;
-
-                    res.tzoffset *= signal;
-
-                    //Look for a timezone name between parenthesis
-                    itemUpper = l[i + 2].filter!(a => !isUpper(a)).array;
-                    if (i + 3 < len_l && info.jump(l[i]) && l[i + 1] == "("
-                            && l[i + 3] == ")" && 3 <= l[i + 2].length
-                            && l[i + 2].length <= 5 && itemUpper.length == 0)
-                    {
-                        //-0300 (BRST)
-                        res.tzname = l[i + 2];
-                        i += 4;
-                    }
-                    continue;
-                }
-
-                //Check jumps
-                if (!(info.jump(l[i]) || fuzzy))
-                {
-                    debug writeln("branch 17");
-                    return cast(Result) null;
-                }
-
-                if (last_skipped_token_i == i - 1)
-                {
-                    debug writeln("branch 18");
-                }
-                else
-                {
-                    debug writeln("branch 19");
-                }
-                last_skipped_token_i = i;
-                ++i;
-            }
-            //Process year/month/day
-            auto temp = ymd.resolveYMD(mstridx, yearFirst, dayFirst); // FIXME
-            auto year = temp[0];
-            auto month = temp[1];
-            auto day = temp[2];
-
-            if (year > 0)
-            {
-                res.year = year;
-                res.century_specified = ymd.centurySpecified;
-            }
-
-            if (month > 0)
-            {
-                res.month = month;
-            }
-
-            if (day > 0)
-            {
-                res.day = day;
-            }
-        }
-        catch (Exception)
-        {
-            return cast(Result) null;
-        }
-
-        if (!info.validate(res))
-        {
-            return cast(Result) null;
-        }
-
-        return res;
-    }
-}
-
 
 public:
 
@@ -1009,9 +166,7 @@ SysTime parse(string timeString, ParserInfo parserInfo = null, bool ignoreTimezo
 ///
 unittest
 {
-    import std.stdio;
-
-    auto brazilTime = new SimpleTimeZone(dur!"seconds"(-10800));
+    auto brazilTime = new SimpleTimeZone(dur!"seconds"(-10_800));
     TimeZone[string] timezones = ["BRST" : brazilTime];
 
     // SysTime opEquals ignores timezones
@@ -1256,13 +411,13 @@ unittest
 {
     // Sometimes fuzzy parsing results in AM/PM flag being set without
     // hours - if it's fuzzy it should ignore that.
-    auto s1 = "I have a meeting on March 1 1974.";
-    auto s2 = "On June 8th, 2020, I am going to be the first man on Mars";
+    //auto s1 = "I have a meeting on March 1 1974.";
+    //auto s2 = "On June 8th, 2020, I am going to be the first man on Mars";
 
     // Also don't want any erroneous AM or PMs changing the parsed time
-    auto s3 = "Meet me at the AM/PM on Sunset at 3:00 AM on December 3rd, 2003";
-    auto s4 = "Meet me at 3:00AM on December 3rd, 2003 at the AM/PM on Sunset";
-    auto s5 = "Today is 25 of September of 2003, exactly at 10:49:41 with timezone -03:00.";
+    //auto s3 = "Meet me at the AM/PM on Sunset at 3:00 AM on December 3rd, 2003";
+    //auto s4 = "Meet me at 3:00AM on December 3rd, 2003 at the AM/PM on Sunset";
+    //auto s5 = "Today is 25 of September of 2003, exactly at 10:49:41 with timezone -03:00.";
     auto s6 = "Jan 29, 1945 14:45 AM I going to see you there?";
 
     // comma problems
@@ -1284,15 +439,845 @@ unittest
         this()
         {
             super(false, false);
-            months = ParserInfo.convert([("янв", "Январь"), ("фев",
-                "Февраль"), ("мар", "Март"), ("апр",
-                "Апрель"), ("май", "Май"), ("июн", "Июнь"),
-                ("июл", "Июль"), ("авг", "Август"), ("сен",
-                "Сентябрь"), ("окт", "Октябрь"), ("ноя",
-                "Ноябрь"), ("дек", "Декабрь")]);
+            monthsAA = ParserInfo.convert([
+                ["янв", "Январь"],
+                ["фев", "Февраль"],
+                ["мар", "Март"],
+                ["апр", "Апрель"],
+                ["май", "Май"],
+                ["июн", "Июнь"],
+                ["июл", "Июль"],
+                ["авг", "Август"],
+                ["сен", "Сентябрь"],
+                ["окт", "Октябрь"],
+                ["ноя", "Ноябрь"],
+                ["дек", "Декабрь"]
+            ]);
         }
     }
 
     assert(parse("10 Сентябрь 2015 10:20",
         new RusParserInfo()) == SysTime(DateTime(2015, 9, 10, 10, 20)));
+}
+
+/**
+ * Implements the parsing functionality for the `parse` function. If you are
+ * using a custom `ParserInfo` many times in the same program, you can avoid
+ * unnecessary allocations by using the `Parser.parse` function directly.
+ * Otherwise using `parse` or `Parser.parse` makes no difference.
+ */
+final class Parser
+{
+    private ParserInfo info;
+
+public:
+    ///
+    this(ParserInfo parserInfo = null)
+    {
+        if (parserInfo is null)
+        {
+            info = new ParserInfo();
+        }
+        else
+        {
+            info = parserInfo;
+        }
+    }
+
+    /**
+    * Parse the date/time string into a SysTime.
+    *
+    * Params:
+    *     timeString = Any date/time string using the supported formats.
+    *     ignoreTimezone = If set `true`, time zones in parsed strings are
+    *     ignored
+    *     timezoneInfos = Additional time zone names / aliases which may be
+    *     present in the string. This argument maps time zone names (and
+    *     optionally offsets from those time zones) to time zones. This
+    *     parameter is ignored if `ignoreTimezone` is set.
+    *
+    * Returns:
+    *    `SysTime`
+    *
+    * Throws:
+    *     ConvException for invalid or unknown string format
+     */
+    SysTime parse(string timeString, bool ignoreTimezone = false,
+        TimeZone[string] timezoneInfos = null, bool dayFirst = false,
+        bool yearFirst = false, bool fuzzy = false)
+    {
+        SysTime returnDate = SysTime(0);
+
+        auto res = parseImpl(timeString, dayFirst, yearFirst, fuzzy);
+
+        if (res is null)
+        {
+            throw new ConvException("Unknown string format");
+        }
+
+        if (res.year.isNull() && res.month.isNull() && res.day.isNull()
+                && res.hour.isNull() && res.minute.isNull() && res.second.isNull())
+        {
+            throw new ConvException("String does not contain a date.");
+        }
+
+        // FIXME get rid of me
+        int[string] repl;
+        static immutable attrs = ["year", "month", "day", "hour", "minute",
+            "second", "microsecond"];
+        foreach (attr; attrs)
+        {
+            if (attr in res.getter_dict && !res.getter_dict[attr]().isNull())
+            {
+                repl[attr] = res.getter_dict[attr]().get(); // FIXME
+            }
+        }
+
+        if (!("day" in repl))
+        {
+            //If the returnDate day exceeds the last day of the month, fall back to
+            //the end of the month.
+            immutable cyear = res.year.isNull() ? returnDate.year : res.year;
+            immutable cmonth = res.month.isNull() ? returnDate.month : res.month;
+            immutable cday = res.day.isNull() ? returnDate.day : res.day;
+
+            immutable days = Date(cyear, cmonth, 1).daysInMonth;
+            if (cday > days)
+            {
+                repl["day"] = days;
+            }
+        }
+
+        if ("year" in repl)
+            returnDate.year(repl["year"]);
+
+        if ("day" in repl)
+        {
+            returnDate.day(repl["day"]);
+        }
+        else
+        {
+            returnDate.day(1);
+        }
+
+        if ("month" in repl)
+        {
+            returnDate.month(to!Month(repl["month"]));
+        }
+        else
+        {
+            returnDate.month(to!Month(1));
+        }
+        
+        if ("hour" in repl)
+        {
+            returnDate.hour(repl["hour"]);
+        }
+        else
+        {
+            returnDate.hour(0);
+        }
+        
+        if ("minute" in repl)
+        {
+            returnDate.minute(repl["minute"]);
+        }
+        else
+        {
+            returnDate.minute(0);
+        }
+
+        if ("second" in repl)
+        {
+            returnDate.second(repl["second"]);
+        }
+        else
+        {
+            returnDate.second(0);
+        }
+
+        if ("microsecond" in repl)
+        {
+            returnDate.fracSecs(usecs(repl["microsecond"]));
+        }
+        else
+        {
+            returnDate.fracSecs(usecs(0));
+        }
+
+        if (!res.weekday.isNull() && (res.day.isNull || !res.day))
+        {
+            int delta_days = daysToDayOfWeek(returnDate.dayOfWeek(), to!DayOfWeek(res.weekday));
+            returnDate += dur!"days"(delta_days);
+        }
+
+        if (!ignoreTimezone)
+        {
+            if (res.tzname in timezoneInfos)
+            {
+                returnDate = returnDate.toOtherTZ(
+                    cast(immutable) timezoneInfos[res.tzname]
+                );
+            }
+            else if (res.tzname.length > 0 && (res.tzname == LocalTime().stdName ||
+                res.tzname == LocalTime().dstName))
+            {
+                returnDate = returnDate.toLocalTime();
+            }
+            else if (!res.tzoffset.isNull && res.tzoffset == 0)
+            {
+                returnDate = returnDate.toUTC();
+            }
+            else if (!res.tzoffset.isNull && res.tzoffset != 0)
+            {
+                returnDate = returnDate.toOtherTZ(new immutable SimpleTimeZone(
+                    dur!"seconds"(res.tzoffset), res.tzname
+                ));
+            }
+        }
+
+        return returnDate;
+    }
+
+private:
+    /**
+     * Parse a I[.F] seconds value into (seconds, microseconds)
+     *
+     * Params:
+     *     value = value to parse
+     * Returns:
+     *     tuple of two `int`s
+     */
+    auto parseMS(string value)
+    {
+        import std.string : indexOf, leftJustify;
+        import std.typecons : tuple;
+
+        if (!(value.indexOf(".") > -1))
+        {
+            return tuple(to!int(value), 0);
+        }
+        else
+        {
+            auto splitValue = value.split(".");
+            return tuple(
+                to!int(splitValue[0]),
+                to!int(splitValue[1].leftJustify(6, '0')[0 .. 6])
+            );
+        }
+    }
+
+    void setAttribute(P, T)(ref P p, string name, auto ref T value)
+    {
+        foreach (mem; __traits(allMembers, P))
+        {
+            static if (is(typeof(__traits(getMember, p, mem)) Q))
+            {
+                static if (is(T : Q))
+                {
+                    if (mem == name)
+                    {
+                        __traits(getMember, p, mem) = value;
+                        return;
+                    }
+                }
+            }
+        }
+        assert(0, P.stringof ~ " has no member " ~ name);
+    }
+
+    /**
+    * Private method which performs the heavy lifting of parsing, called from
+    * `parse()`.
+    *
+    * Params:
+    *     timeString = the string to parse.
+    *     dayFirst = 
+    *     Whether to interpret the first value in an ambiguous 3-integer date
+    *     (e.g. 01/05/09) as the day (`true`) or month (`false`). If
+    *     `yearFirst` is set to `true`, this distinguishes between YDM
+    *     and YMD. If set to `null`, this value is retrieved from the
+    *     current :class:`ParserInfo` object (which itself defaults to
+    *     `false`).
+    *     yearFirst = Whether to interpret the first value in an ambiguous 3-integer date
+    *     (e.g. 01/05/09) as the year. If `true`, the first number is taken
+    *     to be the year, otherwise the last number is taken to be the year.
+    *     If this is set to `null`, the value is retrieved from the current
+    *     :class:`ParserInfo` object (which itself defaults to `false`).
+    *     fuzzy = Whether to allow fuzzy parsing, allowing for string like "Today is
+    *     January 1, 2047 at 8:21:00AM".
+    */
+    Result parseImpl(string timeString, bool dayFirst = false,
+        bool yearFirst = false, bool fuzzy = false)
+    {
+        import std.string : indexOf;
+        import std.algorithm.iteration : filter;
+        import std.uni : isUpper;
+
+        auto res = new Result();
+        string[] l = new TimeLex!string(timeString).split(); //Splits the timeString into tokens
+        version(test) writeln("l: ", l);
+
+        //keep up with the last token skipped so we can recombine
+        //consecutively skipped tokens (-2 for when i begins at 0).
+        int last_skipped_token_i = -2;
+
+        try
+        {
+            //year/month/day list
+            auto ymd = YMD(timeString);
+
+            //Index of the month string in ymd
+            long mstridx = -1;
+
+            immutable size_t len_l = l.length;
+            version(test) writeln("len_l: ", len_l);
+            int i = 0;
+            while (i < len_l)
+            {
+                //Check if it's a number
+                Nullable!float value;
+                string value_repr;
+                version(test) writeln("i: ", i);
+                version(test) writeln("li: ", l[i]);
+
+                try
+                {
+                    value_repr = l[i];
+                    version(test) writeln("value_repr: ", value_repr);
+                    value = to!float(value_repr);
+                }
+                catch (Exception)
+                {
+                    value.nullify();
+                }
+
+                if (!value.isNull())
+                {
+                    //Token is a number
+                    immutable len_li = l[i].length;
+                    ++i;
+
+                    if (ymd.length == 3 && (len_li == 2 || len_li == 4)
+                            && res.hour.isNull && (i >= len_l || (l[i] != ":"
+                            && info.hms(l[i]) == -1)))
+                    {
+                        version(test) writeln("branch 1");
+                        //19990101T23[59]
+                        auto s = l[i - 1];
+                        res.hour = to!int(s[0 .. 2]);
+
+                        if (len_li == 4)
+                        {
+                            res.minute = to!int(s[2 .. $]);
+                        }
+                    }
+                    else if (len_li == 6 || (len_li > 6 && l[i - 1].indexOf(".") == 6))
+                    {
+                        version(test) writeln("branch 2");
+                        //YYMMDD || HHMMSS[.ss]
+                        auto s = l[i - 1];
+
+                        if (ymd.length == 0 && l[i - 1].indexOf('.') == -1)
+                        {
+                            ymd.put(s[0 .. 2]);
+                            ymd.put(s[2 .. 4]);
+                            ymd.put(s[4 .. $]);
+                        }
+                        else
+                        {
+                            //19990101T235959[.59]
+                            res.hour = to!int(s[0 .. 2]);
+                            res.minute = to!int(s[2 .. 4]);
+                            res.second = parseMS(s[4 .. $])[0];
+                            res.microsecond = parseMS(s[4 .. $])[1];
+                        }
+                    }
+                    else if (len_li == 8 || len_li == 12 || len_li == 14)
+                    {
+                        version(test) writeln("branch 3");
+                        //YYYYMMDD
+                        auto s = l[i - 1];
+                        ymd.put(s[0 .. 4]);
+                        ymd.put(s[4 .. 6]);
+                        ymd.put(s[6 .. 8]);
+
+                        if (len_li > 8)
+                        {
+                            res.hour = to!int(s[8 .. 10]);
+                            res.minute = to!int(s[10 .. 12]);
+
+                            if (len_li > 12)
+                            {
+                                res.second = to!int(s[12 .. $]);
+                            }
+                        }
+                    }
+                    else if ((i < len_l && info.hms(l[i]) > -1)
+                            || (i + 1 < len_l && l[i] == " " && info.hms(l[i + 1]) > -1))
+                    {
+                        version(test) writeln("branch 4");
+                        //HH[ ]h or MM[ ]m or SS[.ss][ ]s
+                        if (l[i] == " ")
+                        {
+                            ++i;
+                        }
+
+                        auto idx = info.hms(l[i]);
+
+                        while (true)
+                        {
+                            if (idx == 0)
+                            {
+                                res.hour = to!int(value.get());
+
+                                if (value % 1)
+                                {
+                                    res.minute = to!int(60 * (value % 1));
+                                }
+                            }
+                            else if (idx == 1)
+                            {
+                                res.minute = to!int(value.get());
+
+                                if (value % 1)
+                                {
+                                    res.second = to!int(60 * (value % 1));
+                                }
+                            }
+                            else if (idx == 2)
+                            {
+                                auto temp = parseMS(value_repr);
+                                res.second = temp[0];
+                                res.microsecond = temp[1];
+                            }
+
+                            ++i;
+
+                            if (i >= len_l || idx == 2)
+                            {
+                                break;
+                            }
+
+                            //12h00
+                            try
+                            {
+                                value_repr = l[i];
+                                value = to!float(value_repr);
+                            }
+                            catch (ConvException)
+                            {
+                                break;
+                            }
+
+                            ++i;
+                            ++idx;
+
+                            if (i < len_l)
+                            {
+                                immutable newidx = info.hms(l[i]);
+
+                                if (newidx > -1)
+                                {
+                                    idx = newidx;
+                                }
+                            }
+                        }
+                    }
+                    else if (i == len_l && l[i - 2] == " " && info.hms(l[i - 3]) > -1)
+                    {
+                        version(test) writeln("branch 5");
+                        //X h MM or X m SS
+                        immutable idx = info.hms(l[i - 3]) + 1;
+
+                        if (idx == 1)
+                        {
+                            res.minute = to!int(value.get());
+
+                            if (value % 1)
+                            {
+                                res.second = to!int(60 * (value % 1));
+                            }
+                            else if (idx == 2)
+                            {
+                                //FIXME
+                                auto temp = parseMS(value_repr);
+                                res.second = temp[0];
+                                res.microsecond = temp[1];
+                                ++i;
+                            }
+                        }
+                    }
+                    else if (i + 1 < len_l && l[i] == ":")
+                    {
+                        version(test) writeln("branch 6");
+                        //HH:MM[:SS[.ss]]
+                        res.hour = to!int(value.get());
+                        ++i;
+                        value = to!float(l[i]);
+                        res.minute = to!int(value.get());
+
+                        if (value % 1)
+                        {
+                            res.second = to!int(60 * (value % 1));
+                        }
+
+                        ++i;
+
+                        if (i < len_l && l[i] == ":")
+                        {
+                            auto temp = parseMS(l[i + 1]);
+                            res.second = temp[0];
+                            res.microsecond = temp[1];
+                            i += 2;
+                        }
+                    }
+                    else if (i < len_l && (l[i] == "-" || l[i] == "/" || l[i] == "."))
+                    {
+                        version(test) writeln("branch 7");
+                        immutable string sep = l[i];
+                        ymd.put(value_repr);
+                        ++i;
+
+                        if (i < len_l && !info.jump(l[i]))
+                        {
+                            try
+                            {
+                                //01-01[-01]
+                                ymd.put(l[i]);
+                            }
+                            catch (Exception)
+                            {
+                                //01-Jan[-01]
+                                value = info.month(l[i]);
+
+                                if (value.isNull())
+                                {
+                                    ymd.put(value.get());
+                                    assert(mstridx == -1);
+                                    mstridx = to!long(ymd.length == 0 ? 0 : ymd.length - 1);
+                                }
+                                else
+                                {
+                                    return cast(Result) null;
+                                }
+                            }
+
+                            ++i;
+
+                            if (i < len_l && l[i] == sep)
+                            {
+                                //We have three members
+                                ++i;
+                                value = info.month(l[i]);
+
+                                if (value > -1)
+                                {
+                                    ymd.put(value.get());
+                                    mstridx = ymd.length - 1;
+                                    assert(mstridx == -1);
+                                }
+                                else
+                                {
+                                    ymd.put(l[i]);
+                                }
+
+                                ++i;
+                            }
+                        }
+                    }
+                    else if (i >= len_l || info.jump(l[i]))
+                    {
+                        version(test) writeln("branch 8");
+                        if (i + 1 < len_l && info.ampm(l[i + 1]) > -1)
+                        {
+                            //12 am
+                            res.hour = to!int(value.get());
+
+                            if (res.hour < 12 && info.ampm(l[i + 1]) == 1)
+                            {
+                                res.hour += 12;
+                            }
+                            else if (res.hour == 12 && info.ampm(l[i + 1]) == 0)
+                            {
+                                res.hour = 0;
+                            }
+
+                            ++i;
+                        }
+                        else
+                        {
+                            //Year, month or day
+                            ymd.put(value.get());
+                        }
+                        ++i;
+                    }
+                    else if (info.ampm(l[i]) > -1)
+                    {
+                        version(test) writeln("branch 9");
+                        //12am
+                        res.hour = to!int(value.get());
+                        if (res.hour < 12 && info.ampm(l[i]) == 1)
+                        {
+                            res.hour += 12;
+                        }
+                        else if (res.hour == 12 && info.ampm(l[i]) == 0)
+                        {
+                            res.hour = 0;
+                        }
+                        i += 1;
+                    }
+                    else if (!fuzzy)
+                    {
+                        version(test) writeln("branch 10");
+                        return cast(Result) null;
+                    }
+                    else
+                    {
+                        version(test) writeln("branch 11");
+                        i += 1;
+                    }
+                    continue;
+                }
+
+                //Check weekday
+                value = info.weekday(l[i]);
+                if (value > -1)
+                {
+                    version(test) writeln("branch 12");
+                    res.weekday = to!uint(value.get());
+                    ++i;
+                    continue;
+                }
+
+
+                //Check month name
+                value = info.month(l[i]);
+                if (value > -1)
+                {
+                    version(test) writeln("branch 13");
+                    ymd.put(value);
+                    assert(mstridx == -1);
+                    mstridx = ymd.length - 1;
+
+                    ++i;
+                    if (i < len_l)
+                    {
+                        if (l[i] == "-" || l[i] == "/")
+                        {
+                            //Jan-01[-99]
+                            immutable string sep = l[i];
+                            ++i;
+                            ymd.put(l[i]);
+                            ++i;
+
+                            if (i < len_l && l[i] == sep)
+                            {
+                                //Jan-01-99
+                                ++i;
+                                ymd.put(l[i]);
+                                ++i;
+                            }
+                        }
+                        else if (i + 3 < len_l && l[i] == " " && l[i + 2] == " "
+                                && info.pertain(l[i + 1]))
+                        {
+                            //Jan of 01
+                            //In this case, 01 is clearly year
+                            try
+                            {
+                                value = to!int(l[i + 3]);
+                                //Convert it here to become unambiguous
+                                ymd.put(to!string(info.convertYear(to!int(value.get()))));
+                            }
+                            catch (Exception)
+                            {
+                            }
+                            i += 4;
+                        }
+                    }
+                    continue;
+                }
+
+                //Check am/pm
+                value = info.ampm(l[i]);
+                if (value > -1)
+                {
+                    version(test) writeln("branch 14");
+                    //For fuzzy parsing, 'a' or 'am' (both valid English words)
+                    //may erroneously trigger the AM/PM flag. Deal with that
+                    //here.
+                    bool val_is_ampm = true;
+
+                    //If there's already an AM/PM flag, this one isn't one.
+                    if (fuzzy && res.ampm > -1)
+                    {
+                        val_is_ampm = false;
+                    }
+
+                    //If AM/PM is found and hour is not, raise a ValueError
+                    if (res.hour.isNull)
+                        if (fuzzy)
+                        {
+                            val_is_ampm = false;
+                        }
+                        else
+                        {
+                            throw new ConvException("No hour specified with AM or PM flag.");
+                        }
+                        else if (!(0 <= res.hour && res.hour <= 12))
+                        {
+                            //If AM/PM is found, it's a 12 hour clock, so raise 
+                            //an error for invalid range
+                            if (fuzzy)
+                            {
+                                val_is_ampm = false;
+                            }
+                            else
+                            {
+                                throw new ConvException("Invalid hour specified for 12-hour clock.");
+                            }
+                        }
+
+                    if (val_is_ampm)
+                    {
+                        if (value == 1 && res.hour < 12)
+                        {
+                            res.hour += 12;
+                        }
+                        else if (value == 0 && res.hour == 12)
+                        {
+                            res.hour = 0;
+                        }
+
+                        res.ampm = to!uint(value.get());
+                    }
+
+                    ++i;
+                    continue;
+                }
+
+                //Check for a timezone name
+                auto itemUpper = l[i].filter!(a => !isUpper(a)).array;
+                if (!res.hour.isNull && l[i].length <= 5 && res.tzname.length == 0
+                        && res.tzoffset.isNull && itemUpper.length == 0)
+                {
+                    version(test) writeln("branch 15");
+                    res.tzname = l[i];
+                    res.tzoffset = info.tzoffset(res.tzname);
+                    i += 1;
+
+                    //Check for something like GMT+3, or BRST+3. Notice
+                    //that it doesn't mean "I am 3 hours after GMT", but
+                    //"my time +3 is GMT". If found, we reverse the
+                    //logic so that timezone parsing code will get it
+                    //right.
+                    if (i < len_l && (l[i] == "+" || l[i] == "-"))
+                    {
+                        l[i] = l[i] == "+" ? "-" : "+";
+                        res.tzoffset = 0;
+                        if (info.utczone(res.tzname))
+                        {
+                            //With something like GMT+3, the timezone
+                            //is *not* GMT.
+                            res.tzname = [];
+                        }
+                    }
+
+                    continue;
+                }
+
+                //Check for a numbered timezone
+                if (!res.hour.isNull && (l[i] == "+" || l[i] == "-"))
+                {
+                    version(test) writeln("branch 16");
+                    immutable int signal = l[i] == "+" ? 1 : -1;
+                    ++i;
+                    immutable size_t len_li = l[i].length;
+
+                    if (len_li == 4)
+                    {
+                        //-0300
+                        res.tzoffset = to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60;
+                    }
+                    else if (i + 1 < len_l && l[i + 1] == ":")
+                    {
+                        //-03:00
+                        res.tzoffset = to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60;
+                        i += 2;
+                    }
+                    else if (len_li <= 2)
+                    {
+                        //-[0]3
+                        res.tzoffset = to!int(l[i][0 .. 2]) * 3600;
+                    }
+                    else
+                    {
+                        return cast(Result) null;
+                    }
+                    ++i;
+
+                    res.tzoffset *= signal;
+
+                    //Look for a timezone name between parenthesis
+                    itemUpper = l[i + 2].filter!(a => !isUpper(a)).array;
+                    if (i + 3 < len_l && info.jump(l[i]) && l[i + 1] == "("
+                            && l[i + 3] == ")" && 3 <= l[i + 2].length
+                            && l[i + 2].length <= 5 && itemUpper.length == 0)
+                    {
+                        //-0300 (BRST)
+                        res.tzname = l[i + 2];
+                        i += 4;
+                    }
+                    continue;
+                }
+
+                //Check jumps
+                if (!(info.jump(l[i]) || fuzzy))
+                {
+                    version(test) writeln("branch 17");
+                    return cast(Result) null;
+                }
+
+                if (last_skipped_token_i == i - 1)
+                {
+                    version(test) writeln("branch 18");
+                }
+                else
+                {
+                    version(test) writeln("branch 19");
+                }
+                last_skipped_token_i = i;
+                ++i;
+            }
+            //Process year/month/day
+            auto temp = ymd.resolveYMD(mstridx, yearFirst, dayFirst); // FIXME
+            auto year = temp[0];
+            auto month = temp[1];
+            auto day = temp[2];
+
+            if (year > 0)
+            {
+                res.year = year;
+                res.centurySpecified = ymd.centurySpecified;
+            }
+
+            if (month > 0)
+            {
+                res.month = month;
+            }
+
+            if (day > 0)
+            {
+                res.day = day;
+            }
+        }
+        catch (Exception)
+        {
+            return cast(Result) null;
+        }
+
+        info.validate(res);
+        return res;
+    }
 }
