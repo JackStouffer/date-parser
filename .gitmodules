@@ -1,0 +1,3 @@
+[submodule "gh-pages/bootDoc"]
+	path = gh-pages/bootDoc
+	url = git://github.com/JakobOvrum/bootDoc.git

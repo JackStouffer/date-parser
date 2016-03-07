@@ -9,3 +9,4 @@ bench
 *.def
 *.log
 docdir/
+gh-pages/
