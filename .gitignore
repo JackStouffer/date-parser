@@ -3,7 +3,9 @@
 main
 parser
 dateparse
+dateparser
 libdateparse.a
+libdateparser.a
 bench
 *.lst
 *.def
