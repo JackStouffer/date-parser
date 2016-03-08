@@ -16,3 +16,17 @@ This module offers a generic date/time string parser which is able to parse most
     }
 }
 ```
+
+## Simple Example
+
+View the docs for more.
+
+```
+import std.datetime;
+import dateparser;
+
+void main()
+{
+    assert(parse("2003-09-25") == SysTime(DateTime(2003, 9, 25)));
+}
+```
