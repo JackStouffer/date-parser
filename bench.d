@@ -1,6 +1,6 @@
 import std.datetime;
 import std.stdio;
-import parser;
+import dateparser;
 
 void parse_test()
 {

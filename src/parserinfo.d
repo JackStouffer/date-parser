@@ -4,7 +4,7 @@ import std.range;
 import std.traits;
 import std.conv;
 
-import parser;
+import result;
 
 private:
 
