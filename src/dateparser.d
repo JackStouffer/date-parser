@@ -77,7 +77,7 @@ Throws:
     int.max
 */
 SysTime parse(string timeString, ParserInfo parserInfo = null, bool ignoreTimezone = false,
-    TimeZone[string] timezoneInfos = null, bool dayFirst = false,
+    const(TimeZone)[string] timezoneInfos = null, bool dayFirst = false,
     bool yearFirst = false, bool fuzzy = false)
 {
     if (parserInfo !is null)
@@ -428,7 +428,7 @@ public:
     *     ConvException for invalid or unknown string format
      */
     SysTime parse(string timeString, bool ignoreTimezone = false,
-        TimeZone[string] timezoneInfos = null, bool dayFirst = false,
+        const(TimeZone)[string] timezoneInfos = null, bool dayFirst = false,
         bool yearFirst = false, bool fuzzy = false)
     {
         SysTime returnDate = SysTime(0);
@@ -655,10 +655,10 @@ private:
             //Index of the month string in ymd
             long mstridx = -1;
 
-            immutable size_t len_l = l.length;
-            version(test) writeln("len_l: ", len_l);
+            immutable size_t lengthList = l.length;
+            version(test) writeln("lengthList: ", lengthList);
             int i = 0;
-            while (i < len_l)
+            while (i < lengthList)
             {
                 //Check if it's a number
                 Nullable!float value;
@@ -680,11 +680,11 @@ private:
                 if (!value.isNull())
                 {
                     //Token is a number
-                    immutable len_li = l[i].length;
+                    immutable lengthListItem = l[i].length;
                     ++i;
 
-                    if (ymd.length == 3 && (len_li == 2 || len_li == 4)
-                            && res.hour.isNull && (i >= len_l || (l[i] != ":"
+                    if (ymd.length == 3 && (lengthListItem == 2 || lengthListItem == 4)
+                            && res.hour.isNull && (i >= lengthList || (l[i] != ":"
                             && info.hms(l[i]) == -1)))
                     {
                         version(test) writeln("branch 1");
@@ -692,12 +692,12 @@ private:
                         auto s = l[i - 1];
                         res.hour = to!int(s[0 .. 2]);
 
-                        if (len_li == 4)
+                        if (lengthListItem == 4)
                         {
                             res.minute = to!int(s[2 .. $]);
                         }
                     }
-                    else if (len_li == 6 || (len_li > 6 && l[i - 1].indexOf(".") == 6))
+                    else if (lengthListItem == 6 || (lengthListItem > 6 && l[i - 1].indexOf(".") == 6))
                     {
                         version(test) writeln("branch 2");
                         //YYMMDD || HHMMSS[.ss]
@@ -718,7 +718,7 @@ private:
                             res.microsecond = parseMS(s[4 .. $])[1];
                         }
                     }
-                    else if (len_li == 8 || len_li == 12 || len_li == 14)
+                    else if (lengthListItem == 8 || lengthListItem == 12 || lengthListItem == 14)
                     {
                         version(test) writeln("branch 3");
                         //YYYYMMDD
@@ -727,19 +727,19 @@ private:
                         ymd.put(s[4 .. 6]);
                         ymd.put(s[6 .. 8]);
 
-                        if (len_li > 8)
+                        if (lengthListItem > 8)
                         {
                             res.hour = to!int(s[8 .. 10]);
                             res.minute = to!int(s[10 .. 12]);
 
-                            if (len_li > 12)
+                            if (lengthListItem > 12)
                             {
                                 res.second = to!int(s[12 .. $]);
                             }
                         }
                     }
-                    else if ((i < len_l && info.hms(l[i]) > -1)
-                            || (i + 1 < len_l && l[i] == " " && info.hms(l[i + 1]) > -1))
+                    else if ((i < lengthList && info.hms(l[i]) > -1)
+                            || (i + 1 < lengthList && l[i] == " " && info.hms(l[i + 1]) > -1))
                     {
                         version(test) writeln("branch 4");
                         //HH[ ]h or MM[ ]m or SS[.ss][ ]s
@@ -779,7 +779,7 @@ private:
 
                             ++i;
 
-                            if (i >= len_l || idx == 2)
+                            if (i >= lengthList || idx == 2)
                             {
                                 break;
                             }
@@ -798,7 +798,7 @@ private:
                             ++i;
                             ++idx;
 
-                            if (i < len_l)
+                            if (i < lengthList)
                             {
                                 immutable newidx = info.hms(l[i]);
 
@@ -809,7 +809,7 @@ private:
                             }
                         }
                     }
-                    else if (i == len_l && l[i - 2] == " " && info.hms(l[i - 3]) > -1)
+                    else if (i == lengthList && l[i - 2] == " " && info.hms(l[i - 3]) > -1)
                     {
                         version(test) writeln("branch 5");
                         //X h MM or X m SS
@@ -833,7 +833,7 @@ private:
                             }
                         }
                     }
-                    else if (i + 1 < len_l && l[i] == ":")
+                    else if (i + 1 < lengthList && l[i] == ":")
                     {
                         version(test) writeln("branch 6");
                         //HH:MM[:SS[.ss]]
@@ -849,7 +849,7 @@ private:
 
                         ++i;
 
-                        if (i < len_l && l[i] == ":")
+                        if (i < lengthList && l[i] == ":")
                         {
                             auto temp = parseMS(l[i + 1]);
                             res.second = temp[0];
@@ -857,14 +857,14 @@ private:
                             i += 2;
                         }
                     }
-                    else if (i < len_l && (l[i] == "-" || l[i] == "/" || l[i] == "."))
+                    else if (i < lengthList && (l[i] == "-" || l[i] == "/" || l[i] == "."))
                     {
                         version(test) writeln("branch 7");
                         immutable string sep = l[i];
                         ymd.put(value_repr);
                         ++i;
 
-                        if (i < len_l && !info.jump(l[i]))
+                        if (i < lengthList && !info.jump(l[i]))
                         {
                             try
                             {
@@ -890,7 +890,7 @@ private:
 
                             ++i;
 
-                            if (i < len_l && l[i] == sep)
+                            if (i < lengthList && l[i] == sep)
                             {
                                 //We have three members
                                 ++i;
@@ -911,10 +911,10 @@ private:
                             }
                         }
                     }
-                    else if (i >= len_l || info.jump(l[i]))
+                    else if (i >= lengthList || info.jump(l[i]))
                     {
                         version(test) writeln("branch 8");
-                        if (i + 1 < len_l && info.ampm(l[i + 1]) > -1)
+                        if (i + 1 < lengthList && info.ampm(l[i + 1]) > -1)
                         {
                             //12 am
                             res.hour = to!int(value.get());
@@ -950,7 +950,7 @@ private:
                         {
                             res.hour = 0;
                         }
-                        i += 1;
+                        ++i;
                     }
                     else if (!fuzzy)
                     {
@@ -960,7 +960,7 @@ private:
                     else
                     {
                         version(test) writeln("branch 11");
-                        i += 1;
+                        ++i;
                     }
                     continue;
                 }
@@ -986,17 +986,17 @@ private:
                     mstridx = ymd.length - 1;
 
                     ++i;
-                    if (i < len_l)
+                    if (i < lengthList)
                     {
                         if (l[i] == "-" || l[i] == "/")
                         {
                             //Jan-01[-99]
-                            immutable string sep = l[i];
+                            immutable string sep = l[i].dup;
                             ++i;
                             ymd.put(l[i]);
                             ++i;
 
-                            if (i < len_l && l[i] == sep)
+                            if (i < lengthList && l[i] == sep)
                             {
                                 //Jan-01-99
                                 ++i;
@@ -1004,7 +1004,7 @@ private:
                                 ++i;
                             }
                         }
-                        else if (i + 3 < len_l && l[i] == " " && l[i + 2] == " "
+                        else if (i + 3 < lengthList && l[i] == " " && l[i + 2] == " "
                                 && info.pertain(l[i + 1]))
                         {
                             //Jan of 01
@@ -1013,11 +1013,9 @@ private:
                             {
                                 value = to!int(l[i + 3]);
                                 //Convert it here to become unambiguous
-                                ymd.put(to!string(info.convertYear(to!int(value.get()))));
+                                ymd.put(info.convertYear(value.get.to!int()).to!string);
                             }
-                            catch (Exception)
-                            {
-                            }
+                            catch (Exception) {}
                             i += 4;
                         }
                     }
@@ -1032,39 +1030,41 @@ private:
                     //For fuzzy parsing, 'a' or 'am' (both valid English words)
                     //may erroneously trigger the AM/PM flag. Deal with that
                     //here.
-                    bool val_is_ampm = true;
+                    bool valIsAMPM = true;
 
                     //If there's already an AM/PM flag, this one isn't one.
                     if (fuzzy && res.ampm > -1)
                     {
-                        val_is_ampm = false;
+                        valIsAMPM = false;
                     }
 
                     //If AM/PM is found and hour is not, raise a ValueError
                     if (res.hour.isNull)
+                    {
                         if (fuzzy)
                         {
-                            val_is_ampm = false;
+                            valIsAMPM = false;
                         }
                         else
                         {
                             throw new ConvException("No hour specified with AM or PM flag.");
                         }
-                        else if (!(0 <= res.hour && res.hour <= 12))
+                    }
+                    else if (!(0 <= res.hour && res.hour <= 12))
+                    {
+                        //If AM/PM is found, it's a 12 hour clock, so raise 
+                        //an error for invalid range
+                        if (fuzzy)
                         {
-                            //If AM/PM is found, it's a 12 hour clock, so raise 
-                            //an error for invalid range
-                            if (fuzzy)
-                            {
-                                val_is_ampm = false;
-                            }
-                            else
-                            {
-                                throw new ConvException("Invalid hour specified for 12-hour clock.");
-                            }
+                            valIsAMPM = false;
                         }
+                        else
+                        {
+                            throw new ConvException("Invalid hour specified for 12-hour clock.");
+                        }
+                    }
 
-                    if (val_is_ampm)
+                    if (valIsAMPM)
                     {
                         if (value == 1 && res.hour < 12)
                         {
@@ -1090,14 +1090,14 @@ private:
                     version(test) writeln("branch 15");
                     res.tzname = l[i];
                     res.tzoffset = info.tzoffset(res.tzname);
-                    i += 1;
+                    ++i;
 
                     //Check for something like GMT+3, or BRST+3. Notice
                     //that it doesn't mean "I am 3 hours after GMT", but
                     //"my time +3 is GMT". If found, we reverse the
                     //logic so that timezone parsing code will get it
                     //right.
-                    if (i < len_l && (l[i] == "+" || l[i] == "-"))
+                    if (i < lengthList && (l[i] == "+" || l[i] == "-"))
                     {
                         l[i] = l[i] == "+" ? "-" : "+";
                         res.tzoffset = 0;
@@ -1118,20 +1118,20 @@ private:
                     version(test) writeln("branch 16");
                     immutable int signal = l[i] == "+" ? 1 : -1;
                     ++i;
-                    immutable size_t len_li = l[i].length;
+                    immutable size_t lengthListItem = l[i].length;
 
-                    if (len_li == 4)
+                    if (lengthListItem == 4)
                     {
                         //-0300
                         res.tzoffset = to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60;
                     }
-                    else if (i + 1 < len_l && l[i + 1] == ":")
+                    else if (i + 1 < lengthList && l[i + 1] == ":")
                     {
                         //-03:00
                         res.tzoffset = to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60;
                         i += 2;
                     }
-                    else if (len_li <= 2)
+                    else if (lengthListItem <= 2)
                     {
                         //-[0]3
                         res.tzoffset = to!int(l[i][0 .. 2]) * 3600;
@@ -1146,7 +1146,7 @@ private:
 
                     //Look for a timezone name between parenthesis
                     itemUpper = l[i + 2].filter!(a => !isUpper(a)).array;
-                    if (i + 3 < len_l && info.jump(l[i]) && l[i + 1] == "("
+                    if (i + 3 < lengthList && info.jump(l[i]) && l[i + 1] == "("
                             && l[i + 3] == ")" && 3 <= l[i + 2].length
                             && l[i + 2].length <= 5 && itemUpper.length == 0)
                     {
