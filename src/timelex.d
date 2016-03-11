@@ -1,4 +1,4 @@
-debug import std.stdio;
+version(test) import std.stdio;
 import std.datetime;
 import std.string;
 import std.regex;

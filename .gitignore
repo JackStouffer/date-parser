@@ -1,5 +1,6 @@
 *.o
 .dub/
+test.d
 main
 parser
 dateparse

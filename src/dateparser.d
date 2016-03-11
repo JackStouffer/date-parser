@@ -1,4 +1,4 @@
-debug import std.stdio;
+version(test) import std.stdio;
 import std.datetime;
 import std.conv;
 import std.typecons;
@@ -127,7 +127,7 @@ unittest
     assert(parse("Sep 10:36:28") == SysTime(DateTime(0, 9, 30, 10, 36, 28)));
     assert(parse("Sep 2003") == SysTime(DateTime(2003, 9, 30)));
     assert(parse("Sep") == SysTime(DateTime(0, 9, 30)));
-    //assert(parse("2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("2003") == SysTime(DateTime(2003, 1, 1)));
     assert(parse("10:36") == SysTime(DateTime(0, 1, 1, 10, 36)));
 }
 
@@ -809,7 +809,7 @@ private:
                             }
                         }
                     }
-                    else if (i == tokensLength && tokens[i - 2] == " " && info.hms(tokens[i - 3]) > -1)
+                    else if (i == tokensLength && tokensLength > 3 && tokens[i - 2] == " " && info.hms(tokens[i - 3]) > -1)
                     {
                         version(test) writeln("branch 5");
                         //X h MM or X m SS
