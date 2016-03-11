@@ -1,4 +1,4 @@
-version(test) import std.stdio;
+version(dateparser_test) import std.stdio;
 import std.datetime;
 import std.conv;
 import std.typecons;
@@ -641,7 +641,7 @@ private:
 
         auto res = new Result();
         string[] tokens = new TimeLex!string(timeString).split(); //Splits the timeString into tokens
-        version(test) writeln("tokens: ", tokens);
+        version(dateparser_test) writeln("tokens: ", tokens);
 
         //keep up with the last token skipped so we can recombine
         //consecutively skipped tokens (-2 for when i begins at 0).
@@ -656,20 +656,20 @@ private:
             long mstridx = -1;
 
             immutable size_t tokensLength = tokens.length;
-            version(test) writeln("tokensLength: ", tokensLength);
+            version(dateparser_test) writeln("tokensLength: ", tokensLength);
             uint i = 0;
             while (i < tokensLength)
             {
                 //Check if it's a number
                 Nullable!float value;
                 string value_repr;
-                version(test) writeln("i: ", i);
-                version(test) writeln("li: ", tokens[i]);
+                version(dateparser_test) writeln("i: ", i);
+                version(dateparser_test) writeln("li: ", tokens[i]);
 
                 try
                 {
                     value_repr = tokens[i];
-                    version(test) writeln("value_repr: ", value_repr);
+                    version(dateparser_test) writeln("value_repr: ", value_repr);
                     value = to!float(value_repr);
                 }
                 catch (Exception)
@@ -687,7 +687,7 @@ private:
                             && res.hour.isNull && (i >= tokensLength || (tokens[i] != ":"
                             && info.hms(tokens[i]) == -1)))
                     {
-                        version(test) writeln("branch 1");
+                        version(dateparser_test) writeln("branch 1");
                         //19990101T23[59]
                         auto s = tokens[i - 1];
                         res.hour = to!int(s[0 .. 2]);
@@ -699,7 +699,7 @@ private:
                     }
                     else if (tokensItemLength == 6 || (tokensItemLength > 6 && tokens[i - 1].indexOf(".") == 6))
                     {
-                        version(test) writeln("branch 2");
+                        version(dateparser_test) writeln("branch 2");
                         //YYMMDD || HHMMSS[.ss]
                         auto s = tokens[i - 1];
 
@@ -720,7 +720,7 @@ private:
                     }
                     else if (tokensItemLength == 8 || tokensItemLength == 12 || tokensItemLength == 14)
                     {
-                        version(test) writeln("branch 3");
+                        version(dateparser_test) writeln("branch 3");
                         //YYYYMMDD
                         auto s = tokens[i - 1];
                         ymd.put(s[0 .. 4]);
@@ -741,7 +741,7 @@ private:
                     else if ((i < tokensLength && info.hms(tokens[i]) > -1)
                             || (i + 1 < tokensLength && tokens[i] == " " && info.hms(tokens[i + 1]) > -1))
                     {
-                        version(test) writeln("branch 4");
+                        version(dateparser_test) writeln("branch 4");
                         //HH[ ]h or MM[ ]m or SS[.ss][ ]s
                         if (tokens[i] == " ")
                         {
@@ -811,7 +811,7 @@ private:
                     }
                     else if (i == tokensLength && tokensLength > 3 && tokens[i - 2] == " " && info.hms(tokens[i - 3]) > -1)
                     {
-                        version(test) writeln("branch 5");
+                        version(dateparser_test) writeln("branch 5");
                         //X h MM or X m SS
                         immutable idx = info.hms(tokens[i - 3]) + 1;
 
@@ -835,7 +835,7 @@ private:
                     }
                     else if (i + 1 < tokensLength && tokens[i] == ":")
                     {
-                        version(test) writeln("branch 6");
+                        version(dateparser_test) writeln("branch 6");
                         //HH:MM[:SS[.ss]]
                         res.hour = to!int(value.get());
                         ++i;
@@ -859,7 +859,7 @@ private:
                     }
                     else if (i < tokensLength && (tokens[i] == "-" || tokens[i] == "/" || tokens[i] == "."))
                     {
-                        version(test) writeln("branch 7");
+                        version(dateparser_test) writeln("branch 7");
                         immutable string sep = tokens[i];
                         ymd.put(value_repr);
                         ++i;
@@ -913,7 +913,7 @@ private:
                     }
                     else if (i >= tokensLength || info.jump(tokens[i]))
                     {
-                        version(test) writeln("branch 8");
+                        version(dateparser_test) writeln("branch 8");
                         if (i + 1 < tokensLength && info.ampm(tokens[i + 1]) > -1)
                         {
                             //12 am
@@ -939,7 +939,7 @@ private:
                     }
                     else if (info.ampm(tokens[i]) > -1)
                     {
-                        version(test) writeln("branch 9");
+                        version(dateparser_test) writeln("branch 9");
                         //12am
                         res.hour = to!int(value.get());
                         if (res.hour < 12 && info.ampm(tokens[i]) == 1)
@@ -954,12 +954,12 @@ private:
                     }
                     else if (!fuzzy)
                     {
-                        version(test) writeln("branch 10");
+                        version(dateparser_test) writeln("branch 10");
                         return cast(Result) null;
                     }
                     else
                     {
-                        version(test) writeln("branch 11");
+                        version(dateparser_test) writeln("branch 11");
                         ++i;
                     }
                     continue;
@@ -969,7 +969,7 @@ private:
                 value = info.weekday(tokens[i]);
                 if (value > -1)
                 {
-                    version(test) writeln("branch 12");
+                    version(dateparser_test) writeln("branch 12");
                     res.weekday = to!uint(value.get());
                     ++i;
                     continue;
@@ -980,7 +980,7 @@ private:
                 value = info.month(tokens[i]);
                 if (value > -1)
                 {
-                    version(test) writeln("branch 13");
+                    version(dateparser_test) writeln("branch 13");
                     ymd.put(value);
                     assert(mstridx == -1);
                     mstridx = ymd.length - 1;
@@ -1026,7 +1026,7 @@ private:
                 value = info.ampm(tokens[i]);
                 if (value > -1)
                 {
-                    version(test) writeln("branch 14");
+                    version(dateparser_test) writeln("branch 14");
                     //For fuzzy parsing, 'a' or 'am' (both valid English words)
                     //may erroneously trigger the AM/PM flag. Deal with that
                     //here.
@@ -1087,7 +1087,7 @@ private:
                 if (!res.hour.isNull && tokens[i].length <= 5 && res.tzname.length == 0
                         && res.tzoffset.isNull && itemUpper.length == 0)
                 {
-                    version(test) writeln("branch 15");
+                    version(dateparser_test) writeln("branch 15");
                     res.tzname = tokens[i];
                     res.tzoffset = info.tzoffset(res.tzname);
                     ++i;
@@ -1115,7 +1115,7 @@ private:
                 //Check for a numbered timezone
                 if (!res.hour.isNull && (tokens[i] == "+" || tokens[i] == "-"))
                 {
-                    version(test) writeln("branch 16");
+                    version(dateparser_test) writeln("branch 16");
                     immutable int signal = tokens[i] == "+" ? 1 : -1;
                     ++i;
                     immutable size_t tokensItemLength = tokens[i].length;
@@ -1160,17 +1160,17 @@ private:
                 //Check jumps
                 if (!(info.jump(tokens[i]) || fuzzy))
                 {
-                    version(test) writeln("branch 17");
+                    version(dateparser_test) writeln("branch 17");
                     return cast(Result) null;
                 }
 
                 if (last_skipped_token_i == i - 1)
                 {
-                    version(test) writeln("branch 18");
+                    version(dateparser_test) writeln("branch 18");
                 }
                 else
                 {
-                    version(test) writeln("branch 19");
+                    version(dateparser_test) writeln("branch 19");
                 }
                 last_skipped_token_i = i;
                 ++i;

@@ -1,4 +1,4 @@
-version(test) import std.stdio;
+version(dateparser_test) import std.stdio;
 import std.datetime;
 import std.string;
 import std.regex;

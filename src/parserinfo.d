@@ -1,4 +1,4 @@
-version(test) import std.stdio;
+version(dateparser_test) import std.stdio;
 import std.typecons;
 import std.range;
 import std.traits;
