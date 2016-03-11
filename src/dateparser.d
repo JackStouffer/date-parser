@@ -138,9 +138,7 @@ unittest
     assert(parse("20030925T1049") == SysTime(DateTime(2003, 9, 25, 10, 49, 0)));
     assert(parse("20030925T10") == SysTime(DateTime(2003, 9, 25, 10)));
     assert(parse("20030925") == SysTime(DateTime(2003, 9, 25)));
-    // FIXME msecs
-    assert(parse("2003-09-25 10:49:41,502") == SysTime(DateTime(2003, 9, 25, 10, 49,
-        41)));
+    assert(parse("2003-09-25 10:49:41,502") == SysTime(DateTime(2003, 9, 25, 10, 49, 41), msecs(502)));
     assert(parse("199709020908") == SysTime(DateTime(1997, 9, 2, 9, 8)));
     assert(parse("19970902090807") == SysTime(DateTime(1997, 9, 2, 9, 8, 7)));
 }
@@ -154,12 +152,10 @@ unittest
     assert(parse("Sep 25 2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("09 25 2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("25 09 2003") == SysTime(DateTime(2003, 9, 25)));
-    assert(parse("10 09 2003", null, false, null, true) == SysTime(DateTime(2003, 9,
-        10)));
+    assert(parse("10 09 2003", null, false, null, true) == SysTime(DateTime(2003, 9, 10)));
     assert(parse("10 09 2003") == SysTime(DateTime(2003, 10, 9)));
     assert(parse("10 09 03") == SysTime(DateTime(2003, 10, 9)));
-    assert(parse("10 09 03", null, false, null, false, true) == SysTime(DateTime(2010,
-        9, 3)));
+    assert(parse("10 09 03", null, false, null, false, true) == SysTime(DateTime(2010, 9, 3)));
     assert(parse("25 09 03") == SysTime(DateTime(2003, 9, 25)));
 }
 
@@ -175,11 +171,11 @@ unittest
 // Naked times
 unittest
 {
-    assert(parse("10h36m28.5s") == SysTime(DateTime(1, 1, 1, 10, 36, 28)));
+    assert(parse("10h36m28.5s") == SysTime(DateTime(1, 1, 1, 10, 36, 28), msecs(500)));
     assert(parse("10h36m28s") == SysTime(DateTime(1, 1, 1, 10, 36, 28)));
     assert(parse("10h36m") == SysTime(DateTime(1, 1, 1, 10, 36)));
-    //assert(parse("10h") == SysTime(DateTime(1, 1, 1, 10, 0, 0)));
-    //assert(parse("10 h 36") == SysTime(DateTime(1, 1, 1, 10, 36, 0)));
+    assert(parse("10h") == SysTime(DateTime(1, 1, 1, 10, 0, 0)));
+    assert(parse("10 h 36") == SysTime(DateTime(1, 1, 1, 10, 36, 0)));
 }
 
 // AM vs PM
@@ -226,12 +222,10 @@ unittest
     //assert(parse("Sep-25-2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("09-25-2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("25-09-2003") == SysTime(DateTime(2003, 9, 25)));
-    assert(parse("10-09-2003", null, false, null, true) == SysTime(DateTime(2003, 9,
-        10)));
+    assert(parse("10-09-2003", null, false, null, true) == SysTime(DateTime(2003, 9, 10)));
     assert(parse("10-09-2003") == SysTime(DateTime(2003, 10, 9)));
     assert(parse("10-09-03") == SysTime(DateTime(2003, 10, 9)));
-    assert(parse("10-09-03", null, false, null, false, true) == SysTime(DateTime(2010,
-        9, 3)));
+    assert(parse("10-09-03", null, false, null, false, true) == SysTime(DateTime(2010, 9, 3)));
 }
 
 // Dots

@@ -45,7 +45,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
         import std.algorithm.searching : count;
         import std.uni : isNumber, isSpace, isAlpha;
 
-        if (instream.empty)
+        if (instream.empty && charstack.empty)
             return string.init;
 
         if (tokenstack.length > 0)
@@ -55,49 +55,51 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
             return f;
         }
 
-        bool seenletters = false;
+        bool seenLetters = false;
         string token;
         State state = State.EMPTY;
 
-        while (!instream.empty)
+        while (!instream.empty || !charstack.empty)
         {
             // We only realize that we've reached the end of a token when we
             // find a character that's not part of the current token - since
             // that character may be part of the next token, it's stored in the
             // charstack.
-            dchar nextchar;
+            dchar nextChar;
 
             if (!charstack.empty)
             {
-                nextchar = charstack.front;
+                version(dateparser_test) writeln("charstack aaa: ", charstack);
+                nextChar = charstack.front;
                 charstack.popFront;
             }
             else
             {
-                nextchar = instream.front;
+                nextChar = instream.front;
                 instream.popFront;
 
-                while (nextchar == '\x00')
+                while (nextChar == '\x00')
                 {
-                    nextchar = instream.front;
+                    nextChar = instream.front;
                     instream.popFront;
                 }
             }
 
             if (state == State.EMPTY)
             {
+                version(dateparser_test) writeln("EMPTY");
                 // First character of the token - determines if we're starting
                 // to parse a word, a number or something else.
-                token ~= nextchar;
-                if (isAlpha(nextchar))
+                token ~= nextChar;
+                if (nextChar.isAlpha)
                 {
                     state = State.ALPHA;
                 }
-                else if (isNumber(nextchar))
+                else if (nextChar.isNumber)
                 {
                     state = State.NUMERIC;
                 }
-                else if (isSpace(nextchar))
+                else if (isSpace(nextChar))
                 {
                     token = " ";
                     break; //emit token
@@ -106,24 +108,26 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
                 {
                     break; //emit token
                 }
+                version(dateparser_test) writeln("TOKEN ", token, " STATE ", state);
             }
             else if (state == State.ALPHA)
             {
+                version(dateparser_test) writeln("STATE ", state, " nextChar: ", nextChar);
                 // If we've already started reading a word, we keep reading
                 // letters until we find something that's not part of a word.
-                seenletters = true;
-                if (isAlpha(nextchar))
+                seenLetters = true;
+                if (nextChar.isAlpha)
                 {
-                    token ~= nextchar;
+                    token ~= nextChar;
                 }
-                else if (nextchar == '.')
+                else if (nextChar == '.')
                 {
-                    token ~= nextchar;
+                    token ~= nextChar;
                     state = State.ALPHA_PERIOD;
                 }
                 else
                 {
-                    charstack ~= nextchar;
+                    charstack ~= nextChar;
                     break; //emit token
                 }
             }
@@ -131,65 +135,71 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
             {
                 // If we've already started reading a number, we keep reading
                 // numbers until we find something that doesn't fit.
-                if (isNumber(nextchar))
+                version(dateparser_test) writeln("STATE ", state, " nextChar: ", nextChar);
+                if (nextChar.isNumber)
                 {
-                    token ~= nextchar;
+                    token ~= nextChar;
                 }
-                else if (nextchar == '.' || (nextchar == ',' && token.length >= 2))
+                else if (nextChar == '.' || (nextChar == ',' && token.length >= 2))
                 {
-                    token ~= nextchar;
+                    token ~= nextChar;
                     state = State.NUMERIC_PERIOD;
                 }
                 else
                 {
-                    charstack ~= nextchar;
+                    charstack ~= nextChar;
+                    version(dateparser_test) writeln("charstack add: ", charstack);
                     break; //emit token
                 }
             }
             else if (state == State.ALPHA_PERIOD)
             {
+                version(dateparser_test) writeln("STATE ", state, " nextChar: ", nextChar);
                 // If we've seen some letters and a dot separator, continue
                 // parsing, and the tokens will be broken up later.
-                seenletters = true;
-                if (nextchar == '.' || isAlpha(nextchar))
+                seenLetters = true;
+                if (nextChar == '.' || nextChar.isAlpha)
                 {
-                    token ~= nextchar;
+                    token ~= nextChar;
                 }
-                else if (isNumber(nextchar) && token[$ - 1] == '.')
+                else if (nextChar.isNumber && token[$ - 1] == '.')
                 {
-                    token ~= nextchar;
+                    token ~= nextChar;
                     state = State.NUMERIC_PERIOD;
                 }
                 else
                 {
-                    charstack ~= nextchar;
+                    charstack ~= nextChar;
                     break; //emit token
                 }
             }
             else if (state == State.NUMERIC_PERIOD)
             {
+                version(dateparser_test) writeln("STATE ", state, " nextChar: ", nextChar);
                 // If we've seen at least one dot separator, keep going, we'll
                 // break up the tokens later.
-                if (nextchar == '.' || isNumber(nextchar))
+                if (nextChar == '.' || nextChar.isNumber)
                 {
-                    token ~= nextchar;
+                    token ~= nextChar;
                 }
-                else if (isAlpha(nextchar) && token[$-1] == '.')
+                else if (nextChar.isAlpha && token[$-1] == '.')
                 {
-                    token ~= nextchar;
+                    token ~= nextChar;
                     state = State.ALPHA_PERIOD;
                 }
                 else
                 {
-                    charstack ~= nextchar;
+                    charstack ~= nextChar;
                     break; //emit token
                 }
             }
         }
 
-        if ((state == State.ALPHA_PERIOD || state == State.NUMERIC_PERIOD) || (seenletters
-                || token.count('.') > 1 || (token[$ - 1] == '.' || token[$ - 1] == ',')))
+        version(dateparser_test) writeln("STATE ", state, " seenLetters: ", seenLetters);
+        if ((state == State.ALPHA_PERIOD || state == State.NUMERIC_PERIOD) &&
+            (seenLetters || token.count('.') > 1 || (token[$ - 1] == '.' || token[$ - 1] == ',')))
         {
+            version(dateparser_test) writeln("STATE ", state, " token: ", token);
             auto l = token.split(split_decimal);
             token = l[0];
             foreach (tok; l[1 .. $])
@@ -216,6 +226,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
         while (true)
         {
             immutable element = get_token();
+            version(dateparser_test) writeln("get_token ", element);
 
             if (element.length != 0)
                 data ~= element;
