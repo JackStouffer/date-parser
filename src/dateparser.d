@@ -640,8 +640,8 @@ private:
         import std.uni : isUpper;
 
         auto res = new Result();
-        string[] l = new TimeLex!string(timeString).split(); //Splits the timeString into tokens
-        version(test) writeln("l: ", l);
+        string[] tokens = new TimeLex!string(timeString).split(); //Splits the timeString into tokens
+        version(test) writeln("tokens: ", tokens);
 
         //keep up with the last token skipped so we can recombine
         //consecutively skipped tokens (-2 for when i begins at 0).
@@ -655,20 +655,20 @@ private:
             //Index of the month string in ymd
             long mstridx = -1;
 
-            immutable size_t lengthList = l.length;
-            version(test) writeln("lengthList: ", lengthList);
-            int i = 0;
-            while (i < lengthList)
+            immutable size_t tokensLength = tokens.length;
+            version(test) writeln("tokensLength: ", tokensLength);
+            uint i = 0;
+            while (i < tokensLength)
             {
                 //Check if it's a number
                 Nullable!float value;
                 string value_repr;
                 version(test) writeln("i: ", i);
-                version(test) writeln("li: ", l[i]);
+                version(test) writeln("li: ", tokens[i]);
 
                 try
                 {
-                    value_repr = l[i];
+                    value_repr = tokens[i];
                     version(test) writeln("value_repr: ", value_repr);
                     value = to!float(value_repr);
                 }
@@ -677,33 +677,33 @@ private:
                     value.nullify();
                 }
 
+                //Token is a number
                 if (!value.isNull())
                 {
-                    //Token is a number
-                    immutable lengthListItem = l[i].length;
+                    immutable tokensItemLength = tokens[i].length;
                     ++i;
 
-                    if (ymd.length == 3 && (lengthListItem == 2 || lengthListItem == 4)
-                            && res.hour.isNull && (i >= lengthList || (l[i] != ":"
-                            && info.hms(l[i]) == -1)))
+                    if (ymd.length == 3 && (tokensItemLength == 2 || tokensItemLength == 4)
+                            && res.hour.isNull && (i >= tokensLength || (tokens[i] != ":"
+                            && info.hms(tokens[i]) == -1)))
                     {
                         version(test) writeln("branch 1");
                         //19990101T23[59]
-                        auto s = l[i - 1];
+                        auto s = tokens[i - 1];
                         res.hour = to!int(s[0 .. 2]);
 
-                        if (lengthListItem == 4)
+                        if (tokensItemLength == 4)
                         {
                             res.minute = to!int(s[2 .. $]);
                         }
                     }
-                    else if (lengthListItem == 6 || (lengthListItem > 6 && l[i - 1].indexOf(".") == 6))
+                    else if (tokensItemLength == 6 || (tokensItemLength > 6 && tokens[i - 1].indexOf(".") == 6))
                     {
                         version(test) writeln("branch 2");
                         //YYMMDD || HHMMSS[.ss]
-                        auto s = l[i - 1];
+                        auto s = tokens[i - 1];
 
-                        if (ymd.length == 0 && l[i - 1].indexOf('.') == -1)
+                        if (ymd.length == 0 && tokens[i - 1].indexOf('.') == -1)
                         {
                             ymd.put(s[0 .. 2]);
                             ymd.put(s[2 .. 4]);
@@ -718,37 +718,37 @@ private:
                             res.microsecond = parseMS(s[4 .. $])[1];
                         }
                     }
-                    else if (lengthListItem == 8 || lengthListItem == 12 || lengthListItem == 14)
+                    else if (tokensItemLength == 8 || tokensItemLength == 12 || tokensItemLength == 14)
                     {
                         version(test) writeln("branch 3");
                         //YYYYMMDD
-                        auto s = l[i - 1];
+                        auto s = tokens[i - 1];
                         ymd.put(s[0 .. 4]);
                         ymd.put(s[4 .. 6]);
                         ymd.put(s[6 .. 8]);
 
-                        if (lengthListItem > 8)
+                        if (tokensItemLength > 8)
                         {
                             res.hour = to!int(s[8 .. 10]);
                             res.minute = to!int(s[10 .. 12]);
 
-                            if (lengthListItem > 12)
+                            if (tokensItemLength > 12)
                             {
                                 res.second = to!int(s[12 .. $]);
                             }
                         }
                     }
-                    else if ((i < lengthList && info.hms(l[i]) > -1)
-                            || (i + 1 < lengthList && l[i] == " " && info.hms(l[i + 1]) > -1))
+                    else if ((i < tokensLength && info.hms(tokens[i]) > -1)
+                            || (i + 1 < tokensLength && tokens[i] == " " && info.hms(tokens[i + 1]) > -1))
                     {
                         version(test) writeln("branch 4");
                         //HH[ ]h or MM[ ]m or SS[.ss][ ]s
-                        if (l[i] == " ")
+                        if (tokens[i] == " ")
                         {
                             ++i;
                         }
 
-                        auto idx = info.hms(l[i]);
+                        auto idx = info.hms(tokens[i]);
 
                         while (true)
                         {
@@ -779,7 +779,7 @@ private:
 
                             ++i;
 
-                            if (i >= lengthList || idx == 2)
+                            if (i >= tokensLength || idx == 2)
                             {
                                 break;
                             }
@@ -787,7 +787,7 @@ private:
                             //12h00
                             try
                             {
-                                value_repr = l[i];
+                                value_repr = tokens[i];
                                 value = to!float(value_repr);
                             }
                             catch (ConvException)
@@ -798,9 +798,9 @@ private:
                             ++i;
                             ++idx;
 
-                            if (i < lengthList)
+                            if (i < tokensLength)
                             {
-                                immutable newidx = info.hms(l[i]);
+                                immutable newidx = info.hms(tokens[i]);
 
                                 if (newidx > -1)
                                 {
@@ -809,11 +809,11 @@ private:
                             }
                         }
                     }
-                    else if (i == lengthList && l[i - 2] == " " && info.hms(l[i - 3]) > -1)
+                    else if (i == tokensLength && tokens[i - 2] == " " && info.hms(tokens[i - 3]) > -1)
                     {
                         version(test) writeln("branch 5");
                         //X h MM or X m SS
-                        immutable idx = info.hms(l[i - 3]) + 1;
+                        immutable idx = info.hms(tokens[i - 3]) + 1;
 
                         if (idx == 1)
                         {
@@ -833,13 +833,13 @@ private:
                             }
                         }
                     }
-                    else if (i + 1 < lengthList && l[i] == ":")
+                    else if (i + 1 < tokensLength && tokens[i] == ":")
                     {
                         version(test) writeln("branch 6");
                         //HH:MM[:SS[.ss]]
                         res.hour = to!int(value.get());
                         ++i;
-                        value = to!float(l[i]);
+                        value = to!float(tokens[i]);
                         res.minute = to!int(value.get());
 
                         if (value % 1)
@@ -849,32 +849,32 @@ private:
 
                         ++i;
 
-                        if (i < lengthList && l[i] == ":")
+                        if (i < tokensLength && tokens[i] == ":")
                         {
-                            auto temp = parseMS(l[i + 1]);
+                            auto temp = parseMS(tokens[i + 1]);
                             res.second = temp[0];
                             res.microsecond = temp[1];
                             i += 2;
                         }
                     }
-                    else if (i < lengthList && (l[i] == "-" || l[i] == "/" || l[i] == "."))
+                    else if (i < tokensLength && (tokens[i] == "-" || tokens[i] == "/" || tokens[i] == "."))
                     {
                         version(test) writeln("branch 7");
-                        immutable string sep = l[i];
+                        immutable string sep = tokens[i];
                         ymd.put(value_repr);
                         ++i;
 
-                        if (i < lengthList && !info.jump(l[i]))
+                        if (i < tokensLength && !info.jump(tokens[i]))
                         {
                             try
                             {
                                 //01-01[-01]
-                                ymd.put(l[i]);
+                                ymd.put(tokens[i]);
                             }
                             catch (Exception)
                             {
                                 //01-Jan[-01]
-                                value = info.month(l[i]);
+                                value = info.month(tokens[i]);
 
                                 if (value.isNull())
                                 {
@@ -890,11 +890,11 @@ private:
 
                             ++i;
 
-                            if (i < lengthList && l[i] == sep)
+                            if (i < tokensLength && tokens[i] == sep)
                             {
                                 //We have three members
                                 ++i;
-                                value = info.month(l[i]);
+                                value = info.month(tokens[i]);
 
                                 if (value > -1)
                                 {
@@ -904,26 +904,26 @@ private:
                                 }
                                 else
                                 {
-                                    ymd.put(l[i]);
+                                    ymd.put(tokens[i]);
                                 }
 
                                 ++i;
                             }
                         }
                     }
-                    else if (i >= lengthList || info.jump(l[i]))
+                    else if (i >= tokensLength || info.jump(tokens[i]))
                     {
                         version(test) writeln("branch 8");
-                        if (i + 1 < lengthList && info.ampm(l[i + 1]) > -1)
+                        if (i + 1 < tokensLength && info.ampm(tokens[i + 1]) > -1)
                         {
                             //12 am
                             res.hour = to!int(value.get());
 
-                            if (res.hour < 12 && info.ampm(l[i + 1]) == 1)
+                            if (res.hour < 12 && info.ampm(tokens[i + 1]) == 1)
                             {
                                 res.hour += 12;
                             }
-                            else if (res.hour == 12 && info.ampm(l[i + 1]) == 0)
+                            else if (res.hour == 12 && info.ampm(tokens[i + 1]) == 0)
                             {
                                 res.hour = 0;
                             }
@@ -937,16 +937,16 @@ private:
                         }
                         ++i;
                     }
-                    else if (info.ampm(l[i]) > -1)
+                    else if (info.ampm(tokens[i]) > -1)
                     {
                         version(test) writeln("branch 9");
                         //12am
                         res.hour = to!int(value.get());
-                        if (res.hour < 12 && info.ampm(l[i]) == 1)
+                        if (res.hour < 12 && info.ampm(tokens[i]) == 1)
                         {
                             res.hour += 12;
                         }
-                        else if (res.hour == 12 && info.ampm(l[i]) == 0)
+                        else if (res.hour == 12 && info.ampm(tokens[i]) == 0)
                         {
                             res.hour = 0;
                         }
@@ -966,7 +966,7 @@ private:
                 }
 
                 //Check weekday
-                value = info.weekday(l[i]);
+                value = info.weekday(tokens[i]);
                 if (value > -1)
                 {
                     version(test) writeln("branch 12");
@@ -977,7 +977,7 @@ private:
 
 
                 //Check month name
-                value = info.month(l[i]);
+                value = info.month(tokens[i]);
                 if (value > -1)
                 {
                     version(test) writeln("branch 13");
@@ -986,32 +986,32 @@ private:
                     mstridx = ymd.length - 1;
 
                     ++i;
-                    if (i < lengthList)
+                    if (i < tokensLength)
                     {
-                        if (l[i] == "-" || l[i] == "/")
+                        if (tokens[i] == "-" || tokens[i] == "/")
                         {
                             //Jan-01[-99]
-                            immutable string sep = l[i].dup;
+                            immutable string sep = tokens[i].dup;
                             ++i;
-                            ymd.put(l[i]);
+                            ymd.put(tokens[i]);
                             ++i;
 
-                            if (i < lengthList && l[i] == sep)
+                            if (i < tokensLength && tokens[i] == sep)
                             {
                                 //Jan-01-99
                                 ++i;
-                                ymd.put(l[i]);
+                                ymd.put(tokens[i]);
                                 ++i;
                             }
                         }
-                        else if (i + 3 < lengthList && l[i] == " " && l[i + 2] == " "
-                                && info.pertain(l[i + 1]))
+                        else if (i + 3 < tokensLength && tokens[i] == " " && tokens[i + 2] == " "
+                                && info.pertain(tokens[i + 1]))
                         {
                             //Jan of 01
                             //In this case, 01 is clearly year
                             try
                             {
-                                value = to!int(l[i + 3]);
+                                value = to!int(tokens[i + 3]);
                                 //Convert it here to become unambiguous
                                 ymd.put(info.convertYear(value.get.to!int()).to!string);
                             }
@@ -1023,7 +1023,7 @@ private:
                 }
 
                 //Check am/pm
-                value = info.ampm(l[i]);
+                value = info.ampm(tokens[i]);
                 if (value > -1)
                 {
                     version(test) writeln("branch 14");
@@ -1083,12 +1083,12 @@ private:
                 }
 
                 //Check for a timezone name
-                auto itemUpper = l[i].filter!(a => !isUpper(a)).array;
-                if (!res.hour.isNull && l[i].length <= 5 && res.tzname.length == 0
+                auto itemUpper = tokens[i].filter!(a => !isUpper(a)).array;
+                if (!res.hour.isNull && tokens[i].length <= 5 && res.tzname.length == 0
                         && res.tzoffset.isNull && itemUpper.length == 0)
                 {
                     version(test) writeln("branch 15");
-                    res.tzname = l[i];
+                    res.tzname = tokens[i];
                     res.tzoffset = info.tzoffset(res.tzname);
                     ++i;
 
@@ -1097,9 +1097,9 @@ private:
                     //"my time +3 is GMT". If found, we reverse the
                     //logic so that timezone parsing code will get it
                     //right.
-                    if (i < lengthList && (l[i] == "+" || l[i] == "-"))
+                    if (i < tokensLength && (tokens[i] == "+" || tokens[i] == "-"))
                     {
-                        l[i] = l[i] == "+" ? "-" : "+";
+                        tokens[i] = tokens[i] == "+" ? "-" : "+";
                         res.tzoffset = 0;
                         if (info.utczone(res.tzname))
                         {
@@ -1113,28 +1113,28 @@ private:
                 }
 
                 //Check for a numbered timezone
-                if (!res.hour.isNull && (l[i] == "+" || l[i] == "-"))
+                if (!res.hour.isNull && (tokens[i] == "+" || tokens[i] == "-"))
                 {
                     version(test) writeln("branch 16");
-                    immutable int signal = l[i] == "+" ? 1 : -1;
+                    immutable int signal = tokens[i] == "+" ? 1 : -1;
                     ++i;
-                    immutable size_t lengthListItem = l[i].length;
+                    immutable size_t tokensItemLength = tokens[i].length;
 
-                    if (lengthListItem == 4)
+                    if (tokensItemLength == 4)
                     {
                         //-0300
-                        res.tzoffset = to!int(l[i][0 .. 2]) * 3600 + to!int(l[i][2 .. $]) * 60;
+                        res.tzoffset = to!int(tokens[i][0 .. 2]) * 3600 + to!int(tokens[i][2 .. $]) * 60;
                     }
-                    else if (i + 1 < lengthList && l[i + 1] == ":")
+                    else if (i + 1 < tokensLength && tokens[i + 1] == ":")
                     {
                         //-03:00
-                        res.tzoffset = to!int(l[i]) * 3600 + to!int(l[i + 2]) * 60;
+                        res.tzoffset = to!int(tokens[i]) * 3600 + to!int(tokens[i + 2]) * 60;
                         i += 2;
                     }
-                    else if (lengthListItem <= 2)
+                    else if (tokensItemLength <= 2)
                     {
                         //-[0]3
-                        res.tzoffset = to!int(l[i][0 .. 2]) * 3600;
+                        res.tzoffset = to!int(tokens[i][0 .. 2]) * 3600;
                     }
                     else
                     {
@@ -1145,20 +1145,20 @@ private:
                     res.tzoffset *= signal;
 
                     //Look for a timezone name between parenthesis
-                    itemUpper = l[i + 2].filter!(a => !isUpper(a)).array;
-                    if (i + 3 < lengthList && info.jump(l[i]) && l[i + 1] == "("
-                            && l[i + 3] == ")" && 3 <= l[i + 2].length
-                            && l[i + 2].length <= 5 && itemUpper.length == 0)
+                    itemUpper = tokens[i + 2].filter!(a => !isUpper(a)).array;
+                    if (i + 3 < tokensLength && info.jump(tokens[i]) && tokens[i + 1] == "("
+                            && tokens[i + 3] == ")" && 3 <= tokens[i + 2].length
+                            && tokens[i + 2].length <= 5 && itemUpper.length == 0)
                     {
                         //-0300 (BRST)
-                        res.tzname = l[i + 2];
+                        res.tzname = tokens[i + 2];
                         i += 4;
                     }
                     continue;
                 }
 
                 //Check jumps
-                if (!(info.jump(l[i]) || fuzzy))
+                if (!(info.jump(tokens[i]) || fuzzy))
                 {
                     version(test) writeln("branch 17");
                     return cast(Result) null;
@@ -1176,6 +1176,7 @@ private:
                 ++i;
             }
             //Process year/month/day
+            //FIXME
             auto temp = ymd.resolveYMD(mstridx, yearFirst, dayFirst); // FIXME
             auto year = temp[0];
             auto month = temp[1];
