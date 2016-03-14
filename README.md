@@ -2,7 +2,7 @@
 
 [Docs](https://jackstouffer.github.io/date-parser/)
 
-A port of the Python Date Util date parser. This is currently beta quality software; there are a lot of GC allocations and a lot of date formats aren't supported yet. Also, of the 148 applicable tests that were translated from date util, 30 are failing. This is currently 3.8x faster than the Python version.
+A port of the Python Date Util date parser. This is currently beta quality software; there are a lot of GC allocations and a lot of date formats aren't supported yet. Also, of the 148 applicable tests that were translated from date util, 21 are failing. This is currently 3.8x faster than the Python version.
 
 This module offers a generic date/time string parser which is able to parse most known formats to represent a date and/or time. This module attempts to be forgiving with regards to unlikely input formats, returning a SysTime object even for dates which are ambiguous.
 

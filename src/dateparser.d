@@ -199,14 +199,27 @@ unittest
 // ISO and ISO stripped
 unittest
 {
-    //assert(parse("2003-09-25T10:49:41.5-03:00") == SysTime(DateTime(2003, 9, 25, 10, 49, 41, 500000, tzinfo=self.brsttz))
-    //assert(parse("2003-09-25T10:49:41-03:00") == SysTime(DateTime(2003, 9, 25, 10, 49, 41, tzinfo=self.brsttz))
+    auto parsed = parse("2003-09-25T10:49:41.5-03:00");
+    assert(parsed == SysTime(DateTime(2003, 9, 25, 10, 49, 41), msecs(500)));
+    assert((cast(immutable(SimpleTimeZone)) parsed.timezone).utcOffset == hours(-3));
+
+    auto parsed2 = parse("2003-09-25T10:49:41-03:00");
+    assert(parsed2 == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+    assert((cast(immutable(SimpleTimeZone)) parsed2.timezone).utcOffset == hours(-3));
+
     assert(parse("2003-09-25T10:49:41") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
     assert(parse("2003-09-25T10:49") == SysTime(DateTime(2003, 9, 25, 10, 49)));
     assert(parse("2003-09-25T10") == SysTime(DateTime(2003, 9, 25, 10)));
     assert(parse("2003-09-25") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("20030925T104941.5-0300") == SysTime(DateTime(2003, 9, 25, 10, 49, 41, 500000, tzinfo=self.brsttz))
-    //assert(parse("20030925T104941-0300") == SysTime(DateTime(2003, 9, 25, 10, 49, 41, tzinfo=self.brsttz))
+
+    auto parsed3 = parse("2003-09-25T10:49:41-03:00");
+    assert(parsed3 == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+    assert((cast(immutable(SimpleTimeZone)) parsed3.timezone).utcOffset == hours(-3));
+
+    auto parsed4 = parse("20030925T104941-0300");
+    assert(parsed4 == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+    assert((cast(immutable(SimpleTimeZone)) parsed4.timezone).utcOffset == hours(-3));
+
     assert(parse("20030925T104941") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
     assert(parse("20030925T1049") == SysTime(DateTime(2003, 9, 25, 10, 49, 0)));
     assert(parse("20030925T10") == SysTime(DateTime(2003, 9, 25, 10)));
@@ -291,8 +304,8 @@ unittest
     assert(parse("Tue Apr 4 00:22:12 PDT 1995", null, true) == SysTime(
         DateTime(1995, 4, 4, 0, 22, 12)));
     assert(parse("04.04.95 00:22") == SysTime(DateTime(1995, 4, 4, 0, 22)));
-    // FIXME fix msecs
-    //assert(parse("Jan 1 1999 11:23:34.578") == SysTime(DateTime(1999, 1, 1, 11, 23, 34)));
+    assert(parse("Jan 1 1999 11:23:34.578") == SysTime(
+        DateTime(1999, 1, 1, 11, 23, 34), msecs(578)));
     assert(parse("950404 122212") == SysTime(DateTime(1995, 4, 4, 12, 22, 12)));
     assert(parse("0:00 PM, PST", null, true) == SysTime(DateTime(1, 1, 1, 12, 0)));
     assert(parse("12:08 PM") == SysTime(DateTime(1, 1, 1, 12, 8)));
@@ -324,24 +337,27 @@ unittest
 {
     // Sometimes fuzzy parsing results in AM/PM flag being set without
     // hours - if it's fuzzy it should ignore that.
-    //auto s1 = "I have a meeting on March 1 1974.";
-    //auto s2 = "On June 8th, 2020, I am going to be the first man on Mars";
+    auto s1 = "I have a meeting on March 1 1974.";
+    auto s2 = "On June 8th, 2020, I am going to be the first man on Mars";
 
     // Also don't want any erroneous AM or PMs changing the parsed time
-    //auto s3 = "Meet me at the AM/PM on Sunset at 3:00 AM on December 3rd, 2003";
+    auto s3 = "Meet me at the AM/PM on Sunset at 3:00 AM on December 3rd, 2003";
     //auto s4 = "Meet me at 3:00AM on December 3rd, 2003 at the AM/PM on Sunset";
-    //auto s5 = "Today is 25 of September of 2003, exactly at 10:49:41 with timezone -03:00.";
+    auto s5 = "Today is 25 of September of 2003, exactly at 10:49:41 with timezone -03:00.";
     auto s6 = "Jan 29, 1945 14:45 AM I going to see you there?";
 
     // comma problems
-    //assert(parse(s1, null, false, null, false, false, true) == SysTime(DateTime(1974, 3, 1)));
-    //assert(parse(s2, null, false, null, false, false, true) == SysTime(DateTime(2020, 6, 8)));
-    //assert(parse(s3, null, false, null, false, false, true) == SysTime(DateTime(2003, 12, 3, 3)));
+    assert(parse(s1, null, false, null, false, false, true) == SysTime(DateTime(1974, 3, 1)));
+    assert(parse(s2, null, false, null, false, false, true) == SysTime(DateTime(2020, 6, 8)));
+    assert(parse(s3, null, false, null, false, false, true) == SysTime(DateTime(2003, 12, 3, 3)));
     //assert(parse(s4, null, false, null, false, false, true) == SysTime(DateTime(2003, 12, 3, 3)));
-    //assert(parse(s5, null, false, null, false, false, true) == SysTime(
-        //DateTime(2003, 9, 25, 10, 49, 41, tzinfo=self.brsttz)));
-    assert(parse(s6, null, false, null, false, false, true) == SysTime(DateTime(1945,
-        1, 29, 14, 45)));
+
+    auto parsed = parse(s5, null, false, null, false, false, true);
+    assert(parsed == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+    assert((cast(immutable(SimpleTimeZone)) parsed.timezone).utcOffset == hours(-3));
+
+    assert(parse(s6, null, false, null, false, false, true) == SysTime(
+        DateTime(1945, 1, 29, 14, 45)));
 }
 
 /// Custom parser info allows for international time representation
