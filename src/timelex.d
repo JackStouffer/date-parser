@@ -27,6 +27,30 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
         instream = r;
     }
 
+    private auto splitWithMatches(S, RegEx)(S data, RegEx pattern)
+        if (isSomeString!S)
+    {
+        string[] result;
+        string element;
+
+        foreach (item; data)
+        {
+            if (match("" ~ item, pattern).empty)
+            {
+                element ~= item;
+            }
+            else
+            {
+                result ~= element;
+                result ~= "" ~ item;
+                element = string.init;
+            }
+        }
+
+        result ~= element;
+        return result;
+    }
+
     /**
      This function breaks the time string into lexical units (tokens), which
      can be parsed by the parser. Lexical units are demarcated by changes in
@@ -45,7 +69,7 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
         import std.algorithm.searching : count;
         import std.uni : isNumber, isSpace, isAlpha;
 
-        if (instream.empty && charstack.empty)
+        if (instream.empty && charstack.empty && tokenstack.empty)
             return string.init;
 
         if (tokenstack.length > 0)
@@ -199,8 +223,8 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
         if ((state == State.ALPHA_PERIOD || state == State.NUMERIC_PERIOD) &&
             (seenLetters || token.count('.') > 1 || (token[$ - 1] == '.' || token[$ - 1] == ',')))
         {
-            version(dateparser_test) writeln("STATE ", state, " token: ", token);
-            auto l = token.split(split_decimal);
+
+            auto l = splitWithMatches(token[], split_decimal);
             token = l[0];
             foreach (tok; l[1 .. $])
             {

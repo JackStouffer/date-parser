@@ -76,7 +76,7 @@ Throws:
     ConvOverflowException if one of the numbers in the parsed date exceeds
     int.max
 */
-SysTime parse(string timeString, ParserInfo parserInfo = null, bool ignoreTimezone = false,
+SysTime parse(const string timeString, const ParserInfo parserInfo = null, bool ignoreTimezone = false,
     const(TimeZone)[string] timezoneInfos = null, bool dayFirst = false,
     bool yearFirst = false, bool fuzzy = false)
 {
@@ -88,6 +88,7 @@ SysTime parse(string timeString, ParserInfo parserInfo = null, bool ignoreTimezo
             fuzzy);
 }
 
+// dfmt off
 ///
 unittest
 {
@@ -231,17 +232,17 @@ unittest
 // Dots
 unittest
 {
-    //assert(parse("2003.09.25") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("2003.09.25") == SysTime(DateTime(2003, 9, 25)));
     //assert(parse("2003.Sep.25") == SysTime(DateTime(2003, 9, 25)));
     //assert(parse("25.Sep.2003") == SysTime(DateTime(2003, 9, 25)));
     //assert(parse("25.Sep.2003") == SysTime(DateTime(2003, 9, 25)));
     //assert(parse("Sep.25.2003") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("09.25.2003") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("25.09.2003") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("10.09.2003", dayFirst=True) == SysTime(DateTime(2003, 9, 10)));
-    //assert(parse("10.09.2003") == SysTime(DateTime(2003, 10, 9)));
-    //assert(parse("10.09.03") == SysTime(DateTime(2003, 10, 9)));
-    //assert(parse("10.09.03", yearFirst=True) == SysTime(DateTime(2010, 9, 3)));
+    assert(parse("09.25.2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25.09.2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("10.09.2003", null, false, null, true) == SysTime(DateTime(2003, 9, 10)));
+    assert(parse("10.09.2003") == SysTime(DateTime(2003, 10, 9)));
+    assert(parse("10.09.03") == SysTime(DateTime(2003, 10, 9)));
+    assert(parse("10.09.03", null, false, null, false, true) == SysTime(DateTime(2010, 9, 3)));
 }
 
 // Slashes
@@ -254,18 +255,16 @@ unittest
     //assert(parse("Sep/25/2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("09/25/2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("25/09/2003") == SysTime(DateTime(2003, 9, 25)));
-    assert(parse("10/09/2003", null, false, null, true) == SysTime(
-        DateTime(2003, 9, 10)));
+    assert(parse("10/09/2003", null, false, null, true) == SysTime(DateTime(2003, 9, 10)));
     assert(parse("10/09/2003") == SysTime(DateTime(2003, 10, 9)));
     assert(parse("10/09/03") == SysTime(DateTime(2003, 10, 9)));
-    assert(parse("10/09/03", null, false, null, false, true) == SysTime(
-        DateTime(2010, 9, 3)));
+    assert(parse("10/09/03", null, false, null, false, true) == SysTime(DateTime(2010, 9, 3)));
 }
 
 // Random formats
 unittest
 {
-    //assert(parse("Wed, July 10, '96") == SysTime(DateTime(1996, 7, 10, 0, 0)));
+    assert(parse("Wed, July 10, '96") == SysTime(DateTime(1996, 7, 10, 0, 0)));
     //assert(parse("1996.07.10 AD at 15:08:56 PDT", null, true) == SysTime(
         //DateTime(1996, 7, 10, 15, 8, 56)));
     //assert(parse("1996.July.10 AD 12:08 PM") == SysTime(DateTime(1996, 7, 10, 12, 8)));
@@ -275,40 +274,37 @@ unittest
         //DateTime(1994, 11, 5, 8, 15, 30)));
     //assert(parse("1994-11-05T08:15:30-05:00", null, true) == SysTime(
         //DateTime(1994, 11, 5, 8, 15, 30)));
-    assert(parse("1994-11-05T08:15:30Z", null, true) == SysTime(DateTime(1994, 11,
-        5, 8, 15, 30)));
-    //assert(parse("July 4, 1976") == SysTime(DateTime(1976, 7, 4)));
+    assert(parse("1994-11-05T08:15:30Z", null, true) == SysTime(
+        DateTime(1994, 11, 5, 8, 15, 30)));
+    assert(parse("July 4, 1976") == SysTime(DateTime(1976, 7, 4)));
     assert(parse("7 4 1976") == SysTime(DateTime(1976, 7, 4)));
     assert(parse("4 jul 1976") == SysTime(DateTime(1976, 7, 4)));
     assert(parse("7-4-76") == SysTime(DateTime(1976, 7, 4)));
     assert(parse("19760704") == SysTime(DateTime(1976, 7, 4)));
     assert(parse("0:01:02") == SysTime(DateTime(1, 1, 1, 0, 1, 2)));
     assert(parse("12h 01m02s am") == SysTime(DateTime(1, 1, 1, 0, 1, 2)));
-    //assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
-    //assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
-    assert(parse("1976-07-04T00:01:02Z", null, true) == SysTime(DateTime(1976, 7, 4,
-        0, 1, 2)));
-    //assert(parse("July 4, 1976 12:01:02 am") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
-    assert(parse("Mon Jan  2 04:24:27 1995") == SysTime(DateTime(1995, 1, 2, 4, 24,
-        27)));
-    assert(parse("Tue Apr 4 00:22:12 PDT 1995", null,
-        true) == SysTime(DateTime(1995, 4, 4, 0, 22, 12)));
-    //assert(parse("04.04.95 00:22") == SysTime(DateTime(1995, 4, 4, 0, 22)));
+    assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
+    assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
+    assert(parse("1976-07-04T00:01:02Z", null, true) == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
+    assert(parse("July 4, 1976 12:01:02 am") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
+    assert(parse("Mon Jan  2 04:24:27 1995") == SysTime(DateTime(1995, 1, 2, 4, 24, 27)));
+    assert(parse("Tue Apr 4 00:22:12 PDT 1995", null, true) == SysTime(
+        DateTime(1995, 4, 4, 0, 22, 12)));
+    assert(parse("04.04.95 00:22") == SysTime(DateTime(1995, 4, 4, 0, 22)));
     // FIXME fix msecs
     //assert(parse("Jan 1 1999 11:23:34.578") == SysTime(DateTime(1999, 1, 1, 11, 23, 34)));
     assert(parse("950404 122212") == SysTime(DateTime(1995, 4, 4, 12, 22, 12)));
     assert(parse("0:00 PM, PST", null, true) == SysTime(DateTime(1, 1, 1, 12, 0)));
     assert(parse("12:08 PM") == SysTime(DateTime(1, 1, 1, 12, 8)));
-    assert(parse("5:50 A.M. on June 13, 1990") == SysTime(DateTime(1990, 6, 13, 5,
-        50)));
+    assert(parse("5:50 A.M. on June 13, 1990") == SysTime(DateTime(1990, 6, 13, 5, 50)));
     assert(parse("3rd of May 2001") == SysTime(DateTime(2001, 5, 3)));
     assert(parse("5th of March 2001") == SysTime(DateTime(2001, 3, 5)));
     assert(parse("1st of May 2003") == SysTime(DateTime(2003, 5, 1)));
     assert(parse("01h02m03") == SysTime(DateTime(1, 1, 1, 1, 2, 3)));
     assert(parse("01h02") == SysTime(DateTime(1, 1, 1, 1, 2)));
-    //assert(parse("01h02s") == SysTime(DateTime(1, 1, 1, 1, 0, 2)));
+    assert(parse("01h02s") == SysTime(DateTime(1, 1, 1, 1, 0, 2)));
     assert(parse("01m02") == SysTime(DateTime(1, 1, 1, 0, 1, 2)));
-    //assert(parse("01m02h") == SysTime(DateTime(1, 1, 1, 2, 1)));
+    assert(parse("01m02h") == SysTime(DateTime(1, 1, 1, 2, 1)));
     assert(parse("2004 10 Apr 11h30m") == SysTime(DateTime(2004, 4, 10, 11, 30)));
 }
 
@@ -378,6 +374,7 @@ unittest
 
     assert(parsedTime == SysTime(DateTime(2015, 9, 10, 10, 20)));
 }
+// dfmt on
 
 /**
  * Implements the parsing functionality for the parse function. If you are
@@ -387,11 +384,11 @@ unittest
  */
 final class Parser
 {
-    private ParserInfo info;
+    private const ParserInfo info;
 
 public:
     ///
-    this(ParserInfo parserInfo = null)
+    this(const ParserInfo parserInfo = null)
     {
         if (parserInfo is null)
         {
@@ -657,8 +654,8 @@ private:
                 //Check if it's a number
                 Nullable!float value;
                 string value_repr;
-                version(dateparser_test) writeln("i: ", i);
-                version(dateparser_test) writeln("li: ", tokens[i]);
+                version(dateparser_test) writeln("index: ", i);
+                version(dateparser_test) writeln("tokens[i]: ", tokens[i]);
 
                 try
                 {
