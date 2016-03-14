@@ -374,6 +374,12 @@ unittest
 
     assert(parsedTime == SysTime(DateTime(2015, 9, 10, 10, 20)));
 }
+
+unittest // Issue #1
+{
+    assert(parse("Sat, 12 Mar 2016 01:30:59 -0900", null, true) == SysTime(
+        DateTime(2016, 3, 12, 01, 30, 59)));
+}
 // dfmt on
 
 /**
@@ -1135,15 +1141,18 @@ private:
 
                     res.tzoffset *= signal;
 
-                    //Look for a timezone name between parenthesis
-                    itemUpper = tokens[i + 2].filter!(a => !isUpper(a)).array;
-                    if (i + 3 < tokensLength && info.jump(tokens[i]) && tokens[i + 1] == "("
+                    //Look for a timezone name between parenthesis2
+                    if (i + 3 < tokensLength)
+                    {
+                        itemUpper = tokens[i + 2].filter!(a => !isUpper(a)).array;
+                        if (info.jump(tokens[i]) && tokens[i + 1] == "("
                             && tokens[i + 3] == ")" && 3 <= tokens[i + 2].length
                             && tokens[i + 2].length <= 5 && itemUpper.length == 0)
-                    {
-                        //-0300 (BRST)
-                        res.tzname = tokens[i + 2];
-                        i += 4;
+                        {
+                            //-0300 (BRST)
+                            res.tzname = tokens[i + 2];
+                            i += 4;
+                        }
                     }
                     continue;
                 }

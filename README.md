@@ -35,10 +35,10 @@ void main()
 
 In order of importance:
 
-- [] Pass all tests
-- [] make interface more idiomatic D, which includes
-- [] range-ify interface
-- [] remove as many GC allocations as possible
-- [] get at least 6x faster than the Python version
+- Pass all tests
+- make interface more idiomatic D, which includes
+- range-ify interface
+- remove as many GC allocations as possible
+- get at least 6x faster than the Python version
 
 I will consider this library at 1.0.0 when the first three happen.
