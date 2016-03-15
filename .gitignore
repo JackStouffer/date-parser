@@ -13,3 +13,4 @@ bench
 *.log
 docdir/
 gh-pages/
+dub.selections.json

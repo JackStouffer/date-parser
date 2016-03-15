@@ -230,10 +230,10 @@ unittest
 unittest
 {
     assert(parse("2003-09-25") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("2003-Sep-25") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("25-Sep-2003") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("25-Sep-2003") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("Sep-25-2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("2003-Sep-25") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25-Sep-2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25-Sep-2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("Sep-25-2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("09-25-2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("25-09-2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("10-09-2003", null, false, null, true) == SysTime(DateTime(2003, 9, 10)));
@@ -246,10 +246,10 @@ unittest
 unittest
 {
     assert(parse("2003.09.25") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("2003.Sep.25") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("25.Sep.2003") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("25.Sep.2003") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("Sep.25.2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("2003.Sep.25") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25.Sep.2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25.Sep.2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("Sep.25.2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("09.25.2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("25.09.2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("10.09.2003", null, false, null, true) == SysTime(DateTime(2003, 9, 10)));
@@ -262,10 +262,10 @@ unittest
 unittest
 {
     assert(parse("2003/09/25") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("2003/Sep/25") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("25/Sep/2003") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("25/Sep/2003") == SysTime(DateTime(2003, 9, 25)));
-    //assert(parse("Sep/25/2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("2003/Sep/25") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25/Sep/2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("25/Sep/2003") == SysTime(DateTime(2003, 9, 25)));
+    assert(parse("Sep/25/2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("09/25/2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("25/09/2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("10/09/2003", null, false, null, true) == SysTime(DateTime(2003, 9, 10)));
@@ -278,15 +278,15 @@ unittest
 unittest
 {
     assert(parse("Wed, July 10, '96") == SysTime(DateTime(1996, 7, 10, 0, 0)));
-    //assert(parse("1996.07.10 AD at 15:08:56 PDT", null, true) == SysTime(
-        //DateTime(1996, 7, 10, 15, 8, 56)));
-    //assert(parse("1996.July.10 AD 12:08 PM") == SysTime(DateTime(1996, 7, 10, 12, 8)));
-    //assert(parse("Tuesday, April 12, 1952 AD 3:30:42pm PST", null, true) == SysTime(
-        //DateTime(1952, 4, 12, 15, 30, 42)));
-    //assert(parse("November 5, 1994, 8:15:30 am EST", null, true) == SysTime(
-        //DateTime(1994, 11, 5, 8, 15, 30)));
-    //assert(parse("1994-11-05T08:15:30-05:00", null, true) == SysTime(
-        //DateTime(1994, 11, 5, 8, 15, 30)));
+    assert(parse("1996.07.10 AD at 15:08:56 PDT", null, true) == SysTime(
+        DateTime(1996, 7, 10, 15, 8, 56)));
+    assert(parse("1996.July.10 AD 12:08 PM") == SysTime(DateTime(1996, 7, 10, 12, 8)));
+    assert(parse("Tuesday, April 12, 1952 AD 3:30:42pm PST", null, true) == SysTime(
+        DateTime(1952, 4, 12, 15, 30, 42)));
+    assert(parse("November 5, 1994, 8:15:30 am EST", null, true) == SysTime(
+        DateTime(1994, 11, 5, 8, 15, 30)));
+    assert(parse("1994-11-05T08:15:30-05:00", null, true) == SysTime(
+        DateTime(1994, 11, 5, 8, 15, 30)));
     assert(parse("1994-11-05T08:15:30Z", null, true) == SysTime(
         DateTime(1994, 11, 5, 8, 15, 30)));
     assert(parse("July 4, 1976") == SysTime(DateTime(1976, 7, 4)));
@@ -327,8 +327,9 @@ unittest
     assert(parse("Sep 03") == SysTime(DateTime(1, 9, 3)));
     assert(parse("Sep of 03") == SysTime(DateTime(2003, 9, 1)));
     //assert(parse("Wed") == SysTime(DateTime(1, 1, 1)));
-    //assert(parse("Wednesday") == SysTime(DateTime(2003, 10, 1)));
+    //assert(parse("Wednesday") == SysTime(DateTime(1, 1, 2)));
     assert(parse("October") == SysTime(DateTime(1, 10, 1)));
+    // Century specified
     //assert(parse("31-Dec-00") == SysTime(DateTime(2000, 12, 31)));
 }
 
@@ -630,9 +631,8 @@ private:
     *
     * Params:
     *     timeString = the string to parse.
-    *     dayFirst = 
-    *     Whether to interpret the first value in an ambiguous 3-integer date
-    *     (e.g. 01/05/09) as the day (true) or month (false). If
+    *     dayFirst = Whether to interpret the first value in an ambiguous
+    *     3-integer date (e.g. 01/05/09) as the day (true) or month (false). If
     *     yearFirst is set to true, this distinguishes between YDM
     *     and YMD. If set to null, this value is retrieved from the
     *     current :class:ParserInfo object (which itself defaults to
@@ -660,175 +660,119 @@ private:
         //consecutively skipped tokens (-2 for when i begins at 0).
         int last_skipped_token_i = -2;
 
-        try
+        //year/month/day list
+        auto ymd = YMD(timeString);
+
+        //Index of the month string in ymd
+        long mstridx = -1;
+
+        immutable size_t tokensLength = tokens.length;
+        version(dateparser_test) writeln("tokensLength: ", tokensLength);
+        uint i = 0;
+        while (i < tokensLength)
         {
-            //year/month/day list
-            auto ymd = YMD(timeString);
+            //Check if it's a number
+            Nullable!float value;
+            string value_repr;
+            version(dateparser_test) writeln("index: ", i);
+            version(dateparser_test) writeln("tokens[i]: ", tokens[i]);
 
-            //Index of the month string in ymd
-            long mstridx = -1;
-
-            immutable size_t tokensLength = tokens.length;
-            version(dateparser_test) writeln("tokensLength: ", tokensLength);
-            uint i = 0;
-            while (i < tokensLength)
+            try
             {
-                //Check if it's a number
-                Nullable!float value;
-                string value_repr;
-                version(dateparser_test) writeln("index: ", i);
-                version(dateparser_test) writeln("tokens[i]: ", tokens[i]);
+                value_repr = tokens[i];
+                version(dateparser_test) writeln("value_repr: ", value_repr);
+                value = to!float(value_repr);
+            }
+            catch (ConvException)
+            {
+                value.nullify();
+            }
 
-                try
-                {
-                    value_repr = tokens[i];
-                    version(dateparser_test) writeln("value_repr: ", value_repr);
-                    value = to!float(value_repr);
-                }
-                catch (Exception)
-                {
-                    value.nullify();
-                }
+            //Token is a number
+            if (!value.isNull())
+            {
+                immutable tokensItemLength = tokens[i].length;
+                ++i;
 
-                //Token is a number
-                if (!value.isNull())
+                if (ymd.length == 3 && (tokensItemLength == 2 || tokensItemLength == 4)
+                        && res.hour.isNull && (i >= tokensLength || (tokens[i] != ":"
+                        && info.hms(tokens[i]) == -1)))
                 {
-                    immutable tokensItemLength = tokens[i].length;
-                    ++i;
+                    version(dateparser_test) writeln("branch 1");
+                    //19990101T23[59]
+                    auto s = tokens[i - 1];
+                    res.hour = to!int(s[0 .. 2]);
 
-                    if (ymd.length == 3 && (tokensItemLength == 2 || tokensItemLength == 4)
-                            && res.hour.isNull && (i >= tokensLength || (tokens[i] != ":"
-                            && info.hms(tokens[i]) == -1)))
+                    if (tokensItemLength == 4)
                     {
-                        version(dateparser_test) writeln("branch 1");
-                        //19990101T23[59]
-                        auto s = tokens[i - 1];
+                        res.minute = to!int(s[2 .. $]);
+                    }
+                }
+                else if (tokensItemLength == 6 || (tokensItemLength > 6 && tokens[i - 1].indexOf(".") == 6))
+                {
+                    version(dateparser_test) writeln("branch 2");
+                    //YYMMDD || HHMMSS[.ss]
+                    auto s = tokens[i - 1];
+
+                    if (ymd.length == 0 && tokens[i - 1].indexOf('.') == -1)
+                    {
+                        ymd.put(s[0 .. 2]);
+                        ymd.put(s[2 .. 4]);
+                        ymd.put(s[4 .. $]);
+                    }
+                    else
+                    {
+                        //19990101T235959[.59]
                         res.hour = to!int(s[0 .. 2]);
+                        res.minute = to!int(s[2 .. 4]);
+                        res.second = parseMS(s[4 .. $])[0];
+                        res.microsecond = parseMS(s[4 .. $])[1];
+                    }
+                }
+                else if (tokensItemLength == 8 || tokensItemLength == 12 || tokensItemLength == 14)
+                {
+                    version(dateparser_test) writeln("branch 3");
+                    //YYYYMMDD
+                    auto s = tokens[i - 1];
+                    ymd.put(s[0 .. 4]);
+                    ymd.put(s[4 .. 6]);
+                    ymd.put(s[6 .. 8]);
 
-                        if (tokensItemLength == 4)
+                    if (tokensItemLength > 8)
+                    {
+                        res.hour = to!int(s[8 .. 10]);
+                        res.minute = to!int(s[10 .. 12]);
+
+                        if (tokensItemLength > 12)
                         {
-                            res.minute = to!int(s[2 .. $]);
+                            res.second = to!int(s[12 .. $]);
                         }
                     }
-                    else if (tokensItemLength == 6 || (tokensItemLength > 6 && tokens[i - 1].indexOf(".") == 6))
+                }
+                else if ((i < tokensLength && info.hms(tokens[i]) > -1)
+                        || (i + 1 < tokensLength && tokens[i] == " " && info.hms(tokens[i + 1]) > -1))
+                {
+                    version(dateparser_test) writeln("branch 4");
+                    //HH[ ]h or MM[ ]m or SS[.ss][ ]s
+                    if (tokens[i] == " ")
                     {
-                        version(dateparser_test) writeln("branch 2");
-                        //YYMMDD || HHMMSS[.ss]
-                        auto s = tokens[i - 1];
-
-                        if (ymd.length == 0 && tokens[i - 1].indexOf('.') == -1)
-                        {
-                            ymd.put(s[0 .. 2]);
-                            ymd.put(s[2 .. 4]);
-                            ymd.put(s[4 .. $]);
-                        }
-                        else
-                        {
-                            //19990101T235959[.59]
-                            res.hour = to!int(s[0 .. 2]);
-                            res.minute = to!int(s[2 .. 4]);
-                            res.second = parseMS(s[4 .. $])[0];
-                            res.microsecond = parseMS(s[4 .. $])[1];
-                        }
+                        ++i;
                     }
-                    else if (tokensItemLength == 8 || tokensItemLength == 12 || tokensItemLength == 14)
+
+                    auto idx = info.hms(tokens[i]);
+
+                    while (true)
                     {
-                        version(dateparser_test) writeln("branch 3");
-                        //YYYYMMDD
-                        auto s = tokens[i - 1];
-                        ymd.put(s[0 .. 4]);
-                        ymd.put(s[4 .. 6]);
-                        ymd.put(s[6 .. 8]);
-
-                        if (tokensItemLength > 8)
+                        if (idx == 0)
                         {
-                            res.hour = to!int(s[8 .. 10]);
-                            res.minute = to!int(s[10 .. 12]);
+                            res.hour = to!int(value.get());
 
-                            if (tokensItemLength > 12)
+                            if (value % 1)
                             {
-                                res.second = to!int(s[12 .. $]);
+                                res.minute = to!int(60 * (value % 1));
                             }
                         }
-                    }
-                    else if ((i < tokensLength && info.hms(tokens[i]) > -1)
-                            || (i + 1 < tokensLength && tokens[i] == " " && info.hms(tokens[i + 1]) > -1))
-                    {
-                        version(dateparser_test) writeln("branch 4");
-                        //HH[ ]h or MM[ ]m or SS[.ss][ ]s
-                        if (tokens[i] == " ")
-                        {
-                            ++i;
-                        }
-
-                        auto idx = info.hms(tokens[i]);
-
-                        while (true)
-                        {
-                            if (idx == 0)
-                            {
-                                res.hour = to!int(value.get());
-
-                                if (value % 1)
-                                {
-                                    res.minute = to!int(60 * (value % 1));
-                                }
-                            }
-                            else if (idx == 1)
-                            {
-                                res.minute = to!int(value.get());
-
-                                if (value % 1)
-                                {
-                                    res.second = to!int(60 * (value % 1));
-                                }
-                            }
-                            else if (idx == 2)
-                            {
-                                auto temp = parseMS(value_repr);
-                                res.second = temp[0];
-                                res.microsecond = temp[1];
-                            }
-
-                            ++i;
-
-                            if (i >= tokensLength || idx == 2)
-                            {
-                                break;
-                            }
-
-                            //12h00
-                            try
-                            {
-                                value_repr = tokens[i];
-                                value = to!float(value_repr);
-                            }
-                            catch (ConvException)
-                            {
-                                break;
-                            }
-
-                            ++i;
-                            ++idx;
-
-                            if (i < tokensLength)
-                            {
-                                immutable newidx = info.hms(tokens[i]);
-
-                                if (newidx > -1)
-                                {
-                                    idx = newidx;
-                                }
-                            }
-                        }
-                    }
-                    else if (i == tokensLength && tokensLength > 3 && tokens[i - 2] == " " && info.hms(tokens[i - 3]) > -1)
-                    {
-                        version(dateparser_test) writeln("branch 5");
-                        //X h MM or X m SS
-                        immutable idx = info.hms(tokens[i - 3]) + 1;
-
-                        if (idx == 1)
+                        else if (idx == 1)
                         {
                             res.minute = to!int(value.get());
 
@@ -836,387 +780,426 @@ private:
                             {
                                 res.second = to!int(60 * (value % 1));
                             }
-                            else if (idx == 2)
+                        }
+                        else if (idx == 2)
+                        {
+                            auto temp = parseMS(value_repr);
+                            res.second = temp[0];
+                            res.microsecond = temp[1];
+                        }
+
+                        ++i;
+
+                        if (i >= tokensLength || idx == 2)
+                        {
+                            break;
+                        }
+
+                        //12h00
+                        try
+                        {
+                            value_repr = tokens[i];
+                            value = to!float(value_repr);
+                        }
+                        catch (ConvException)
+                        {
+                            break;
+                        }
+
+                        ++i;
+                        ++idx;
+
+                        if (i < tokensLength)
+                        {
+                            immutable newidx = info.hms(tokens[i]);
+
+                            if (newidx > -1)
                             {
-                                //FIXME
-                                auto temp = parseMS(value_repr);
-                                res.second = temp[0];
-                                res.microsecond = temp[1];
-                                ++i;
+                                idx = newidx;
                             }
                         }
                     }
-                    else if (i + 1 < tokensLength && tokens[i] == ":")
+                }
+                else if (i == tokensLength && tokensLength > 3 && tokens[i - 2] == " " && info.hms(tokens[i - 3]) > -1)
+                {
+                    version(dateparser_test) writeln("branch 5");
+                    //X h MM or X m SS
+                    immutable idx = info.hms(tokens[i - 3]) + 1;
+
+                    if (idx == 1)
                     {
-                        version(dateparser_test) writeln("branch 6");
-                        //HH:MM[:SS[.ss]]
-                        res.hour = to!int(value.get());
-                        ++i;
-                        value = to!float(tokens[i]);
                         res.minute = to!int(value.get());
 
                         if (value % 1)
                         {
                             res.second = to!int(60 * (value % 1));
                         }
-
-                        ++i;
-
-                        if (i < tokensLength && tokens[i] == ":")
+                        else if (idx == 2)
                         {
-                            auto temp = parseMS(tokens[i + 1]);
-                            res.second = temp[0];
-                            res.microsecond = temp[1];
-                            i += 2;
-                        }
-                    }
-                    else if (i < tokensLength && (tokens[i] == "-" || tokens[i] == "/" || tokens[i] == "."))
-                    {
-                        version(dateparser_test) writeln("branch 7");
-                        immutable string sep = tokens[i];
-                        ymd.put(value_repr);
-                        ++i;
-
-                        if (i < tokensLength && !info.jump(tokens[i]))
-                        {
-                            try
-                            {
-                                //01-01[-01]
-                                ymd.put(tokens[i]);
-                            }
-                            catch (Exception)
-                            {
-                                //01-Jan[-01]
-                                value = info.month(tokens[i]);
-
-                                if (value.isNull())
-                                {
-                                    ymd.put(value.get());
-                                    assert(mstridx == -1);
-                                    mstridx = to!long(ymd.length == 0 ? 0 : ymd.length - 1);
-                                }
-                                else
-                                {
-                                    return cast(Result) null;
-                                }
-                            }
-
-                            ++i;
-
-                            if (i < tokensLength && tokens[i] == sep)
-                            {
-                                //We have three members
-                                ++i;
-                                value = info.month(tokens[i]);
-
-                                if (value > -1)
-                                {
-                                    ymd.put(value.get());
-                                    mstridx = ymd.length - 1;
-                                    assert(mstridx == -1);
-                                }
-                                else
-                                {
-                                    ymd.put(tokens[i]);
-                                }
-
-                                ++i;
-                            }
-                        }
-                    }
-                    else if (i >= tokensLength || info.jump(tokens[i]))
-                    {
-                        version(dateparser_test) writeln("branch 8");
-                        if (i + 1 < tokensLength && info.ampm(tokens[i + 1]) > -1)
-                        {
-                            //12 am
-                            res.hour = to!int(value.get());
-
-                            if (res.hour < 12 && info.ampm(tokens[i + 1]) == 1)
-                            {
-                                res.hour += 12;
-                            }
-                            else if (res.hour == 12 && info.ampm(tokens[i + 1]) == 0)
-                            {
-                                res.hour = 0;
-                            }
-
+                            auto seconds = parseMS(value_repr);
+                            res.second = seconds[0];
+                            res.microsecond = seconds[1];
                             ++i;
                         }
-                        else
-                        {
-                            //Year, month or day
-                            ymd.put(value.get());
-                        }
-                        ++i;
                     }
-                    else if (info.ampm(tokens[i]) > -1)
-                    {
-                        version(dateparser_test) writeln("branch 9");
-                        //12am
-                        res.hour = to!int(value.get());
-                        if (res.hour < 12 && info.ampm(tokens[i]) == 1)
-                        {
-                            res.hour += 12;
-                        }
-                        else if (res.hour == 12 && info.ampm(tokens[i]) == 0)
-                        {
-                            res.hour = 0;
-                        }
-                        ++i;
-                    }
-                    else if (!fuzzy)
-                    {
-                        version(dateparser_test) writeln("branch 10");
-                        return cast(Result) null;
-                    }
-                    else
-                    {
-                        version(dateparser_test) writeln("branch 11");
-                        ++i;
-                    }
-                    continue;
                 }
-
-                //Check weekday
-                value = info.weekday(tokens[i]);
-                if (value > -1)
+                else if (i + 1 < tokensLength && tokens[i] == ":")
                 {
-                    version(dateparser_test) writeln("branch 12");
-                    res.weekday = to!uint(value.get());
+                    version(dateparser_test) writeln("branch 6");
+                    //HH:MM[:SS[.ss]]
+                    res.hour = to!int(value.get());
                     ++i;
-                    continue;
-                }
+                    value = to!float(tokens[i]);
+                    res.minute = to!int(value.get());
 
-
-                //Check month name
-                value = info.month(tokens[i]);
-                if (value > -1)
-                {
-                    version(dateparser_test) writeln("branch 13");
-                    ymd.put(value);
-                    assert(mstridx == -1);
-                    mstridx = ymd.length - 1;
-
-                    ++i;
-                    if (i < tokensLength)
+                    if (value % 1)
                     {
-                        if (tokens[i] == "-" || tokens[i] == "/")
-                        {
-                            //Jan-01[-99]
-                            immutable string sep = tokens[i].dup;
-                            ++i;
-                            ymd.put(tokens[i]);
-                            ++i;
-
-                            if (i < tokensLength && tokens[i] == sep)
-                            {
-                                //Jan-01-99
-                                ++i;
-                                ymd.put(tokens[i]);
-                                ++i;
-                            }
-                        }
-                        else if (i + 3 < tokensLength && tokens[i] == " " && tokens[i + 2] == " "
-                                && info.pertain(tokens[i + 1]))
-                        {
-                            //Jan of 01
-                            //In this case, 01 is clearly year
-                            try
-                            {
-                                value = to!int(tokens[i + 3]);
-                                //Convert it here to become unambiguous
-                                ymd.put(info.convertYear(value.get.to!int()).to!string);
-                            }
-                            catch (Exception) {}
-                            i += 4;
-                        }
-                    }
-                    continue;
-                }
-
-                //Check am/pm
-                value = info.ampm(tokens[i]);
-                if (value > -1)
-                {
-                    version(dateparser_test) writeln("branch 14");
-                    //For fuzzy parsing, 'a' or 'am' (both valid English words)
-                    //may erroneously trigger the AM/PM flag. Deal with that
-                    //here.
-                    bool valIsAMPM = true;
-
-                    //If there's already an AM/PM flag, this one isn't one.
-                    if (fuzzy && res.ampm > -1)
-                    {
-                        valIsAMPM = false;
-                    }
-
-                    //If AM/PM is found and hour is not, raise a ValueError
-                    if (res.hour.isNull)
-                    {
-                        if (fuzzy)
-                        {
-                            valIsAMPM = false;
-                        }
-                        else
-                        {
-                            throw new ConvException("No hour specified with AM or PM flag.");
-                        }
-                    }
-                    else if (!(0 <= res.hour && res.hour <= 12))
-                    {
-                        //If AM/PM is found, it's a 12 hour clock, so raise 
-                        //an error for invalid range
-                        if (fuzzy)
-                        {
-                            valIsAMPM = false;
-                        }
-                        else
-                        {
-                            throw new ConvException("Invalid hour specified for 12-hour clock.");
-                        }
-                    }
-
-                    if (valIsAMPM)
-                    {
-                        if (value == 1 && res.hour < 12)
-                        {
-                            res.hour += 12;
-                        }
-                        else if (value == 0 && res.hour == 12)
-                        {
-                            res.hour = 0;
-                        }
-
-                        res.ampm = to!uint(value.get());
+                        res.second = to!int(60 * (value % 1));
                     }
 
                     ++i;
-                    continue;
-                }
 
-                //Check for a timezone name
-                auto itemUpper = tokens[i].filter!(a => !isUpper(a)).array;
-                if (!res.hour.isNull && tokens[i].length <= 5 && res.tzname.length == 0
-                        && res.tzoffset.isNull && itemUpper.length == 0)
-                {
-                    version(dateparser_test) writeln("branch 15");
-                    res.tzname = tokens[i];
-                    res.tzoffset = info.tzoffset(res.tzname);
-                    ++i;
-
-                    //Check for something like GMT+3, or BRST+3. Notice
-                    //that it doesn't mean "I am 3 hours after GMT", but
-                    //"my time +3 is GMT". If found, we reverse the
-                    //logic so that timezone parsing code will get it
-                    //right.
-                    if (i < tokensLength && (tokens[i] == "+" || tokens[i] == "-"))
+                    if (i < tokensLength && tokens[i] == ":")
                     {
-                        tokens[i] = tokens[i] == "+" ? "-" : "+";
-                        res.tzoffset = 0;
-                        if (info.utczone(res.tzname))
-                        {
-                            //With something like GMT+3, the timezone
-                            //is *not* GMT.
-                            res.tzname = [];
-                        }
-                    }
-
-                    continue;
-                }
-
-                //Check for a numbered timezone
-                if (!res.hour.isNull && (tokens[i] == "+" || tokens[i] == "-"))
-                {
-                    version(dateparser_test) writeln("branch 16");
-                    immutable int signal = tokens[i] == "+" ? 1 : -1;
-                    ++i;
-                    immutable size_t tokensItemLength = tokens[i].length;
-
-                    if (tokensItemLength == 4)
-                    {
-                        //-0300
-                        res.tzoffset = to!int(tokens[i][0 .. 2]) * 3600 + to!int(tokens[i][2 .. $]) * 60;
-                    }
-                    else if (i + 1 < tokensLength && tokens[i + 1] == ":")
-                    {
-                        //-03:00
-                        res.tzoffset = to!int(tokens[i]) * 3600 + to!int(tokens[i + 2]) * 60;
+                        auto temp = parseMS(tokens[i + 1]);
+                        res.second = temp[0];
+                        res.microsecond = temp[1];
                         i += 2;
                     }
-                    else if (tokensItemLength <= 2)
+                }
+                else if (i < tokensLength && (tokens[i] == "-" || tokens[i] == "/" || tokens[i] == "."))
+                {
+                    version(dateparser_test) writeln("branch 7");
+                    immutable string separator = tokens[i];
+                    ymd.put(value_repr);
+                    ++i;
+
+                    if (i < tokensLength && !info.jump(tokens[i]))
                     {
-                        //-[0]3
-                        res.tzoffset = to!int(tokens[i][0 .. 2]) * 3600;
+                        try
+                        {
+                            //01-01[-01]
+                            ymd.put(tokens[i]);
+                        }
+                        catch (Exception)
+                        {
+                            //01-Jan[-01]
+                            value = info.month(tokens[i]);
+
+                            if (!value.isNull())
+                            {
+                                ymd.put(value.get());
+                                assert(mstridx == -1);
+                                mstridx = to!long(ymd.length == 0 ? 0 : ymd.length - 1);
+                            }
+                            else
+                            {
+                                return cast(Result) null;
+                            }
+                        }
+
+                        ++i;
+
+                        if (i < tokensLength && tokens[i] == separator)
+                        {
+                            //We have three members
+                            ++i;
+                            value = info.month(tokens[i]);
+
+                            if (value > -1)
+                            {
+                                ymd.put(value.get());
+                                mstridx = ymd.length - 1;
+                                assert(mstridx == -1);
+                            }
+                            else
+                            {
+                                ymd.put(tokens[i]);
+                            }
+
+                            ++i;
+                        }
+                    }
+                }
+                else if (i >= tokensLength || info.jump(tokens[i]))
+                {
+                    version(dateparser_test) writeln("branch 8");
+                    if (i + 1 < tokensLength && info.ampm(tokens[i + 1]) > -1)
+                    {
+                        //12 am
+                        res.hour = to!int(value.get());
+
+                        if (res.hour < 12 && info.ampm(tokens[i + 1]) == 1)
+                        {
+                            res.hour += 12;
+                        }
+                        else if (res.hour == 12 && info.ampm(tokens[i + 1]) == 0)
+                        {
+                            res.hour = 0;
+                        }
+
+                        ++i;
                     }
                     else
                     {
-                        return cast(Result) null;
+                        //Year, month or day
+                        ymd.put(value.get());
                     }
                     ++i;
-
-                    res.tzoffset *= signal;
-
-                    //Look for a timezone name between parenthesis2
-                    if (i + 3 < tokensLength)
+                }
+                else if (info.ampm(tokens[i]) > -1)
+                {
+                    version(dateparser_test) writeln("branch 9");
+                    //12am
+                    res.hour = to!int(value.get());
+                    if (res.hour < 12 && info.ampm(tokens[i]) == 1)
                     {
-                        itemUpper = tokens[i + 2].filter!(a => !isUpper(a)).array;
-                        if (info.jump(tokens[i]) && tokens[i + 1] == "("
-                            && tokens[i + 3] == ")" && 3 <= tokens[i + 2].length
-                            && tokens[i + 2].length <= 5 && itemUpper.length == 0)
-                        {
-                            //-0300 (BRST)
-                            res.tzname = tokens[i + 2];
-                            i += 4;
-                        }
+                        res.hour += 12;
                     }
-                    continue;
+                    else if (res.hour == 12 && info.ampm(tokens[i]) == 0)
+                    {
+                        res.hour = 0;
+                    }
+                    ++i;
                 }
-
-                //Check jumps
-                if (!(info.jump(tokens[i]) || fuzzy))
+                else if (!fuzzy)
                 {
-                    version(dateparser_test) writeln("branch 17");
+                    version(dateparser_test) writeln("branch 10");
                     return cast(Result) null;
-                }
-
-                if (last_skipped_token_i == i - 1)
-                {
-                    version(dateparser_test) writeln("branch 18");
                 }
                 else
                 {
-                    version(dateparser_test) writeln("branch 19");
+                    version(dateparser_test) writeln("branch 11");
+                    ++i;
                 }
-                last_skipped_token_i = i;
+                continue;
+            }
+
+            //Check weekday
+            value = info.weekday(tokens[i]);
+            if (value > -1)
+            {
+                version(dateparser_test) writeln("branch 12");
+                res.weekday = to!uint(value.get());
                 ++i;
-            }
-            //Process year/month/day
-            //FIXME
-            auto temp = ymd.resolveYMD(mstridx, yearFirst, dayFirst); // FIXME
-            auto year = temp[0];
-            auto month = temp[1];
-            auto day = temp[2];
-
-            if (year > 0)
-            {
-                res.year = year;
-                res.centurySpecified = ymd.centurySpecified;
+                continue;
             }
 
-            if (month > 0)
+
+            //Check month name
+            value = info.month(tokens[i]);
+            if (value > -1)
             {
-                res.month = month;
+                version(dateparser_test) writeln("branch 13");
+                ymd.put(value);
+                assert(mstridx == -1);
+                mstridx = ymd.length - 1;
+
+                ++i;
+                if (i < tokensLength)
+                {
+                    if (tokens[i] == "-" || tokens[i] == "/")
+                    {
+                        //Jan-01[-99]
+                        immutable string separator = tokens[i].dup;
+                        ++i;
+                        ymd.put(tokens[i]);
+                        ++i;
+
+                        if (i < tokensLength && tokens[i] == separator)
+                        {
+                            //Jan-01-99
+                            ++i;
+                            ymd.put(tokens[i]);
+                            ++i;
+                        }
+                    }
+                    else if (i + 3 < tokensLength && tokens[i] == " " && tokens[i + 2] == " "
+                            && info.pertain(tokens[i + 1]))
+                    {
+                        //Jan of 01
+                        //In this case, 01 is clearly year
+                        try
+                        {
+                            value = to!int(tokens[i + 3]);
+                            //Convert it here to become unambiguous
+                            ymd.put(info.convertYear(value.get.to!int()).to!string);
+                        }
+                        catch (Exception) {}
+                        i += 4;
+                    }
+                }
+                continue;
             }
 
-            if (day > 0)
+            //Check am/pm
+            value = info.ampm(tokens[i]);
+            if (value > -1)
             {
-                res.day = day;
+                version(dateparser_test) writeln("branch 14");
+                //For fuzzy parsing, 'a' or 'am' (both valid English words)
+                //may erroneously trigger the AM/PM flag. Deal with that
+                //here.
+                bool valIsAMPM = true;
+
+                //If there's already an AM/PM flag, this one isn't one.
+                if (fuzzy && res.ampm > -1)
+                {
+                    valIsAMPM = false;
+                }
+
+                //If AM/PM is found and hour is not, raise a ValueError
+                if (res.hour.isNull)
+                {
+                    if (fuzzy)
+                    {
+                        valIsAMPM = false;
+                    }
+                    else
+                    {
+                        throw new ConvException("No hour specified with AM or PM flag.");
+                    }
+                }
+                else if (!(0 <= res.hour && res.hour <= 12))
+                {
+                    //If AM/PM is found, it's a 12 hour clock, so raise 
+                    //an error for invalid range
+                    if (fuzzy)
+                    {
+                        valIsAMPM = false;
+                    }
+                    else
+                    {
+                        throw new ConvException("Invalid hour specified for 12-hour clock.");
+                    }
+                }
+
+                if (valIsAMPM)
+                {
+                    if (value == 1 && res.hour < 12)
+                    {
+                        res.hour += 12;
+                    }
+                    else if (value == 0 && res.hour == 12)
+                    {
+                        res.hour = 0;
+                    }
+
+                    res.ampm = to!uint(value.get());
+                }
+
+                ++i;
+                continue;
             }
+
+            //Check for a timezone name
+            auto itemUpper = tokens[i].filter!(a => !isUpper(a)).array;
+            if (!res.hour.isNull && tokens[i].length <= 5 && res.tzname.length == 0
+                    && res.tzoffset.isNull && itemUpper.length == 0)
+            {
+                version(dateparser_test) writeln("branch 15");
+                res.tzname = tokens[i];
+                res.tzoffset = info.tzoffset(res.tzname);
+                ++i;
+
+                //Check for something like GMT+3, or BRST+3. Notice
+                //that it doesn't mean "I am 3 hours after GMT", but
+                //"my time +3 is GMT". If found, we reverse the
+                //logic so that timezone parsing code will get it
+                //right.
+                if (i < tokensLength && (tokens[i] == "+" || tokens[i] == "-"))
+                {
+                    tokens[i] = tokens[i] == "+" ? "-" : "+";
+                    res.tzoffset = 0;
+                    if (info.utczone(res.tzname))
+                    {
+                        //With something like GMT+3, the timezone
+                        //is *not* GMT.
+                        res.tzname = [];
+                    }
+                }
+
+                continue;
+            }
+
+            //Check for a numbered timezone
+            if (!res.hour.isNull && (tokens[i] == "+" || tokens[i] == "-"))
+            {
+                version(dateparser_test) writeln("branch 16");
+                immutable int signal = tokens[i] == "+" ? 1 : -1;
+                ++i;
+                immutable size_t tokensItemLength = tokens[i].length;
+
+                if (tokensItemLength == 4)
+                {
+                    //-0300
+                    res.tzoffset = to!int(tokens[i][0 .. 2]) * 3600 + to!int(tokens[i][2 .. $]) * 60;
+                }
+                else if (i + 1 < tokensLength && tokens[i + 1] == ":")
+                {
+                    //-03:00
+                    res.tzoffset = to!int(tokens[i]) * 3600 + to!int(tokens[i + 2]) * 60;
+                    i += 2;
+                }
+                else if (tokensItemLength <= 2)
+                {
+                    //-[0]3
+                    res.tzoffset = to!int(tokens[i][0 .. 2]) * 3600;
+                }
+                else
+                {
+                    return cast(Result) null;
+                }
+                ++i;
+
+                res.tzoffset *= signal;
+
+                //Look for a timezone name between parenthesis2
+                if (i + 3 < tokensLength)
+                {
+                    itemUpper = tokens[i + 2].filter!(a => !isUpper(a)).array;
+                    if (info.jump(tokens[i]) && tokens[i + 1] == "("
+                        && tokens[i + 3] == ")" && 3 <= tokens[i + 2].length
+                        && tokens[i + 2].length <= 5 && itemUpper.length == 0)
+                    {
+                        //-0300 (BRST)
+                        res.tzname = tokens[i + 2];
+                        i += 4;
+                    }
+                }
+                continue;
+            }
+
+            //Check jumps
+            if (!(info.jump(tokens[i]) || fuzzy))
+            {
+                version(dateparser_test) writeln("branch 17");
+                return cast(Result) null;
+            }
+
+            last_skipped_token_i = i;
+            ++i;
         }
-        catch (Exception)
+
+        auto ymdResult = ymd.resolveYMD(mstridx, yearFirst, dayFirst);
+
+        // year
+        if (ymdResult[0] > 0)
         {
-            return cast(Result) null;
+            res.year = ymdResult[0];
+            res.centurySpecified = ymd.centurySpecified;
+        }
+
+        // month
+        if (ymdResult[1] > 0)
+        {
+            res.month = ymdResult[1];
+        }
+
+        // day
+        if (ymdResult[2] > 0)
+        {
+            res.day = ymdResult[2];
         }
 
         info.validate(res);

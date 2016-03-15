@@ -93,7 +93,6 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
 
             if (!charstack.empty)
             {
-                version(dateparser_test) writeln("charstack aaa: ", charstack);
                 nextChar = charstack.front;
                 charstack.popFront;
             }
@@ -250,7 +249,6 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
         while (true)
         {
             immutable element = get_token();
-            version(dateparser_test) writeln("get_token ", element);
 
             if (element.length != 0)
                 data ~= element;
