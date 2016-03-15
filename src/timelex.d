@@ -7,6 +7,42 @@ import std.traits;
 
 private enum split_decimal = ctRegex!(`([\.,])`);
 
+// FIXME
+/**
+ * Split a string into an array of strings, split by `pattern`. This keeps
+ * the split points in the final result.
+ *
+ * Params:
+ *     data = the string to split
+ *     pattern = the regex patter to match
+ *
+ * Returns:
+ *     an array of strings
+ */
+private auto splitWithMatches(S, RegEx)(S data, RegEx pattern)
+    if (isSomeString!S)
+{
+    string[] result;
+    string element;
+
+    foreach (item; data)
+    {
+        if (match("" ~ item, pattern).empty)
+        {
+            element ~= item;
+        }
+        else
+        {
+            result ~= element;
+            result ~= "" ~ item;
+            element = string.init;
+        }
+    }
+
+    result ~= element;
+    return result;
+}
+
 package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(ElementType!Range))
 {
     //Fractional seconds are sometimes split by a comma
@@ -25,30 +61,6 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
     this(Range r)
     {
         instream = r;
-    }
-
-    private auto splitWithMatches(S, RegEx)(S data, RegEx pattern)
-        if (isSomeString!S)
-    {
-        string[] result;
-        string element;
-
-        foreach (item; data)
-        {
-            if (match("" ~ item, pattern).empty)
-            {
-                element ~= item;
-            }
-            else
-            {
-                result ~= element;
-                result ~= "" ~ item;
-                element = string.init;
-            }
-        }
-
-        result ~= element;
-        return result;
     }
 
     /**
@@ -100,12 +112,6 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
             {
                 nextChar = instream.front;
                 instream.popFront;
-
-                while (nextChar == '\x00')
-                {
-                    nextChar = instream.front;
-                    instream.popFront;
-                }
             }
 
             if (state == State.EMPTY)
@@ -242,7 +248,10 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
         return token;
     }
 
-    string[] split() @safe
+    /**
+     * Returns: The tokens of the string
+     */
+    auto tokenize()
     {
         string[] data;
 

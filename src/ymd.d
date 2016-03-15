@@ -218,7 +218,7 @@ package struct YMD
             else
             {
                 if (data[0] > 31
-                        || find_probable_year_index(new TimeLex!string(tzstr).split()) == 0
+                        || find_probable_year_index(new TimeLex!string(tzstr).tokenize()) == 0
                         || (yearfirst && data[1] <= 12 && data[2] <= 31))
                 {
                     //99-01-01

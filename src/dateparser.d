@@ -326,8 +326,8 @@ unittest
 {
     assert(parse("Sep 03") == SysTime(DateTime(1, 9, 3)));
     assert(parse("Sep of 03") == SysTime(DateTime(2003, 9, 1)));
-    //assert(parse("Wed") == SysTime(DateTime(1, 1, 1)));
-    //assert(parse("Wednesday") == SysTime(DateTime(1, 1, 2)));
+    assert(parse("Wed") == SysTime(DateTime(1, 1, 2)));
+    assert(parse("Wednesday") == SysTime(DateTime(1, 1, 2)));
     assert(parse("October") == SysTime(DateTime(1, 10, 1)));
     // Century specified
     //assert(parse("31-Dec-00") == SysTime(DateTime(2000, 12, 31)));
@@ -455,7 +455,8 @@ public:
         }
 
         if (res.year.isNull() && res.month.isNull() && res.day.isNull()
-                && res.hour.isNull() && res.minute.isNull() && res.second.isNull())
+                && res.hour.isNull() && res.minute.isNull() && res.second.isNull()
+                && res.weekday.isNull())
         {
             throw new ConvException("String does not contain a date.");
         }
@@ -653,7 +654,7 @@ private:
         import std.uni : isUpper;
 
         auto res = new Result();
-        string[] tokens = new TimeLex!string(timeString).split(); //Splits the timeString into tokens
+        string[] tokens = new TimeLex!string(timeString).tokenize(); //Splits the timeString into tokens
         version(dateparser_test) writeln("tokens: ", tokens);
 
         //keep up with the last token skipped so we can recombine
