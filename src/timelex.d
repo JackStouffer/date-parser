@@ -22,7 +22,9 @@ private enum split_decimal = ctRegex!(`([\.,])`);
 private auto splitWithMatches(S, RegEx)(S data, RegEx pattern)
     if (isSomeString!S)
 {
-    string[] result;
+    import std.array : appender;
+
+    auto result = appender!(string[])();
     string element;
 
     foreach (item; data)
@@ -33,14 +35,14 @@ private auto splitWithMatches(S, RegEx)(S data, RegEx pattern)
         }
         else
         {
-            result ~= element;
-            result ~= "" ~ item;
+            result.put(element);
+            result.put([item]);
             element = string.init;
         }
     }
 
-    result ~= element;
-    return result;
+    result.put(element);
+    return result.data;
 }
 
 package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(ElementType!Range))

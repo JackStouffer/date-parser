@@ -882,7 +882,7 @@ private:
                             //01-01[-01]
                             ymd.put(tokens[i]);
                         }
-                        catch (Exception)
+                        catch (ConvException)
                         {
                             //01-Jan[-01]
                             value = info.month(tokens[i]);
@@ -1026,7 +1026,7 @@ private:
                             //Convert it here to become unambiguous
                             ymd.put(info.convertYear(value.get.to!int()).to!string);
                         }
-                        catch (Exception) {}
+                        catch (ConvException) {}
                         i += 4;
                     }
                 }
