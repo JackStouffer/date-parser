@@ -21,28 +21,21 @@ private enum split_decimal = ctRegex!(`([\.,])`);
  */
 private auto splitWithMatches(S, RegEx)(S data, RegEx pattern)
     if (isSomeString!S)
+in
 {
-    import std.array : appender;
+    assert(!data.empty);
+}
+body
+{
+    import std.array : array;
+    import std.range : roundRobin;
 
-    auto result = appender!(string[])();
-    string element;
+    auto splitMatches = data.split(pattern);
 
-    foreach (item; data)
-    {
-        if (match("" ~ item, pattern).empty)
-        {
-            element ~= item;
-        }
-        else
-        {
-            result.put(element);
-            result.put([item]);
-            element = string.init;
-        }
-    }
-
-    result.put(element);
-    return result.data;
+    return roundRobin(
+        splitMatches,
+        repeat(".", splitMatches.length > 1 ? splitMatches.length - 1 : 1)
+    ).array;
 }
 
 package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(ElementType!Range))
