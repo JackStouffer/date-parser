@@ -298,7 +298,8 @@ unittest
     assert(parse("12h 01m02s am") == SysTime(DateTime(1, 1, 1, 0, 1, 2)));
     assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
     assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
-    assert(parse("1976-07-04T00:01:02Z", null, true) == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
+    assert(parse("1976-07-04T00:01:02Z", null, true) == SysTime(
+        DateTime(1976, 7, 4, 0, 1, 2)));
     assert(parse("July 4, 1976 12:01:02 am") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
     assert(parse("Mon Jan  2 04:24:27 1995") == SysTime(DateTime(1995, 1, 2, 4, 24, 27)));
     assert(parse("Tue Apr 4 00:22:12 PDT 1995", null, true) == SysTime(
@@ -329,8 +330,7 @@ unittest
     assert(parse("Wed") == SysTime(DateTime(1, 1, 2)));
     assert(parse("Wednesday") == SysTime(DateTime(1, 1, 2)));
     assert(parse("October") == SysTime(DateTime(1, 10, 1)));
-    // Century specified
-    //assert(parse("31-Dec-00") == SysTime(DateTime(2000, 12, 31)));
+    assert(parse("31-Dec-00") == SysTime(DateTime(2000, 12, 31)));
 }
 
 // Fuzzy
@@ -347,7 +347,6 @@ unittest
     auto s5 = "Today is 25 of September of 2003, exactly at 10:49:41 with timezone -03:00.";
     auto s6 = "Jan 29, 1945 14:45 AM I going to see you there?";
 
-    // comma problems
     assert(parse(s1, null, false, null, false, false, true) == SysTime(DateTime(1974, 3, 1)));
     assert(parse(s2, null, false, null, false, false, true) == SysTime(DateTime(2020, 6, 8)));
     assert(parse(s3, null, false, null, false, false, true) == SysTime(DateTime(2003, 12, 3, 3)));
@@ -895,7 +894,7 @@ private:
                             }
                             else
                             {
-                                return cast(Result) null;
+                                return null;
                             }
                         }
 
@@ -1185,7 +1184,7 @@ private:
         auto ymdResult = ymd.resolveYMD(mstridx, yearFirst, dayFirst);
 
         // year
-        if (ymdResult[0] > 0)
+        if (ymdResult[0] > -1)
         {
             res.year = ymdResult[0];
             res.centurySpecified = ymd.centurySpecified;

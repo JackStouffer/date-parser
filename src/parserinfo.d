@@ -196,8 +196,8 @@ public:
             res.year = convertYear(res.year, res.centurySpecified);
         }
 
-        if (!res.tzoffset.isNull && res.tzoffset == 0 && (res.tzname.length == 0 || res.tzname
-                == "Z"))
+        if (!res.tzoffset.isNull && res.tzoffset == 0 && (
+            res.tzname.length == 0 || res.tzname == "Z"))
         {
             res.tzname = "UTC";
             res.tzoffset = 0;

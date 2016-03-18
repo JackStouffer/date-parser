@@ -1,3 +1,4 @@
+version(dateparser_test) import std.stdio;
 import std.traits;
 import std.conv;
 
@@ -12,6 +13,11 @@ package struct YMD
     this(string tzstr)
     {
         this.tzstr = tzstr;
+    }
+
+    string toString()
+    {
+        return to!string(data[]);
     }
 
     ///
@@ -111,7 +117,7 @@ package struct YMD
         import std.typecons : tuple;
 
         immutable lenYMD = data.length;
-        int year;
+        int year = -1;
         int month;
         int day;
 
