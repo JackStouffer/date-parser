@@ -37,7 +37,7 @@ void main()
 
 In order of importance:
 
-- Pass all tests
+- ✓ Pass all tests
 - make interface more idiomatic D, which includes
 - range-ify interface
 - remove as many GC allocations as possible

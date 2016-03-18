@@ -1,5 +1,8 @@
 language: d
-# latest dmd, gdc and ldc
 d:
   - dmd
   - ldc
+script:
+  - dub fetch doveralls
+  - dub test -b unittest-cov
+  - dub run doveralls
