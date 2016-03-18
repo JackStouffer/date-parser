@@ -343,7 +343,7 @@ unittest
 
     // Also don't want any erroneous AM or PMs changing the parsed time
     auto s3 = "Meet me at the AM/PM on Sunset at 3:00 AM on December 3rd, 2003";
-    //auto s4 = "Meet me at 3:00AM on December 3rd, 2003 at the AM/PM on Sunset";
+    auto s4 = "Meet me at 3:00AM on December 3rd, 2003 at the AM/PM on Sunset";
     auto s5 = "Today is 25 of September of 2003, exactly at 10:49:41 with timezone -03:00.";
     auto s6 = "Jan 29, 1945 14:45 AM I going to see you there?";
 
@@ -351,7 +351,7 @@ unittest
     assert(parse(s1, null, false, null, false, false, true) == SysTime(DateTime(1974, 3, 1)));
     assert(parse(s2, null, false, null, false, false, true) == SysTime(DateTime(2020, 6, 8)));
     assert(parse(s3, null, false, null, false, false, true) == SysTime(DateTime(2003, 12, 3, 3)));
-    //assert(parse(s4, null, false, null, false, false, true) == SysTime(DateTime(2003, 12, 3, 3)));
+    assert(parse(s4, null, false, null, false, false, true) == SysTime(DateTime(2003, 12, 3, 3)));
 
     auto parsed = parse(s5, null, false, null, false, false, true);
     assert(parsed == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
@@ -1044,7 +1044,7 @@ private:
                 bool valIsAMPM = true;
 
                 //If there's already an AM/PM flag, this one isn't one.
-                if (fuzzy && res.ampm > -1)
+                if (fuzzy && !res.ampm.isNull())
                 {
                     valIsAMPM = false;
                 }

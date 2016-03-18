@@ -15,7 +15,7 @@ final class Result
     bool centurySpecified;
     string tzname;
     Nullable!int tzoffset;
-    uint ampm;
+    Nullable!int ampm;
 
     // FIXME
     // In order to replicate Python's ability to get any part of an object
