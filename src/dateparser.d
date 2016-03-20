@@ -3,6 +3,7 @@ import std.datetime;
 import std.conv;
 import std.typecons;
 import std.array;
+import std.compiler;
 
 public import parserinfo;
 import result;
@@ -14,6 +15,8 @@ static this()
 {
     defaultParser = new Parser();
 }
+
+private enum bool useAllocators = version_major == 2 && version_minor >= 69;
 
 public:
 
@@ -40,6 +43,9 @@ If your date string uses timezone names in place of UTC offsets, then timezone
 information must be user provided, as there is no way to reliably get timezones
 from the OS by abbreviation. But, the timezone will be properly set if an offset
 is given.
+
+This function is `std.experimental.allocator.theAllocator` aware and will use it
+for some operations. It assumes that `allocate` and `deallocate` are thread safe.
 
 Params:
     timeString = A string containing a date/time stamp.
@@ -651,6 +657,7 @@ private:
         import std.string : indexOf;
         import std.algorithm.iteration : filter;
         import std.uni : isUpper;
+        static if (useAllocators) import std.experimental.allocator;
 
         auto res = new Result();
         string[] tokens = new TimeLex!string(timeString).tokenize(); //Splits the timeString into tokens
@@ -1093,7 +1100,18 @@ private:
             }
 
             //Check for a timezone name
-            auto itemUpper = tokens[i].filter!(a => !isUpper(a)).array;
+            static if (useAllocators)
+            {
+                auto itemUpper = theAllocator.makeArray!(dchar)(
+                    tokens[i].filter!(a => !isUpper(a))
+                );
+                scope(exit) theAllocator.dispose(itemUpper);
+            }
+            else
+            {
+                auto itemUpper = tokens[i].filter!(a => !isUpper(a)).array;
+            }
+
             if (!res.hour.isNull && tokens[i].length <= 5 && res.tzname.length == 0
                     && res.tzoffset.isNull && itemUpper.length == 0)
             {
@@ -1154,13 +1172,24 @@ private:
 
                 res.tzoffset *= signal;
 
-                //Look for a timezone name between parenthesis2
+                //Look for a timezone name between parenthesis
                 if (i + 3 < tokensLength)
                 {
-                    itemUpper = tokens[i + 2].filter!(a => !isUpper(a)).array;
+                    static if (useAllocators)
+                    {
+                        auto itemForwardUpper = theAllocator.makeArray!(dchar)(
+                            tokens[i + 2].filter!(a => !isUpper(a))
+                        );
+                        scope(exit) theAllocator.dispose(itemForwardUpper);
+                    }
+                    else
+                    {
+                        auto itemForwardUpper = tokens[i + 2].filter!(a => !isUpper(a)).array;
+                    }
+
                     if (info.jump(tokens[i]) && tokens[i + 1] == "("
                         && tokens[i + 3] == ")" && 3 <= tokens[i + 2].length
-                        && tokens[i + 2].length <= 5 && itemUpper.length == 0)
+                        && tokens[i + 2].length <= 5 && itemForwardUpper.length == 0)
                     {
                         //-0300 (BRST)
                         res.tzname = tokens[i + 2];

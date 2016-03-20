@@ -14,7 +14,7 @@ As this follows SemVer, this is currently beta quality software; there are a lot
 {
     ...
     "dependencies": {
-        "dateparser": "~>0.0.3"
+        "dateparser": "~>0.1.0"
     }
 }
 ```
@@ -43,4 +43,4 @@ In order of importance:
 - remove as many GC allocations as possible
 - get at least 6x faster than the Python version
 
-I will consider this library at 1.0.0 when the first three happen.
+I will consider this library to be at `1.0.0` when the first three happen.

@@ -1,6 +1,15 @@
 import std.datetime;
 import std.stdio;
+import std.compiler;
 import dateparser;
+
+private enum bool useAllocators = version_major == 2 && version_minor >= 69;
+
+static if (useAllocators)
+{
+    import std.experimental.allocator;
+    import std.experimental.allocator.mallocator;
+}
 
 enum testCount = 100_000;
 
@@ -27,6 +36,13 @@ void parse_test3()
 void main()
 {
     import std.conv : to;
+
+    static if (useAllocators)
+    {
+        IAllocator a = allocatorObject(Mallocator.instance);
+        theAllocator(a);
+    }
+
     auto r = benchmark!(parse_test, parse_test2, parse_test3)(testCount);
     auto result = to!Duration(r[0] / testCount);
     auto result2 = to!Duration(r[1] / testCount);
