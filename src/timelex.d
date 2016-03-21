@@ -33,7 +33,7 @@ body
 
     static if (useAllocators)
     {
-        import std.experimental.allocator;
+        import std.experimental.allocator : theAllocator, makeArray, dispose;
 
         auto splitMatches = theAllocator.makeArray!(string)(
             data.splitter(pattern)

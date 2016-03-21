@@ -16,13 +16,15 @@ package struct YMD
         this.tzstr = tzstr;
     }
 
-    string toString()
+    string toString() const
     {
         return to!string(data[]);
     }
 
-    ///
-    static bool token_could_be_year(Range, N)(Range token, N year)
+    /**
+     * Pramas
+     */
+    static bool couldBeYear(Range, N)(Range token, N year)
         if (isNarrowString!Range && isNumeric!N)
     {
         try
@@ -38,17 +40,23 @@ package struct YMD
     /**
      * Attempt to deduce if a pre 100 year was lost due to padded zeros being
      * taken off
+     *
+     * Params:
+     *     tokens = a range of tokens
+     * Returns:
+     *     the index of the year token. If no probable result was found, then -1
+     *     is returned
      */
-    size_t find_probable_year_index(Range)(Range tokens) const
+    int probableYearIndex(Range)(Range tokens) const
         if (isInputRange!Range && isNarrowString!(ElementType!(Range))) 
     {
         import std.algorithm.iteration : filter;
         import std.array : array;
 
-        foreach (index, token; data)
+        foreach (int index, ref token; data)
         {
             auto potential_year_tokens = tokens
-                .filter!(a => YMD.token_could_be_year(a, token))
+                .filter!(a => YMD.couldBeYear(a, token))
                 .array;
 
             if (potential_year_tokens.length == 1 && potential_year_tokens[0].length > 2)
@@ -56,29 +64,30 @@ package struct YMD
                 return index;
             }
         }
-        
+
         return -1;
     }
 
-    ///
-    void put(int val) @safe pure nothrow
+    /// Put a value in that represents a year, month, or day
+    void put(N)(N val) if (isNumeric!N)
     {
-        if (val > 100)
+        static if (is(N : int))
         {
-            this.century_specified = true;
+            if (val > 100)
+            {
+                this.century_specified = true;
+            }
+
+            data ~= val;
         }
-
-        data ~= val;
+        else
+        {
+            put(cast(int) val);
+        }
     }
 
-    ///
-    void put(float val)
-    {
-        put(to!int(val));
-    }
-
-    ///
-    void put(const string val)
+    /// ditto
+    void put(S)(const S val) if (isNarrowString!S)
     {
         import std.string : isNumeric;
 
@@ -90,7 +99,7 @@ package struct YMD
         data ~= to!int(val);
     }
 
-    ///
+    /// length
     size_t length() @property const @safe pure nothrow @nogc
     {
         return data.length;
@@ -223,7 +232,7 @@ package struct YMD
             else
             {
                 if (data[0] > 31
-                        || find_probable_year_index(new TimeLex!string(tzstr).tokenize()) == 0
+                        || probableYearIndex(new TimeLex!string(tzstr).tokenize()) == 0
                         || (yearfirst && data[1] <= 12 && data[2] <= 31))
                 {
                     //99-01-01

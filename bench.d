@@ -11,7 +11,7 @@ static if (useAllocators)
     import std.experimental.allocator.mallocator;
 }
 
-enum testCount = 100_000;
+enum testCount = 200_000;
 
 enum stringOne = "Thu Sep 25 10:36:28 BRST 2003";
 enum stringTwo = "09.25.2003";
@@ -25,7 +25,7 @@ void parse_test()
 
 void parse_test2()
 {
-    auto a = parse(stringTwo);
+    auto a = parse(stringTwo, null, true);
 }
 
 void parse_test3()

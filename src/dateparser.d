@@ -98,10 +98,10 @@ SysTime parse(const string timeString, const ParserInfo parserInfo = null, bool 
 ///
 unittest
 {
-    auto brazilTime = new SimpleTimeZone(dur!"seconds"(-10_800));
-    TimeZone[string] timezones = ["BRST" : brazilTime];
+    immutable brazilTime = new SimpleTimeZone(dur!"seconds"(-10_800));
+    const(TimeZone)[string] timezones = ["BRST" : brazilTime];
 
-    auto parsed = parse("Thu Sep 25 10:36:28 BRST 2003", null, false, timezones);
+    immutable parsed = parse("Thu Sep 25 10:36:28 BRST 2003", null, false, timezones);
     // SysTime opEquals ignores timezones
     assert(parsed == SysTime(DateTime(2003, 9, 25, 10, 36, 28)));
     assert(parsed.timezone == brazilTime);
@@ -205,11 +205,11 @@ unittest
 // ISO and ISO stripped
 unittest
 {
-    auto parsed = parse("2003-09-25T10:49:41.5-03:00");
+    immutable parsed = parse("2003-09-25T10:49:41.5-03:00");
     assert(parsed == SysTime(DateTime(2003, 9, 25, 10, 49, 41), msecs(500)));
     assert((cast(immutable(SimpleTimeZone)) parsed.timezone).utcOffset == hours(-3));
 
-    auto parsed2 = parse("2003-09-25T10:49:41-03:00");
+    immutable parsed2 = parse("2003-09-25T10:49:41-03:00");
     assert(parsed2 == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
     assert((cast(immutable(SimpleTimeZone)) parsed2.timezone).utcOffset == hours(-3));
 
@@ -218,11 +218,11 @@ unittest
     assert(parse("2003-09-25T10") == SysTime(DateTime(2003, 9, 25, 10)));
     assert(parse("2003-09-25") == SysTime(DateTime(2003, 9, 25)));
 
-    auto parsed3 = parse("2003-09-25T10:49:41-03:00");
+    immutable parsed3 = parse("2003-09-25T10:49:41-03:00");
     assert(parsed3 == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
     assert((cast(immutable(SimpleTimeZone)) parsed3.timezone).utcOffset == hours(-3));
 
-    auto parsed4 = parse("20030925T104941-0300");
+    immutable parsed4 = parse("20030925T104941-0300");
     assert(parsed4 == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
     assert((cast(immutable(SimpleTimeZone)) parsed4.timezone).utcOffset == hours(-3));
 
@@ -358,7 +358,7 @@ unittest
     assert(parse(s3, null, false, null, false, false, true) == SysTime(DateTime(2003, 12, 3, 3)));
     assert(parse(s4, null, false, null, false, false, true) == SysTime(DateTime(2003, 12, 3, 3)));
 
-    auto parsed = parse(s5, null, false, null, false, false, true);
+    immutable parsed = parse(s5, null, false, null, false, false, true);
     assert(parsed == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
     assert((cast(immutable(SimpleTimeZone)) parsed.timezone).utcOffset == hours(-3));
 
@@ -392,7 +392,7 @@ unittest
     }
 
     auto rusParser = new Parser(new RusParserInfo());
-    SysTime parsedTime = rusParser.parse("10 Сентябрь 2015 10:20");
+    immutable parsedTime = rusParser.parse("10 Сентябрь 2015 10:20");
 
     assert(parsedTime == SysTime(DateTime(2015, 9, 10, 10, 20)));
 }
@@ -466,19 +466,7 @@ public:
             throw new ConvException("String does not contain a date.");
         }
 
-        // FIXME get rid of me
-        int[string] repl;
-        static immutable attrs = ["year", "month", "day", "hour", "minute",
-            "second", "microsecond"];
-        foreach (attr; attrs)
-        {
-            if (attr in res.getter_dict && !res.getter_dict[attr]().isNull())
-            {
-                repl[attr] = res.getter_dict[attr]().get(); // FIXME
-            }
-        }
-
-        if (!("day" in repl))
+        if (res.day.isNull)
         {
             //If the returnDate day exceeds the last day of the month, fall back to
             //the end of the month.
@@ -489,61 +477,61 @@ public:
             immutable days = Date(cyear, cmonth, 1).daysInMonth;
             if (cday > days)
             {
-                repl["day"] = days;
+                res.day = days;
             }
         }
 
-        if ("year" in repl)
-            returnDate.year(repl["year"]);
+        if (!res.year.isNull)
+            returnDate.year(res.year);
 
-        if ("day" in repl)
+        if (!res.day.isNull)
         {
-            returnDate.day(repl["day"]);
+            returnDate.day(res.day);
         }
         else
         {
             returnDate.day(1);
         }
 
-        if ("month" in repl)
+        if (!res.month.isNull)
         {
-            returnDate.month(to!Month(repl["month"]));
+            returnDate.month(to!Month(res.month));
         }
         else
         {
             returnDate.month(to!Month(1));
         }
         
-        if ("hour" in repl)
+        if (!res.hour.isNull)
         {
-            returnDate.hour(repl["hour"]);
+            returnDate.hour(res.hour);
         }
         else
         {
             returnDate.hour(0);
         }
         
-        if ("minute" in repl)
+        if (!res.minute.isNull)
         {
-            returnDate.minute(repl["minute"]);
+            returnDate.minute(res.minute);
         }
         else
         {
             returnDate.minute(0);
         }
 
-        if ("second" in repl)
+        if (!res.second.isNull)
         {
-            returnDate.second(repl["second"]);
+            returnDate.second(res.second);
         }
         else
         {
             returnDate.second(0);
         }
 
-        if ("microsecond" in repl)
+        if (!res.microsecond.isNull)
         {
-            returnDate.fracSecs(usecs(repl["microsecond"]));
+            returnDate.fracSecs(usecs(res.microsecond));
         }
         else
         {
@@ -657,7 +645,8 @@ private:
         import std.string : indexOf;
         import std.algorithm.iteration : filter;
         import std.uni : isUpper;
-        static if (useAllocators) import std.experimental.allocator;
+        static if (useAllocators)
+            import std.experimental.allocator : theAllocator, makeArray, dispose;
 
         auto res = new Result();
         string[] tokens = new TimeLex!string(timeString).tokenize(); //Splits the timeString into tokens
@@ -972,7 +961,7 @@ private:
                 else if (!fuzzy)
                 {
                     version(dateparser_test) writeln("branch 10");
-                    return cast(Result) null;
+                    return null;
                 }
                 else
                 {
@@ -998,7 +987,7 @@ private:
             if (value > -1)
             {
                 version(dateparser_test) writeln("branch 13");
-                ymd.put(value);
+                ymd.put(value.get);
                 assert(mstridx == -1);
                 mstridx = ymd.length - 1;
 
@@ -1109,7 +1098,7 @@ private:
             }
             else
             {
-                auto itemUpper = tokens[i].filter!(a => !isUpper(a)).array;
+                immutable itemUpper = tokens[i].filter!(a => !isUpper(a)).array;
             }
 
             if (!res.hour.isNull && tokens[i].length <= 5 && res.tzname.length == 0
@@ -1166,7 +1155,7 @@ private:
                 }
                 else
                 {
-                    return cast(Result) null;
+                    return null;
                 }
                 ++i;
 
@@ -1184,7 +1173,7 @@ private:
                     }
                     else
                     {
-                        auto itemForwardUpper = tokens[i + 2].filter!(a => !isUpper(a)).array;
+                        immutable itemForwardUpper = tokens[i + 2].filter!(a => !isUpper(a)).array;
                     }
 
                     if (info.jump(tokens[i]) && tokens[i + 1] == "("
@@ -1203,7 +1192,7 @@ private:
             if (!(info.jump(tokens[i]) || fuzzy))
             {
                 version(dateparser_test) writeln("branch 17");
-                return cast(Result) null;
+                return null;
             }
 
             last_skipped_token_i = i;
