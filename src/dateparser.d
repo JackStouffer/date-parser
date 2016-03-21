@@ -644,12 +644,12 @@ private:
     {
         import std.string : indexOf;
         import std.algorithm.iteration : filter;
-        import std.uni : isUpper;
+        import std.uni : isUpper, isNumber;
         static if (useAllocators)
             import std.experimental.allocator : theAllocator, makeArray, dispose;
 
         auto res = new Result();
-        string[] tokens = new TimeLex!string(timeString).tokenize(); //Splits the timeString into tokens
+        auto tokens = new TimeLex!string(timeString).tokenize();
         version(dateparser_test) writeln("tokens: ", tokens);
 
         //keep up with the last token skipped so we can recombine
@@ -673,15 +673,18 @@ private:
             version(dateparser_test) writeln("index: ", i);
             version(dateparser_test) writeln("tokens[i]: ", tokens[i]);
 
-            try
+            if (tokens[i].front.isNumber)
             {
-                value_repr = tokens[i];
-                version(dateparser_test) writeln("value_repr: ", value_repr);
-                value = to!float(value_repr);
-            }
-            catch (ConvException)
-            {
-                value.nullify();
+                try
+                {
+                    value_repr = tokens[i];
+                    version(dateparser_test) writeln("value_repr: ", value_repr);
+                    value = to!float(value_repr);
+                }
+                catch (ConvException)
+                {
+                    value.nullify();
+                }
             }
 
             //Token is a number
