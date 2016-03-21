@@ -4,7 +4,9 @@ import std.string;
 import std.regex;
 import std.range;
 import std.traits;
+import std.compiler;
 
+private enum bool useAllocators = version_major == 2 && version_minor >= 69;
 private enum split_decimal = ctRegex!(`([\.,])`);
 
 // FIXME
@@ -27,10 +29,21 @@ in
 }
 body
 {
-    import std.array : array;
     import std.range : roundRobin;
 
-    auto splitMatches = data.split(pattern);
+    static if (useAllocators)
+    {
+        import std.experimental.allocator;
+
+        auto splitMatches = theAllocator.makeArray!(string)(
+            data.splitter(pattern)
+        );
+        scope(exit) theAllocator.dispose(splitMatches);
+    }
+    else
+    {
+        auto splitMatches = data.split(pattern);
+    }
 
     return roundRobin(
         splitMatches,
@@ -70,8 +83,11 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
      any dot-separated strings before breaking it into tokens; as such, this
      function maintains a "token stack", for when the ambiguous context
      demands that multiple tokens be parsed at once.
+
+     Returns:
+        string
      */
-    string get_token() @safe
+    auto get_token()
     {
         import std.algorithm.searching : count;
         import std.uni : isNumber, isSpace, isAlpha;

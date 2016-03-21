@@ -1,6 +1,7 @@
 version(dateparser_test) import std.stdio;
 import std.traits;
 import std.conv;
+import std.range.primitives;
 
 import timelex;
 
@@ -10,7 +11,7 @@ package struct YMD
     private int[] data;
     private string tzstr;
 
-    this(string tzstr)
+    this(const string tzstr)
     {
         this.tzstr = tzstr;
     }
@@ -21,7 +22,8 @@ package struct YMD
     }
 
     ///
-    static bool token_could_be_year(Range)(Range token, int year) if (isNarrowString!Range)
+    static bool token_could_be_year(Range, N)(Range token, N year)
+        if (isNarrowString!Range && isNumeric!N)
     {
         try
         {
@@ -33,24 +35,21 @@ package struct YMD
         }
     }
 
-    ///
-    static string[] find_potential_year_tokens()(int year, string[] tokens)
-    {
-        import std.algorithm.iteration : filter;
-        import std.array : array;
-
-        return tokens.filter!(a => YMD.token_could_be_year(a, year)).array;
-    }
-
     /**
      * Attempt to deduce if a pre 100 year was lost due to padded zeros being
      * taken off
      */
-    size_t find_probable_year_index(string[] tokens) const
+    size_t find_probable_year_index(Range)(Range tokens) const
+        if (isInputRange!Range && isNarrowString!(ElementType!(Range))) 
     {
+        import std.algorithm.iteration : filter;
+        import std.array : array;
+
         foreach (index, token; data)
         {
-            auto potential_year_tokens = YMD.find_potential_year_tokens(token, tokens);
+            auto potential_year_tokens = tokens
+                .filter!(a => YMD.token_could_be_year(a, token))
+                .array;
 
             if (potential_year_tokens.length == 1 && potential_year_tokens[0].length > 2)
             {
