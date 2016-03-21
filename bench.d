@@ -15,8 +15,9 @@ enum testCount = 200_000;
 
 enum stringOne = "Thu Sep 25 10:36:28 BRST 2003";
 enum stringTwo = "09.25.2003";
-static const brazilTime = new SimpleTimeZone(dur!"seconds"(-10_800));
-enum const(TimeZone)[string] timezones = ["BRST" : brazilTime];
+enum stringThree = "2003-09-25";
+enum stringFour = "2003-09-25T10:49:41.5-03:00";
+enum stringFive = "25-Sep-2003";
 
 void parse_test()
 {
@@ -25,12 +26,22 @@ void parse_test()
 
 void parse_test2()
 {
-    auto a = parse(stringTwo, null, true);
+    auto a = parse(stringTwo);
 }
 
 void parse_test3()
 {
-    auto parsed = parse(stringOne, null, false, timezones);
+    auto a = parse(stringThree);
+}
+
+void parse_test4()
+{
+    auto a = parse(stringFour);
+}
+
+void parse_test5()
+{
+    auto a = parse(stringFive);
 }
 
 void main()
@@ -43,12 +54,16 @@ void main()
         theAllocator(a);
     }
 
-    auto r = benchmark!(parse_test, parse_test2, parse_test3)(testCount);
+    auto r = benchmark!(parse_test, parse_test2, parse_test3, parse_test4, parse_test5)(testCount);
     auto result = to!Duration(r[0] / testCount);
     auto result2 = to!Duration(r[1] / testCount);
     auto result3 = to!Duration(r[2] / testCount);
+    auto result4 = to!Duration(r[3] / testCount);
+    auto result5 = to!Duration(r[4] / testCount);
 
-    writeln("Result:\t\t", result);
-    writeln("Result Two:\t", result2);
-    writeln("Result Three:\t", result3);
+    writeln(stringOne, "\t", result);
+    writeln(stringTwo, "\t\t\t", result2);
+    writeln(stringThree, "\t\t\t", result3);
+    writeln(stringFour, "\t", result4);
+    writeln(stringFive, "\t\t\t", result5);
 }

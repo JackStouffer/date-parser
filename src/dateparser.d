@@ -875,12 +875,12 @@ private:
 
                     if (i < tokensLength && !info.jump(tokens[i]))
                     {
-                        try
+                        if (tokens[i].front.isNumber)
                         {
                             //01-01[-01]
                             ymd.put(tokens[i]);
                         }
-                        catch (ConvException)
+                        else
                         {
                             //01-Jan[-01]
                             value = info.month(tokens[i]);
@@ -1022,7 +1022,7 @@ private:
                         {
                             value = to!int(tokens[i + 3]);
                             //Convert it here to become unambiguous
-                            ymd.put(info.convertYear(value.get.to!int()).to!string);
+                            ymd.put(info.convertYear(value.get.to!int()));
                         }
                         catch (ConvException) {}
                         i += 4;
