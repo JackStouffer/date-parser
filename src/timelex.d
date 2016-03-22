@@ -16,7 +16,7 @@ private enum split_decimal = ctRegex!(`([\.,])`);
  *
  * Params:
  *     data = the string to split
- *     pattern = the regex patter to match
+ *     pattern = the regex pattern to match
  *
  * Returns:
  *     an array of strings
@@ -264,18 +264,20 @@ package final class TimeLex(Range) if (isInputRange!Range && isSomeChar!(Element
      */
     auto tokenize()
     {
-        string[] data;
+        import std.array : appender;
+
+        auto data = appender!(string[]);
 
         while (true)
         {
             immutable element = get_token();
 
             if (element.length != 0)
-                data ~= element;
+                data.put(element);
             else
                 break;
         }
 
-        return data;
+        return data.data;
     }
 }
