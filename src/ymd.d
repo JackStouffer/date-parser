@@ -47,14 +47,15 @@ package struct YMD
     {
         import std.algorithm.iteration : filter;
         import std.array : array;
+        import std.range : walkLength;
 
         foreach (int index, ref token; data)
         {
-            auto potential_year_tokens = tokens
-                .filter!(a => YMD.couldBeYear(a, token))
-                .array;
+            auto potentialYearTokens = tokens.filter!(a => YMD.couldBeYear(a, token));
+            auto frontLength = potentialYearTokens.front.length;
+            auto length = potentialYearTokens.walkLength(3);
 
-            if (potential_year_tokens.length == 1 && potential_year_tokens[0].length > 2)
+            if (length == 1 && frontLength > 2)
             {
                 return index;
             }
@@ -225,7 +226,7 @@ package struct YMD
             else
             {
                 if (data[0] > 31
-                        || probableYearIndex(timeLexer(tzstr).array()) == 0
+                        || probableYearIndex(tzstr.timeLexer) == 0
                         || (yearfirst && data[1] <= 12 && data[2] <= 31))
                 {
                     //99-01-01

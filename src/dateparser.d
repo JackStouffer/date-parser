@@ -655,7 +655,7 @@ private:
 
         auto res = new Result();
         auto tokens = timeLexer(timeString).array;
-        version(dateparser_test) writeln("tokens: ", tokens);
+        version(dateparser_test) writeln("tokens: ", tokens[]);
 
         //keep up with the last token skipped so we can recombine
         //consecutively skipped tokens (-2 for when i begins at 0).
