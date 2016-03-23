@@ -3,7 +3,7 @@ import std.traits;
 import std.conv;
 import std.range.primitives;
 
-import timelex;
+import timelexer;
 
 package struct YMD
 {
@@ -123,6 +123,7 @@ package struct YMD
     {
         import std.algorithm.mutation : remove;
         import std.typecons : tuple;
+        import std.array : array;
 
         immutable lenYMD = data.length;
         int year = -1;
@@ -232,7 +233,7 @@ package struct YMD
             else
             {
                 if (data[0] > 31
-                        || probableYearIndex(new TimeLex!string(tzstr).tokenize()) == 0
+                        || probableYearIndex(timeLexer(tzstr).array()) == 0
                         || (yearfirst && data[1] <= 12 && data[2] <= 31))
                 {
                     //99-01-01

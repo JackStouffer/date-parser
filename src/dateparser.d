@@ -7,7 +7,7 @@ import std.compiler;
 
 public import parserinfo;
 import result;
-import timelex;
+import timelexer;
 import ymd;
 
 private Parser defaultParser;
@@ -649,7 +649,7 @@ private:
             import std.experimental.allocator : theAllocator, makeArray, dispose;
 
         auto res = new Result();
-        auto tokens = new TimeLex!string(timeString).tokenize();
+        auto tokens = timeLexer(timeString).array;
         version(dateparser_test) writeln("tokens: ", tokens);
 
         //keep up with the last token skipped so we can recombine
