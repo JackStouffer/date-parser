@@ -16,11 +16,6 @@ package struct YMD
         this.tzstr = tzstr;
     }
 
-    string toString() const
-    {
-        return to!string(data[]);
-    }
-
     /**
      * Pramas
      */
@@ -130,11 +125,8 @@ package struct YMD
         int month;
         int day;
 
-        if (lenYMD > 3)
-        {
-            throw new ConvException("More than three YMD values");
-        }
-        else if (lenYMD == 1 || (mstridx != -1 && lenYMD == 2))
+        assert(lenYMD <= 3);
+        if (lenYMD == 1 || (mstridx != -1 && lenYMD == 2))
         {
             //One member, or two members with a month string
             if (mstridx != -1)

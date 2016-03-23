@@ -246,6 +246,11 @@ unittest
     assert(parse("10-09-2003") == SysTime(DateTime(2003, 10, 9)));
     assert(parse("10-09-03") == SysTime(DateTime(2003, 10, 9)));
     assert(parse("10-09-03", null, false, null, false, true) == SysTime(DateTime(2010, 9, 3)));
+    assert(parse("01-99") == SysTime(DateTime(1999, 1, 1)));
+    assert(parse("99-01") == SysTime(DateTime(1999, 1, 1)));
+    assert(parse("13-01", null, false, null, true) == SysTime(DateTime(1, 1, 13)));
+    assert(parse("01-13") == SysTime(DateTime(1, 1, 13)));
+    assert(parse("01-99-Jan") == SysTime(DateTime(1999, 1, 1)));
 }
 
 // Dots
@@ -888,7 +893,6 @@ private:
                             if (!value.isNull())
                             {
                                 ymd.put(value.get());
-                                assert(mstridx == -1);
                                 mstridx = to!long(ymd.length == 0 ? 0 : ymd.length - 1);
                             }
                             else
@@ -909,7 +913,6 @@ private:
                             {
                                 ymd.put(value.get());
                                 mstridx = ymd.length - 1;
-                                assert(mstridx == -1);
                             }
                             else
                             {

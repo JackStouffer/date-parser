@@ -63,6 +63,11 @@ body
 * any dot-separated strings before breaking it into tokens; as such, this
 * function maintains a "token stack", for when the ambiguous context
 * demands that multiple tokens be parsed at once.
+*
+* Params:
+*     r = the range to parse
+* Returns:
+*     a input range of strings
 */
 auto timeLexer(Range)(Range r) if (
     isInputRange!Range &&
@@ -273,4 +278,16 @@ auto timeLexer(Range)(Range r) if (
     }
 
     return Result(r);
+}
+
+unittest
+{
+    import std.internal.test.dummyrange;
+    import std.algorithm.comparison : equal;
+
+    auto a = new ReferenceInputRange!dchar("10:10");
+    assert(a.timeLexer.equal(["10", ":", "10"]));
+
+    auto b = new ReferenceInputRange!dchar("Thu Sep 10:36:28");
+    assert(b.timeLexer.equal(["Thu", " ", "Sep", " ", "10", ":", "36", ":", "28"]));
 }
