@@ -13,7 +13,7 @@ import ymd;
 private Parser defaultParser;
 static this()
 {
-    defaultParser = new Parser();
+    defaultParser = new Parser(new ParserInfo());
 }
 
 private enum bool useAllocators = version_major == 2 && version_minor >= 69;
@@ -650,11 +650,29 @@ private:
         import std.string : indexOf;
         import std.algorithm.iteration : filter;
         import std.uni : isUpper, isNumber;
-        static if (useAllocators)
-            import std.experimental.allocator : theAllocator, makeArray, dispose;
 
         auto res = new Result();
-        auto tokens = timeLexer(timeString).array;
+
+        static if (useAllocators)
+        {
+            import std.experimental.allocator : theAllocator, makeArray, dispose;
+            import core.memory : GC;
+
+            // So the GC doesn't collect allocator handled memory during execution
+            // leading to memory corruption
+            GC.disable();
+            scope(exit) GC.enable();
+
+            auto tokens = theAllocator.makeArray!(string)(
+                timeString.timeLexer
+            );
+            scope(exit) theAllocator.dispose(tokens);
+        }
+        else
+        {
+            auto tokens = timeString.timeLexer.array;
+        }
+
         version(dateparser_test) writeln("tokens: ", tokens[]);
 
         //keep up with the last token skipped so we can recombine
