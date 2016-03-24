@@ -650,11 +650,27 @@ private:
         import std.string : indexOf;
         import std.algorithm.iteration : filter;
         import std.uni : isUpper, isNumber;
-        static if (useAllocators)
-            import std.experimental.allocator : theAllocator, makeArray, dispose;
 
         auto res = new Result();
-        auto tokens = timeLexer(timeString).array;
+
+        static if (useAllocators)
+        {
+            import std.experimental.allocator : theAllocator, makeArray, dispose;
+            import std.experimental.allocator.mallocator;
+            import containers.dynamicarray;
+
+            DynamicArray!(string, Mallocator, true) tokens;
+
+            foreach (item; timeString.timeLexer)
+            {
+                tokens.insert(item);
+            }
+        }
+        else
+        {
+            auto tokens = timeLexer(timeString).array;
+        }
+
         version(dateparser_test) writeln("tokens: ", tokens[]);
 
         //keep up with the last token skipped so we can recombine

@@ -210,12 +210,12 @@ public:
     }
 
 package:
-    final bool jump(S)(const ref S name) const if (isSomeString!S)
+    final bool jump(S)(const S name) const if (isSomeString!S)
     {
         return name.toLower() in jumpAA ? true : false;
     }
 
-    final int weekday(S)(const ref S name) const if (isSomeString!S)
+    final int weekday(S)(const S name) const if (isSomeString!S)
     {
         if (name.length >= 3 && name.toLower() in weekdaysAA)
         {
@@ -224,7 +224,7 @@ package:
         return -1;
     }
 
-    final int month(S)(const ref S name) const if (isSomeString!S)
+    final int month(S)(const S name) const if (isSomeString!S)
     {
         if (name.length >= 3 && name.toLower() in monthsAA)
         {
@@ -233,7 +233,7 @@ package:
         return -1;
     }
 
-    final int hms(S)(const ref S name) const if (isSomeString!S)
+    final int hms(S)(const S name) const if (isSomeString!S)
     {
         if (name.toLower() in hmsAA)
         {
@@ -242,7 +242,7 @@ package:
         return -1;
     }
 
-    final int ampm(S)(const ref S name) const if (isSomeString!S)
+    final int ampm(S)(const S name) const if (isSomeString!S)
     {
         if (name.toLower() in ampmAA)
         {
@@ -251,17 +251,17 @@ package:
         return -1;
     }
 
-    final bool pertain(S)(const ref S name) const if (isSomeString!S)
+    final bool pertain(S)(const S name) const if (isSomeString!S)
     {
         return name.toLower() in pertainAA ? true : false;
     }
 
-    final bool utczone(S)(const ref S name) const if (isSomeString!S)
+    final bool utczone(S)(const S name) const if (isSomeString!S)
     {
         return name.toLower() in utczoneAA ? true : false;
     }
 
-    final int tzoffset(S)(const ref S name) const if (isSomeString!S)
+    final int tzoffset(S)(const S name) const if (isSomeString!S)
     {
         if (name in utczoneAA)
         {

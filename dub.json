@@ -8,11 +8,30 @@
         {
             "name": "unittest",
             "mainSourceFile": "bench.d",
-            "targetType": "executable"
+            "targetType": "executable",
+            "dependencies": {
+                "containers": "~>0.2.2"
+            },
+            "platforms": ["dmd"]
+        },
+        {
+            "name": "unittest",
+            "mainSourceFile": "bench.d",
+            "targetType": "executable",
+            "platforms": ["ldc2", "ldmd2"]
         },
         {
             "name": "library",
             "targetType": "library",
+            "dependencies": {
+                "containers": "~>0.2.2"
+            },
+            "platforms": ["dmd"]
+        },
+        {
+            "name": "library",
+            "targetType": "library",
+            "platforms": ["ldc2", "ldmd2"]
         }
     ]
 }
