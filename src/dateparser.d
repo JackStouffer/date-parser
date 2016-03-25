@@ -13,7 +13,7 @@ import ymd;
 private Parser defaultParser;
 static this()
 {
-    defaultParser = new Parser();
+    defaultParser = new Parser(new ParserInfo());
 }
 
 private enum bool useAllocators = version_major == 2 && version_minor >= 69;
@@ -693,16 +693,9 @@ private:
 
             if (tokens[i].front.isNumber)
             {
-                try
-                {
-                    value_repr = tokens[i];
-                    version(dateparser_test) writeln("value_repr: ", value_repr);
-                    value = to!float(value_repr);
-                }
-                catch (ConvException)
-                {
-                    value.nullify();
-                }
+                value_repr = tokens[i];
+                version(dateparser_test) writeln("value_repr: ", value_repr);
+                value = to!float(value_repr);
             }
 
             //Token is a number
