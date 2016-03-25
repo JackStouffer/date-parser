@@ -7,10 +7,13 @@ import timelexer;
 
 package struct YMD
 {
-    private bool century_specified = false;
-    private int[] data;
-    private string tzstr;
+private:
+    bool century_specified = false;
+    int[3] data;
+    int dataPosition;
+    string tzstr;
 
+public:
     this(const string tzstr)
     {
         this.tzstr = tzstr;
@@ -19,8 +22,10 @@ package struct YMD
     /**
      * Pramas
      */
-    static bool couldBeYear(Range, N)(Range token, N year)
-        if (isNarrowString!Range && isNumeric!N)
+    static bool couldBeYear(Range, N)(Range token, N year) if (
+        isInputRange!Range &&
+        isSomeChar!(ElementEncodingType!Range) &&
+        is(NumericTypeOf!N : int))
     {
         try
         {
@@ -46,10 +51,9 @@ package struct YMD
         if (isInputRange!Range && isNarrowString!(ElementType!(Range))) 
     {
         import std.algorithm.iteration : filter;
-        import std.array : array;
         import std.range : walkLength;
 
-        foreach (int index, ref token; data)
+        foreach (int index, ref token; data[])
         {
             auto potentialYearTokens = tokens.filter!(a => YMD.couldBeYear(a, token));
             auto frontLength = potentialYearTokens.front.length;
@@ -66,6 +70,11 @@ package struct YMD
 
     /// Put a value in that represents a year, month, or day
     void put(N)(N val) if (isNumeric!N)
+    in
+    {
+        assert(dataPosition <= 3);
+    }
+    body
     {
         static if (is(N : int))
         {
@@ -74,7 +83,8 @@ package struct YMD
                 this.century_specified = true;
             }
 
-            data ~= val;
+            data[dataPosition] = val;
+            ++dataPosition;
         }
         else
         {
@@ -84,6 +94,11 @@ package struct YMD
 
     /// ditto
     void put(S)(const S val) if (isNarrowString!S)
+    in
+    {
+        assert(dataPosition <= 3);
+    }
+    body
     {
         import std.string : isNumeric;
 
@@ -92,13 +107,14 @@ package struct YMD
             this.century_specified = true;
         }
 
-        data ~= to!int(val);
+        data[dataPosition] = to!int(val);
+        ++dataPosition;
     }
 
     /// length
     size_t length() @property const @safe pure nothrow @nogc
     {
-        return data.length;
+        return dataPosition;
     }
 
     ///
@@ -115,28 +131,40 @@ package struct YMD
      * Returns:
      *     tuple of three ints
      */
-    auto resolveYMD(size_t mstridx, bool yearfirst, bool dayfirst)
+    auto resolveYMD(N)(N mstridx, bool yearfirst, bool dayfirst)
+        if (is(NumericTypeOf!N : size_t))
     {
         import std.algorithm.mutation : remove;
         import std.typecons : tuple;
-        import std.array : array;
 
-        immutable lenYMD = data.length;
         int year = -1;
         int month;
         int day;
 
-        assert(lenYMD <= 3);
-        if (lenYMD == 1 || (mstridx != -1 && lenYMD == 2))
+        if (dataPosition == 1 || (mstridx != -1 && dataPosition == 2)) //One member, or two members with a month string
         {
-            //One member, or two members with a month string
             if (mstridx != -1)
             {
                 month = data[mstridx];
-                data = data.remove(mstridx);
+                switch (mstridx)
+                {
+                    case 0:
+                        data[0] = data[1];
+                        data[1] = data[2];
+                        data[2] = 0;
+                        break;
+                    case 1:
+                        data[1] = data[2];
+                        data[2] = 0;
+                        break;
+                    case 2:
+                        data[2] = 0;
+                        break;
+                    default: break;
+                }                
             }
 
-            if (lenYMD > 1 || mstridx == -1)
+            if (dataPosition > 1 || mstridx == -1)
             {
                 if (data[0] > 31)
                 {
@@ -147,11 +175,9 @@ package struct YMD
                     day = data[0];
                 }
             }
-
         }
-        else if (lenYMD == 2)
+        else if (dataPosition == 2) //Two members with numbers
         {
-            //Two members with numbers
             if (data[0] > 31)
             {
                 //99-01
@@ -178,9 +204,8 @@ package struct YMD
             }
 
         }
-        else if (lenYMD == 3)
+        else if (dataPosition == 3) //Three members
         {
-            //Three members
             if (mstridx == 0)
             {
                 month = data[0];

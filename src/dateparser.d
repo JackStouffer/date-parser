@@ -657,14 +657,11 @@ private:
         {
             import std.experimental.allocator : theAllocator, makeArray, dispose;
             import std.experimental.allocator.mallocator;
+            import std.range.primitives : put;
             import containers.dynamicarray;
 
             DynamicArray!(string, Mallocator, true) tokens;
-
-            foreach (item; timeString.timeLexer)
-            {
-                tokens.insert(item);
-            }
+            put(tokens, timeString.timeLexer);
         }
         else
         {
