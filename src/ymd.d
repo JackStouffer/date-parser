@@ -20,7 +20,7 @@ public:
     }
 
     /**
-     * Pramas
+     * Params
      */
     static bool couldBeYear(Range, N)(Range token, N year) if (
         isInputRange!Range &&
@@ -111,23 +111,26 @@ public:
         ++dataPosition;
     }
 
-    /// length
+    /// length getter
     size_t length() @property const @safe pure nothrow @nogc
     {
         return dataPosition;
     }
 
-    ///
+    /// century_specified getter
     bool centurySpecified() @property const @safe pure nothrow @nogc
     {
         return century_specified;
     }
 
     /**
+     * Turns the array of ints into a `Tuple` of three, representing the year,
+     * month, and day.
+     *
      * Params:
-     *     mstridx = FIXME
-     *     yearfirst = FIXME
-     *     dayfirst = FIXME
+     *     mstridx = The index of the month in the data
+     *     yearfirst = if the year is first in the string
+     *     dayfirst = if the day is first in the string
      * Returns:
      *     tuple of three ints
      */

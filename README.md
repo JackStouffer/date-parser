@@ -8,7 +8,7 @@ A port of the Python Dateutil date parser. This module offers a generic date/tim
 
 As this follows SemVer, this is currently beta quality software. **Expect the API to break many times until this hits 1.0**. This is currently between 3.5x and 5.76x (it depends on the format) faster than the Python version, and it becomes even faster when compiling with LDC.
 
-Compiles with D versions 2.068 and up. Tested with ldc v0.17.0 and dmd v2.068.2 - v2.070.2.
+Compiles with D versions 2.068 and up. Tested with ldc v0.17.0 and dmd v2.068.2 - v2.070.2. In order to use this with LDC and DMD 2.068, you must download and compile this manually due to a limitation in the dub.json format.
 
 ##Install With Dub
 
@@ -42,7 +42,7 @@ In order of importance:
 - ✓ Pass all tests
 - make interface more idiomatic D, which includes
 - range-ify interface
-- remove as many GC allocations as possible
+- ✓ remove as many GC allocations as possible
 - get at least 6x faster than the Python version
 
 I will consider this library to be at `1.0.0` when the first three happen.

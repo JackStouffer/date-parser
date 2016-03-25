@@ -4,34 +4,18 @@
     "sourcePaths": ["src/"],
     "license": "BSL-1.0",
     "authors": ["Jack Stouffer"],
+    "dependencies": {
+        "containers": "~>0.2.2"
+    },
     "configurations": [
         {
             "name": "unittest",
             "mainSourceFile": "bench.d",
-            "targetType": "executable",
-            "dependencies": {
-                "containers": "~>0.2.2"
-            },
-            "platforms": ["dmd"]
-        },
-        {
-            "name": "unittest",
-            "mainSourceFile": "bench.d",
-            "targetType": "executable",
-            "platforms": ["ldc2", "ldmd2"]
+            "targetType": "executable"
         },
         {
             "name": "library",
-            "targetType": "library",
-            "dependencies": {
-                "containers": "~>0.2.2"
-            },
-            "platforms": ["dmd"]
-        },
-        {
-            "name": "library",
-            "targetType": "library",
-            "platforms": ["ldc2", "ldmd2"]
+            "targetType": "library"
         }
     ]
 }

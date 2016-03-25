@@ -46,24 +46,27 @@ void parse_test5()
 
 void main()
 {
-    import std.conv : to;
-
-    static if (useAllocators)
+    version(unittest) {} else
     {
-        IAllocator a = allocatorObject(Mallocator.instance);
-        theAllocator(a);
+        import std.conv : to;
+
+        static if (useAllocators)
+        {
+            IAllocator a = allocatorObject(Mallocator.instance);
+            theAllocator(a);
+        }
+
+        auto r = benchmark!(parse_test, parse_test2, parse_test3, parse_test4, parse_test5)(testCount);
+        auto result = to!Duration(r[0] / testCount);
+        auto result2 = to!Duration(r[1] / testCount);
+        auto result3 = to!Duration(r[2] / testCount);
+        auto result4 = to!Duration(r[3] / testCount);
+        auto result5 = to!Duration(r[4] / testCount);
+
+        writeln(stringOne, "\t", result);
+        writeln(stringTwo, "\t\t\t", result2);
+        writeln(stringThree, "\t\t\t", result3);
+        writeln(stringFour, "\t", result4);
+        writeln(stringFive, "\t\t\t", result5);
     }
-
-    auto r = benchmark!(parse_test, parse_test2, parse_test3, parse_test4, parse_test5)(testCount);
-    auto result = to!Duration(r[0] / testCount);
-    auto result2 = to!Duration(r[1] / testCount);
-    auto result3 = to!Duration(r[2] / testCount);
-    auto result4 = to!Duration(r[3] / testCount);
-    auto result5 = to!Duration(r[4] / testCount);
-
-    writeln(stringOne, "\t", result);
-    writeln(stringTwo, "\t\t\t", result2);
-    writeln(stringThree, "\t\t\t", result3);
-    writeln(stringFour, "\t", result4);
-    writeln(stringFive, "\t\t\t", result5);
 }

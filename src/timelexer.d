@@ -270,10 +270,7 @@ auto timeLexer(Range)(Range r) if (
 
         bool empty() @property
         {
-            if (token.empty && source.empty && charStack.empty && tokenStack.empty)
-                return true;
-            else
-                return false;
+            return token.empty && source.empty && charStack.empty && tokenStack.empty;
         }
     }
 
