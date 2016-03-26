@@ -27,14 +27,21 @@ public:
         isSomeChar!(ElementEncodingType!Range) &&
         is(NumericTypeOf!N : int))
     {
-        try
+        import std.uni : isNumber;
+
+        if (token.front.isNumber)
         {
-            return to!int(token) == year;
+            try
+            {
+                return to!int(token) == year;
+            }
+            catch (ConvException)
+            {
+                return false;
+            }
         }
-        catch (ConvException)
-        {
+        else
             return false;
-        }
     }
 
     /**
