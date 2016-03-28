@@ -4,6 +4,7 @@ import std.conv;
 import std.typecons;
 import std.array;
 import std.compiler;
+import std.range.primitives;
 
 public import parserinfo;
 import result;
@@ -32,8 +33,7 @@ $(OL
     $(LI If AM or PM is left unspecified, a 24-hour clock is assumed, however,
     an hour on a 12-hour clock (0 <= hour <= 12) *must* be specified if
     AM or PM is specified.)
-    $(LI If a time zone is omitted, a SysTime with the timezone local to the
-    host is returned.)
+    $(LI If a time zone is omitted, a SysTime is given with UTC±00:00.)
 )
 
 Missing information is allowed, and what ever is given is applied on top of
@@ -80,11 +80,12 @@ Throws:
     ConvOverflowException if one of the numbers in the parsed date exceeds
     int.max
 */
-SysTime parse(const string timeString,
+SysTime parse(Range)(Range timeString,
     Flag!"ignoreTimezone" ignoreTimezone = No.ignoreTimezone,
     const(TimeZone)[string] timezoneInfos = null,
     Flag!"dayFirst" dayFirst = No.dayFirst,
     Flag!"yearFirst" yearFirst = No.yearFirst, Flag!"fuzzy" fuzzy = No.fuzzy)
+if (isForwardRange!Range && is(ElementEncodingType!Range : const char))
 {
     return defaultParser.parse(timeString, ignoreTimezone, timezoneInfos,
         dayFirst, yearFirst, fuzzy);
@@ -424,6 +425,27 @@ unittest
 }
 // dfmt on
 
+unittest
+{
+    class ReferenceForwardRange(T)
+    {
+        this(Range)(Range r) if (isInputRange!Range) {_payload = r;}
+        final @property T front(){return cast(char) _payload.front;}
+        final void popFront(){_payload.popFront();}
+        final @property bool empty(){return _payload.empty;}
+        protected T[] _payload;
+        final @property auto save(this This)() {return new This( _payload);}
+    }
+
+    auto a = new ReferenceForwardRange!char(['1', '0', 'h', '3', '6', 'm', '2', '8', 's']);
+    assert(a.parse == SysTime(DateTime(1, 1, 1, 10, 36, 28)));
+
+    auto b = new ReferenceForwardRange!char(
+        ['T', 'h', 'u', ' ', 'S', 'e', 'p', ' ',  '1', '0', ':', '3', '6', ':', '2', '8']
+    );
+    assert(b.parse == SysTime(DateTime(1, 9, 5, 10, 36, 28)));
+}
+
 unittest  // Issue #1
 {
     assert(parse("Sat, 12 Mar 2016 01:30:59 -0900",
@@ -432,9 +454,9 @@ unittest  // Issue #1
 
 /**
  * Implements the parsing functionality for the parse function. If you are
- * using a custom ParserInfo many times in the same program, you can avoid
- * unnecessary allocations by using the Parser.parse function directly.
- * Otherwise using parse or Parser.parse makes no difference.
+ * using a custom `ParserInfo` many times in the same program, you can avoid
+ * unnecessary allocations by using the `Parser.parse` function directly.
+ * Otherwise using `parse` or `Parser.parse` makes no difference.
  */
 final class Parser
 {
@@ -472,11 +494,12 @@ public:
     * Throws:
     *     ConvException for invalid or unknown string format
      */
-    SysTime parse(string timeString,
+    SysTime parse(Range)(Range timeString,
         Flag!"ignoreTimezone" ignoreTimezone = No.ignoreTimezone,
         const(TimeZone)[string] timezoneInfos = null,
         Flag!"dayFirst" dayFirst = No.dayFirst,
         Flag!"yearFirst" yearFirst = No.yearFirst, Flag!"fuzzy" fuzzy = No.fuzzy)
+    if (isForwardRange!Range && is(ElementEncodingType!Range : const char))
     {
         SysTime returnDate = SysTime(DateTime(1, 1, 1));
 
@@ -667,8 +690,9 @@ private:
     *     fuzzy = Whether to allow fuzzy parsing, allowing for string like "Today is
     *     January 1, 2047 at 8:21:00AM".
     */
-    Result parseImpl(string timeString, bool dayFirst = false,
+    Result parseImpl(Range)(Range timeString, bool dayFirst = false,
         bool yearFirst = false, bool fuzzy = false)
+    if (isForwardRange!Range && is(ElementEncodingType!Range : const char))
     {
         import std.string : indexOf;
         import std.algorithm.iteration : filter;
@@ -685,7 +709,7 @@ private:
             import containers.dynamicarray;
 
             DynamicArray!(string, Mallocator, true) tokens;
-            put(tokens, timeString.timeLexer);
+            put(tokens, timeString.save.timeLexer);
         }
         else
         {
@@ -699,7 +723,7 @@ private:
         int last_skipped_token_i = -2;
 
         //year/month/day list
-        auto ymd = YMD(timeString);
+        auto ymd = YMD!(Range)(timeString);
 
         //Index of the month string in ymd
         long mstridx = -1;

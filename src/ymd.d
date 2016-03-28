@@ -5,16 +5,16 @@ import std.range.primitives;
 
 import timelexer;
 
-package struct YMD
+package struct YMD(R) if (isForwardRange!R && is(ElementEncodingType!R : const char))
 {
 private:
     bool century_specified = false;
     int[3] data;
     int dataPosition;
-    string tzstr;
+    R tzstr;
 
 public:
-    this(const string tzstr)
+    this(R tzstr)
     {
         this.tzstr = tzstr;
     }
