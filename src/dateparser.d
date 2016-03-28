@@ -80,9 +80,9 @@ Throws:
     ConvOverflowException if one of the numbers in the parsed date exceeds
     int.max
 */
-SysTime parse(const string timeString, bool ignoreTimezone = false,
-    const(TimeZone)[string] timezoneInfos = null, bool dayFirst = false,
-    bool yearFirst = false, bool fuzzy = false)
+SysTime parse(const string timeString, Flag!"ignoreTimezone" ignoreTimezone = No.ignoreTimezone,
+    const(TimeZone)[string] timezoneInfos = null, Flag!"dayFirst" dayFirst = No.dayFirst,
+    Flag!"yearFirst" yearFirst = No.yearFirst, Flag!"fuzzy" fuzzy = No.fuzzy)
 {
     return defaultParser.parse(
         timeString,
@@ -101,12 +101,16 @@ unittest
     immutable brazilTime = new SimpleTimeZone(dur!"seconds"(-10_800));
     const(TimeZone)[string] timezones = ["BRST" : brazilTime];
 
-    immutable parsed = parse("Thu Sep 25 10:36:28 BRST 2003", false, timezones);
+    immutable parsed = parse("Thu Sep 25 10:36:28 BRST 2003", No.ignoreTimezone, timezones);
     // SysTime opEquals ignores timezones
     assert(parsed == SysTime(DateTime(2003, 9, 25, 10, 36, 28)));
     assert(parsed.timezone == brazilTime);
 
-    assert(parse("2003 10:36:28 BRST 25 Sep Thu", false, timezones) == SysTime(DateTime(2003, 9, 25, 10, 36, 28)));
+    assert(parse(
+        "2003 10:36:28 BRST 25 Sep Thu",
+        No.ignoreTimezone,
+        timezones
+    ) == SysTime(DateTime(2003, 9, 25, 10, 36, 28)));
     assert(parse("Thu Sep 25 10:36:28") == SysTime(DateTime(1, 9, 25, 10, 36, 28)));
     assert(parse("2003-09-25T10:49:41") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
     assert(parse("10:36:28") == SysTime(DateTime(1, 1, 1, 10, 36, 28)));
@@ -126,6 +130,7 @@ unittest
     assertThrown!ConvException(parse("13:44 AM"));
     assertThrown!ConvException(parse("January 25, 1921 23:13 PM"));
 }
+// dfmt on
 
 unittest
 {
@@ -159,10 +164,21 @@ unittest
     assert(parse("Sep 25 2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("09 25 2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("25 09 2003") == SysTime(DateTime(2003, 9, 25)));
-    assert(parse("10 09 2003", false, null, true) == SysTime(DateTime(2003, 9, 10)));
+    assert(parse(
+        "10 09 2003",
+        No.ignoreTimezone,
+        null,
+        Yes.dayFirst
+    ) == SysTime(DateTime(2003, 9, 10)));
     assert(parse("10 09 2003") == SysTime(DateTime(2003, 10, 9)));
     assert(parse("10 09 03") == SysTime(DateTime(2003, 10, 9)));
-    assert(parse("10 09 03", false, null, false, true) == SysTime(DateTime(2010, 9, 3)));
+    assert(parse(
+        "10 09 03",
+        No.ignoreTimezone,
+        null,
+        No.dayFirst,
+        Yes.yearFirst
+    ) == SysTime(DateTime(2010, 9, 3)));
     assert(parse("25 09 03") == SysTime(DateTime(2003, 9, 25)));
 }
 
@@ -242,13 +258,13 @@ unittest
     assert(parse("Sep-25-2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("09-25-2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("25-09-2003") == SysTime(DateTime(2003, 9, 25)));
-    assert(parse("10-09-2003", false, null, true) == SysTime(DateTime(2003, 9, 10)));
+    assert(parse("10-09-2003", No.ignoreTimezone, null, Yes.dayFirst) == SysTime(DateTime(2003, 9, 10)));
     assert(parse("10-09-2003") == SysTime(DateTime(2003, 10, 9)));
     assert(parse("10-09-03") == SysTime(DateTime(2003, 10, 9)));
-    assert(parse("10-09-03", false, null, false, true) == SysTime(DateTime(2010, 9, 3)));
+    assert(parse("10-09-03", No.ignoreTimezone, null, No.dayFirst, Yes.yearFirst) == SysTime(DateTime(2010, 9, 3)));
     assert(parse("01-99") == SysTime(DateTime(1999, 1, 1)));
     assert(parse("99-01") == SysTime(DateTime(1999, 1, 1)));
-    assert(parse("13-01", false, null, true) == SysTime(DateTime(1, 1, 13)));
+    assert(parse("13-01", No.ignoreTimezone, null, Yes.dayFirst) == SysTime(DateTime(1, 1, 13)));
     assert(parse("01-13") == SysTime(DateTime(1, 1, 13)));
     assert(parse("01-99-Jan") == SysTime(DateTime(1999, 1, 1)));
 }
@@ -263,10 +279,10 @@ unittest
     assert(parse("Sep.25.2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("09.25.2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("25.09.2003") == SysTime(DateTime(2003, 9, 25)));
-    assert(parse("10.09.2003", false, null, true) == SysTime(DateTime(2003, 9, 10)));
+    assert(parse("10.09.2003", No.ignoreTimezone, null, Yes.dayFirst) == SysTime(DateTime(2003, 9, 10)));
     assert(parse("10.09.2003") == SysTime(DateTime(2003, 10, 9)));
     assert(parse("10.09.03") == SysTime(DateTime(2003, 10, 9)));
-    assert(parse("10.09.03", false, null, false, true) == SysTime(DateTime(2010, 9, 3)));
+    assert(parse("10.09.03", No.ignoreTimezone, null, No.dayFirst, Yes.yearFirst) == SysTime(DateTime(2010, 9, 3)));
 }
 
 // Slashes
@@ -279,26 +295,26 @@ unittest
     assert(parse("Sep/25/2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("09/25/2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("25/09/2003") == SysTime(DateTime(2003, 9, 25)));
-    assert(parse("10/09/2003", false, null, true) == SysTime(DateTime(2003, 9, 10)));
+    assert(parse("10/09/2003", No.ignoreTimezone, null, Yes.dayFirst) == SysTime(DateTime(2003, 9, 10)));
     assert(parse("10/09/2003") == SysTime(DateTime(2003, 10, 9)));
     assert(parse("10/09/03") == SysTime(DateTime(2003, 10, 9)));
-    assert(parse("10/09/03", false, null, false, true) == SysTime(DateTime(2010, 9, 3)));
+    assert(parse("10/09/03", No.ignoreTimezone, null, No.dayFirst, Yes.yearFirst) == SysTime(DateTime(2010, 9, 3)));
 }
 
 // Random formats
 unittest
 {
     assert(parse("Wed, July 10, '96") == SysTime(DateTime(1996, 7, 10, 0, 0)));
-    assert(parse("1996.07.10 AD at 15:08:56 PDT", true) == SysTime(
+    assert(parse("1996.07.10 AD at 15:08:56 PDT", Yes.ignoreTimezone) == SysTime(
         DateTime(1996, 7, 10, 15, 8, 56)));
     assert(parse("1996.July.10 AD 12:08 PM") == SysTime(DateTime(1996, 7, 10, 12, 8)));
-    assert(parse("Tuesday, April 12, 1952 AD 3:30:42pm PST", true) == SysTime(
+    assert(parse("Tuesday, April 12, 1952 AD 3:30:42pm PST", Yes.ignoreTimezone) == SysTime(
         DateTime(1952, 4, 12, 15, 30, 42)));
-    assert(parse("November 5, 1994, 8:15:30 am EST", true) == SysTime(
+    assert(parse("November 5, 1994, 8:15:30 am EST", Yes.ignoreTimezone) == SysTime(
         DateTime(1994, 11, 5, 8, 15, 30)));
-    assert(parse("1994-11-05T08:15:30-05:00", true) == SysTime(
+    assert(parse("1994-11-05T08:15:30-05:00", Yes.ignoreTimezone) == SysTime(
         DateTime(1994, 11, 5, 8, 15, 30)));
-    assert(parse("1994-11-05T08:15:30Z", true) == SysTime(
+    assert(parse("1994-11-05T08:15:30Z", Yes.ignoreTimezone) == SysTime(
         DateTime(1994, 11, 5, 8, 15, 30)));
     assert(parse("July 4, 1976") == SysTime(DateTime(1976, 7, 4)));
     assert(parse("7 4 1976") == SysTime(DateTime(1976, 7, 4)));
@@ -309,17 +325,17 @@ unittest
     assert(parse("12h 01m02s am") == SysTime(DateTime(1, 1, 1, 0, 1, 2)));
     assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
     assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
-    assert(parse("1976-07-04T00:01:02Z", true) == SysTime(
+    assert(parse("1976-07-04T00:01:02Z", Yes.ignoreTimezone) == SysTime(
         DateTime(1976, 7, 4, 0, 1, 2)));
     assert(parse("July 4, 1976 12:01:02 am") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
     assert(parse("Mon Jan  2 04:24:27 1995") == SysTime(DateTime(1995, 1, 2, 4, 24, 27)));
-    assert(parse("Tue Apr 4 00:22:12 PDT 1995", true) == SysTime(
+    assert(parse("Tue Apr 4 00:22:12 PDT 1995", Yes.ignoreTimezone) == SysTime(
         DateTime(1995, 4, 4, 0, 22, 12)));
     assert(parse("04.04.95 00:22") == SysTime(DateTime(1995, 4, 4, 0, 22)));
     assert(parse("Jan 1 1999 11:23:34.578") == SysTime(
         DateTime(1999, 1, 1, 11, 23, 34), msecs(578)));
     assert(parse("950404 122212") == SysTime(DateTime(1995, 4, 4, 12, 22, 12)));
-    assert(parse("0:00 PM, PST", true) == SysTime(DateTime(1, 1, 1, 12, 0)));
+    assert(parse("0:00 PM, PST", Yes.ignoreTimezone) == SysTime(DateTime(1, 1, 1, 12, 0)));
     assert(parse("12:08 PM") == SysTime(DateTime(1, 1, 1, 12, 8)));
     assert(parse("5:50 A.M. on June 13, 1990") == SysTime(DateTime(1990, 6, 13, 5, 50)));
     assert(parse("3rd of May 2001") == SysTime(DateTime(2001, 5, 3)));
@@ -358,19 +374,20 @@ unittest
     auto s5 = "Today is 25 of September of 2003, exactly at 10:49:41 with timezone -03:00.";
     auto s6 = "Jan 29, 1945 14:45 AM I going to see you there?";
 
-    assert(parse(s1, false, null, false, false, true) == SysTime(DateTime(1974, 3, 1)));
-    assert(parse(s2, false, null, false, false, true) == SysTime(DateTime(2020, 6, 8)));
-    assert(parse(s3, false, null, false, false, true) == SysTime(DateTime(2003, 12, 3, 3)));
-    assert(parse(s4, false, null, false, false, true) == SysTime(DateTime(2003, 12, 3, 3)));
+    assert(parse(s1, No.ignoreTimezone, null, No.dayFirst, No.yearFirst, Yes.fuzzy) == SysTime(DateTime(1974, 3, 1)));
+    assert(parse(s2, No.ignoreTimezone, null, No.dayFirst, No.yearFirst, Yes.fuzzy) == SysTime(DateTime(2020, 6, 8)));
+    assert(parse(s3, No.ignoreTimezone, null, No.dayFirst, No.yearFirst, Yes.fuzzy) == SysTime(DateTime(2003, 12, 3, 3)));
+    assert(parse(s4, No.ignoreTimezone, null, No.dayFirst, No.yearFirst, Yes.fuzzy) == SysTime(DateTime(2003, 12, 3, 3)));
 
-    immutable parsed = parse(s5, false, null, false, false, true);
+    immutable parsed = parse(s5, No.ignoreTimezone, null, No.dayFirst, No.yearFirst, Yes.fuzzy);
     assert(parsed == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
     assert((cast(immutable(SimpleTimeZone)) parsed.timezone).utcOffset == hours(-3));
 
-    assert(parse(s6, false, null, false, false, true) == SysTime(
+    assert(parse(s6, No.ignoreTimezone, null, No.dayFirst, No.yearFirst, Yes.fuzzy) == SysTime(
         DateTime(1945, 1, 29, 14, 45)));
 }
 
+// dfmt off
 /// Custom parser info allows for international time representation
 unittest
 {
@@ -401,13 +418,13 @@ unittest
 
     assert(parsedTime == SysTime(DateTime(2015, 9, 10, 10, 20)));
 }
+// dfmt on
 
 unittest // Issue #1
 {
-    assert(parse("Sat, 12 Mar 2016 01:30:59 -0900", true) == SysTime(
+    assert(parse("Sat, 12 Mar 2016 01:30:59 -0900", Yes.ignoreTimezone) == SysTime(
         DateTime(2016, 3, 12, 01, 30, 59)));
 }
-// dfmt on
 
 /**
  * Implements the parsing functionality for the parse function. If you are
@@ -451,9 +468,9 @@ public:
     * Throws:
     *     ConvException for invalid or unknown string format
      */
-    SysTime parse(string timeString, bool ignoreTimezone = false,
-        const(TimeZone)[string] timezoneInfos = null, bool dayFirst = false,
-        bool yearFirst = false, bool fuzzy = false)
+    SysTime parse(string timeString, Flag!"ignoreTimezone" ignoreTimezone = No.ignoreTimezone,
+        const(TimeZone)[string] timezoneInfos = null, Flag!"dayFirst" dayFirst = No.dayFirst,
+        Flag!"yearFirst" yearFirst = No.yearFirst, Flag!"fuzzy" fuzzy = No.fuzzy)
     {
         SysTime returnDate = SysTime(DateTime(1, 1, 1));
 
