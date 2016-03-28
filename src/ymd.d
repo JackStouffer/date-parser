@@ -1,4 +1,4 @@
-version(dateparser_test) import std.stdio;
+version (dateparser_test) import std.stdio;
 import std.traits;
 import std.conv;
 import std.range.primitives;
@@ -22,10 +22,8 @@ public:
     /**
      * Params
      */
-    static bool couldBeYear(Range, N)(Range token, N year) if (
-        isInputRange!Range &&
-        isSomeChar!(ElementEncodingType!Range) &&
-        is(NumericTypeOf!N : int))
+    static bool couldBeYear(Range, N)(Range token, N year) if (isInputRange!Range
+            && isSomeChar!(ElementEncodingType!Range) && is(NumericTypeOf!N : int))
     {
         import std.uni : isNumber;
         import std.exception : assumeWontThrow;
@@ -50,8 +48,8 @@ public:
      *     the index of the year token. If no probable result was found, then -1
      *     is returned
      */
-    int probableYearIndex(Range)(Range tokens) const
-        if (isInputRange!Range && isNarrowString!(ElementType!(Range))) 
+    int probableYearIndex(Range)(Range tokens) const if (isInputRange!Range
+            && isNarrowString!(ElementType!(Range)))
     {
         import std.algorithm.iteration : filter;
         import std.range : walkLength;
@@ -135,8 +133,7 @@ public:
      * Returns:
      *     tuple of three ints
      */
-    auto resolveYMD(N)(N mstridx, bool yearfirst, bool dayfirst)
-        if (is(NumericTypeOf!N : size_t))
+    auto resolveYMD(N)(N mstridx, bool yearfirst, bool dayfirst) if (is(NumericTypeOf!N : size_t))
     {
         import std.algorithm.mutation : remove;
         import std.typecons : tuple;
@@ -254,8 +251,7 @@ public:
             }
             else
             {
-                if (data[0] > 31
-                        || probableYearIndex(tzstr.timeLexer) == 0
+                if (data[0] > 31 || probableYearIndex(tzstr.timeLexer) == 0
                         || (yearfirst && data[1] <= 12 && data[2] <= 31))
                 {
                     //99-01-01

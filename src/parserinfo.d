@@ -1,4 +1,4 @@
-version(dateparser_test) import std.stdio;
+version (dateparser_test) import std.stdio;
 import std.typecons;
 import std.range;
 import std.traits;
@@ -107,10 +107,10 @@ public:
      * Returns:
      *     An associative array of `int`s accessed by strings
      */
-    static int[string] convert(Range)(Range list) if (
-        isInputRange!Range &&
-        isSomeChar!(ElementEncodingType!(ElementEncodingType!(Range))) ||
-        isSomeChar!(ElementEncodingType!(ElementEncodingType!(ElementEncodingType!(Range)))))
+    static int[string] convert(Range)(Range list) if (isInputRange!Range
+            && isSomeChar!(ElementEncodingType!(ElementEncodingType!(Range)))
+            || isSomeChar!(
+            ElementEncodingType!(ElementEncodingType!(ElementEncodingType!(Range)))))
     {
         int[string] dictionary;
 
@@ -196,7 +196,8 @@ public:
             res.year = convertYear(res.year, res.centurySpecified);
         }
 
-        if (res.tzoffset.isNull || (!res.tzoffset.isNull && res.tzoffset == 0) && (res.tzname.length == 0 || res.tzname == "Z"))
+        if (res.tzoffset.isNull || (!res.tzoffset.isNull && res.tzoffset == 0)
+                && (res.tzname.length == 0 || res.tzname == "Z"))
         {
             res.tzname = "UTC";
             res.tzoffset = 0;

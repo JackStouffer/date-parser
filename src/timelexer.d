@@ -1,4 +1,4 @@
-version(dateparser_test) import std.stdio;
+version (dateparser_test) import std.stdio;
 import std.datetime;
 import std.string;
 import std.regex;
@@ -21,8 +21,7 @@ private enum split_decimal = ctRegex!(`([\.,])`);
  * Returns:
  *     an array of strings
  */
-private auto splitWithMatches(S, RegEx)(S data, RegEx pattern)
-    if (isSomeString!S)
+private auto splitWithMatches(S, RegEx)(S data, RegEx pattern) if (isSomeString!S)
 in
 {
     assert(!data.empty);
@@ -69,10 +68,7 @@ body
 * Returns:
 *     a input range of strings
 */
-auto timeLexer(Range)(Range r) if (
-    isInputRange!Range &&
-    isSomeChar!(ElementEncodingType!Range)
-)
+auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEncodingType!Range))
 {
     static struct Result
     {
@@ -250,6 +246,9 @@ auto timeLexer(Range)(Range r) if (
             version(dateparser_test) writeln("STATE ", state, " seenLetters: ", seenLetters);
             if ((state == State.ALPHA_PERIOD || state == State.NUMERIC_PERIOD) &&
                 (seenLetters || token.count('.') > 1 || (token[$ - 1] == '.' || token[$ - 1] == ',')))
+            if ((state == State.ALPHA_PERIOD || state == State.NUMERIC_PERIOD)
+                    && (seenLetters || token.count('.') > 1
+                    || (token[$ - 1] == '.' || token[$ - 1] == ',')))
             {
                 auto l = splitWithMatches(token[], split_decimal);
                 token = l[0];
