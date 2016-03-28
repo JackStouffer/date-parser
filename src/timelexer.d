@@ -71,7 +71,7 @@ body
 */
 auto timeLexer(Range)(Range r) if (
     isInputRange!Range &&
-    isSomeChar!(ElementType!Range)
+    isSomeChar!(ElementEncodingType!Range)
 )
 {
     static struct Result
@@ -96,7 +96,7 @@ auto timeLexer(Range)(Range r) if (
             popFront();
         }
 
-        auto front() const @property
+        auto front() @property
         {
             return token;
         }

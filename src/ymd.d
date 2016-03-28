@@ -96,22 +96,20 @@ public:
     }
 
     /// ditto
-    void put(S)(const S val) if (isNarrowString!S)
+    void put(S)(const S val) if (isSomeString!S)
     in
     {
         assert(dataPosition <= 3);
     }
     body
     {
-        import std.string : isNumeric;
+        data[dataPosition] = to!int(val);
+        ++dataPosition;
 
-        if (val.isNumeric() && val.length > 2)
+        if (val.length > 2)
         {
             this.century_specified = true;
         }
-
-        data[dataPosition] = to!int(val);
-        ++dataPosition;
     }
 
     /// length getter

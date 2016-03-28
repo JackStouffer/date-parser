@@ -686,7 +686,7 @@ private:
         while (i < tokensLength)
         {
             //Check if it's a number
-            Nullable!float value;
+            Nullable!(float, float.infinity) value;
             string value_repr;
             version(dateparser_test) writeln("index: ", i);
             version(dateparser_test) writeln("tokens[i]: ", tokens[i]);

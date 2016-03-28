@@ -220,7 +220,10 @@ package:
         {
             return weekdaysAA[name.toLower()];
         }
-        return -1;
+        else
+        {
+            return -1;
+        }
     }
 
     final int month(S)(const S name) const if (isSomeString!S)
@@ -229,7 +232,10 @@ package:
         {
             return monthsAA[name.toLower()] + 1;
         }
-        return -1;
+        else
+        {
+            return -1;
+        }
     }
 
     final int hms(S)(const S name) const if (isSomeString!S)
@@ -238,7 +244,10 @@ package:
         {
             return hmsAA[name.toLower()];
         }
-        return -1;
+        else
+        {
+            return -1;
+        }
     }
 
     final int ampm(S)(const S name) const if (isSomeString!S)
@@ -247,7 +256,10 @@ package:
         {
             return ampmAA[name.toLower()];
         }
-        return -1;
+        else
+        {
+            return -1;
+        }
     }
 
     final bool pertain(S)(const S name) const if (isSomeString!S)
@@ -266,7 +278,9 @@ package:
         {
             return 0;
         }
-
-        return name in TZOFFSET ? TZOFFSET[name] : -1;
+        else
+        {
+            return name in TZOFFSET ? TZOFFSET[name] : -1;
+        }
     }
 }
