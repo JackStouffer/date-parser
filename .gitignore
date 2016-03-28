@@ -11,6 +11,7 @@ bench
 *.lst
 *.def
 *.log
+trace.html
 docdir/
 gh-pages/
 dub.selections.json

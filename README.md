@@ -6,8 +6,6 @@
 
 A port of the Python Dateutil date parser. This module offers a generic date/time string parser which is able to parse most known formats to represent a date and/or time. This module attempts to be forgiving with regards to unlikely input formats, returning a SysTime object even for dates which are ambiguous.
 
-As this follows SemVer, this is currently beta quality software. **Expect the API to break many times until this hits 1.0**.
-
 Compiles with D versions 2.068 and up. Tested with ldc v0.17.0 and dmd v2.068.2 - v2.070.2.
 
 In order to use this with LDC v0.17.0 and DMD 2.068, you must download and compile this manually due to the fact that DUB has no way to specify dependencies for specific versions or compilers.
@@ -18,7 +16,7 @@ In order to use this with LDC v0.17.0 and DMD 2.068, you must download and compi
 {
     ...
     "dependencies": {
-        "dateparser": "~>0.3.0"
+        "dateparser": "~>1.1.0"
     }
 }
 ```

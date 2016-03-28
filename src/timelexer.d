@@ -72,11 +72,12 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
 {
     static struct Result
     {
-        private Range source;
-        private string charStack;
-        private string[] tokenStack;
-        private string token;
-        private enum State
+    private:
+        Range source;
+        string charStack;
+        string[] tokenStack;
+        string token;
+        enum State
         {
             EMPTY,
             ALPHA,
@@ -86,6 +87,7 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
             NUMERIC_PERIOD
         }
 
+    public:
         this(Range r)
         {
             source = r;
