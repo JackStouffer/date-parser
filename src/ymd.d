@@ -28,20 +28,16 @@ public:
         is(NumericTypeOf!N : int))
     {
         import std.uni : isNumber;
+        import std.exception : assumeWontThrow;
 
         if (token.front.isNumber)
         {
-            try
-            {
-                return to!int(token) == year;
-            }
-            catch (ConvException)
-            {
-                return false;
-            }
+            return assumeWontThrow(to!int(token)) == year;
         }
         else
+        {
             return false;
+        }
     }
 
     /**
@@ -63,8 +59,8 @@ public:
         foreach (int index, ref token; data[])
         {
             auto potentialYearTokens = tokens.filter!(a => YMD.couldBeYear(a, token));
-            auto frontLength = potentialYearTokens.front.length;
-            auto length = potentialYearTokens.walkLength(3);
+            immutable frontLength = potentialYearTokens.front.length;
+            immutable length = potentialYearTokens.walkLength(3);
 
             if (length == 1 && frontLength > 2)
             {

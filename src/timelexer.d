@@ -96,7 +96,7 @@ auto timeLexer(Range)(Range r) if (
             popFront();
         }
 
-        auto front() @property
+        auto front() const @property
         {
             return token;
         }
@@ -108,7 +108,7 @@ auto timeLexer(Range)(Range r) if (
 
             if (tokenStack.length > 0)
             {
-                auto f = tokenStack.front;
+                immutable f = tokenStack.front;
                 tokenStack.popFront;
                 token = f;
                 return;
@@ -268,7 +268,7 @@ auto timeLexer(Range)(Range r) if (
             }
         }
 
-        bool empty() @property
+        bool empty()() @property
         {
             return token.empty && source.empty && charStack.empty && tokenStack.empty;
         }
@@ -279,7 +279,7 @@ auto timeLexer(Range)(Range r) if (
 
 unittest
 {
-    import std.internal.test.dummyrange;
+    import std.internal.test.dummyrange : ReferenceInputRange;
     import std.algorithm.comparison : equal;
 
     auto a = new ReferenceInputRange!dchar("10:10");
