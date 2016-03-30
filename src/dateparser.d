@@ -983,7 +983,7 @@ private:
                                     res.possibleResult = SysTime.fromISOExtString(timeString);
                                     return res;
                                 }
-                                catch (TimeException)
+                                catch (DateTimeException)
                                 {
                                     ymd.put(tokens[i]);
                                 }
