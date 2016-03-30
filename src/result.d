@@ -1,4 +1,5 @@
 import std.typecons;
+import std.datetime;
 
 package final class Result
 {
@@ -14,4 +15,5 @@ package final class Result
     Nullable!(int, int.min) ampm;
     bool centurySpecified;
     string tzname;
+    Nullable!(SysTime) possibleResult;
 }

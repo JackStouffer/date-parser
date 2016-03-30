@@ -1,5 +1,6 @@
 version (dateparser_test) import std.stdio;
 import std.datetime;
+import std.traits;
 import std.conv;
 import std.typecons;
 import std.array;
@@ -109,6 +110,7 @@ unittest
         timezones
     ) == SysTime(DateTime(2003, 9, 25, 10, 36, 28)));
     assert(parse("Thu Sep 25 10:36:28") == SysTime(DateTime(1, 9, 25, 10, 36, 28)));
+    assert(parse("20030925T104941") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
     assert(parse("2003-09-25T10:49:41") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
     assert(parse("10:36:28") == SysTime(DateTime(1, 1, 1, 10, 36, 28)));
     assert(parse("09-25-2003") == SysTime(DateTime(2003, 9, 25)));
@@ -210,12 +212,14 @@ unittest
 // ISO and ISO stripped
 unittest
 {
+    immutable zone = new SimpleTimeZone(dur!"seconds"(-10_800));
+
     immutable parsed = parse("2003-09-25T10:49:41.5-03:00");
-    assert(parsed == SysTime(DateTime(2003, 9, 25, 10, 49, 41), msecs(500)));
+    assert(parsed == SysTime(DateTime(2003, 9, 25, 10, 49, 41), msecs(500), zone));
     assert((cast(immutable(SimpleTimeZone)) parsed.timezone).utcOffset == hours(-3));
 
     immutable parsed2 = parse("2003-09-25T10:49:41-03:00");
-    assert(parsed2 == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+    assert(parsed2 == SysTime(DateTime(2003, 9, 25, 10, 49, 41), zone));
     assert((cast(immutable(SimpleTimeZone)) parsed2.timezone).utcOffset == hours(-3));
 
     assert(parse("2003-09-25T10:49:41") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
@@ -224,7 +228,7 @@ unittest
     assert(parse("2003-09-25") == SysTime(DateTime(2003, 9, 25)));
 
     immutable parsed3 = parse("2003-09-25T10:49:41-03:00");
-    assert(parsed3 == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+    assert(parsed3 == SysTime(DateTime(2003, 9, 25, 10, 49, 41), zone));
     assert((cast(immutable(SimpleTimeZone)) parsed3.timezone).utcOffset == hours(-3));
 
     immutable parsed4 = parse("20030925T104941-0300");
@@ -311,7 +315,7 @@ unittest
     assert(parse("1994-11-05T08:15:30-05:00",
         Yes.ignoreTimezone) == SysTime(DateTime(1994, 11, 5, 8, 15, 30)));
     assert(parse("1994-11-05T08:15:30Z",
-        Yes.ignoreTimezone) == SysTime(DateTime(1994, 11, 5, 8, 15, 30)));
+        Yes.ignoreTimezone) == SysTime(DateTime(1994, 11, 5, 8, 15, 30), cast(immutable) UTC()));
     assert(parse("July 4, 1976") == SysTime(DateTime(1976, 7, 4)));
     assert(parse("7 4 1976") == SysTime(DateTime(1976, 7, 4)));
     assert(parse("4 jul 1976") == SysTime(DateTime(1976, 7, 4)));
@@ -322,7 +326,7 @@ unittest
     assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
     assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
     assert(parse("1976-07-04T00:01:02Z",
-        Yes.ignoreTimezone) == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
+        Yes.ignoreTimezone) == SysTime(DateTime(1976, 7, 4, 0, 1, 2), cast(immutable) UTC()));
     assert(parse("July 4, 1976 12:01:02 am") == SysTime(DateTime(1976, 7, 4, 0, 1,
         2)));
     assert(parse("Mon Jan  2 04:24:27 1995") == SysTime(DateTime(1995, 1, 2, 4, 24,
@@ -524,9 +528,14 @@ public:
 
         if (res.year.isNull() && res.month.isNull() && res.day.isNull()
                 && res.hour.isNull() && res.minute.isNull()
-                && res.second.isNull() && res.weekday.isNull())
+                && res.second.isNull() && res.weekday.isNull() && res.possibleResult.isNull())
         {
             throw new ConvException("String does not contain a date.");
+        }
+
+        if (!res.possibleResult.isNull)
+        {
+            return res.possibleResult;
         }
 
         if (res.day.isNull)
@@ -954,7 +963,22 @@ private:
                         if (tokens[i].front.isNumber)
                         {
                             //01-01[-01]
-                            ymd.put(tokens[i]);
+                            static if (isSomeString!Range)
+                            {
+                                try
+                                {
+                                    res.possibleResult = SysTime.fromISOExtString(timeString);
+                                    return res;
+                                }
+                                catch (TimeException)
+                                {
+                                    ymd.put(tokens[i]);
+                                }
+                            }
+                            else
+                            {
+                                ymd.put(tokens[i]);
+                            }
                         }
                         else
                         {

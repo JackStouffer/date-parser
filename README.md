@@ -42,6 +42,6 @@ Based on `master`
 String | Python | LDC | DMD
 ------ | ------ | --- | ---
 Thu Sep 25 10:36:28 BRST 2003 | 156 µs | 15 μs and 7 hnsecs | 24 μs and 5 hnsecs
-2003-09-25T10:49:41.5-03:00 | 136 µs | 13 μs and 3 hnsecs | 21 μs and 2 hnsecs
+2003-09-25T10:49:41.5-03:00 | 136 µs | 6 μs and 7 hnsecs | 21 μs and 2 hnsecs
 09.25.2003 | 124 µs | 13 μs and 5 hnsecs | 21 μs and 9 hnsecs
 2003-09-25 | 66.4 µs | 8 μs and 2 hnsecs | 11 μs and 8 hnsecs
