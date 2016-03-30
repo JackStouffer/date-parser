@@ -930,6 +930,19 @@ private:
                 {
                     version(dateparser_test) writeln("branch 6");
                     //HH:MM[:SS[.ss]]
+                    static if (isSomeString!Range)
+                    {
+                        version(dateparser_test) writeln("ISO test");
+                        try
+                        {
+                            res.possibleResult = SysTime(DateTime(
+                                Date(1, 1, 1),
+                                TimeOfDay.fromISOExtString(timeString)
+                            ));
+                            return res;
+                        }
+                        catch (DateTimeException) {}
+                    }
                     res.hour = to!int(value.get());
                     ++i;
                     value = to!float(tokens[i]);
