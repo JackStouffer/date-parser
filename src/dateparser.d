@@ -425,8 +425,12 @@ unittest
 }
 // dfmt on
 
+// Test ranges
 unittest
 {
+    import std.utf : byCodeUnit;
+
+    // copy pasta to work around auto-decoding
     class ReferenceForwardRange(T)
     {
         this(Range)(Range r) if (isInputRange!Range) {_payload = r;}
@@ -437,6 +441,7 @@ unittest
         final @property auto save(this This)() {return new This( _payload);}
     }
 
+    // forward ranges
     auto a = new ReferenceForwardRange!char(['1', '0', 'h', '3', '6', 'm', '2', '8', 's']);
     assert(a.parse == SysTime(DateTime(1, 1, 1, 10, 36, 28)));
 
@@ -444,9 +449,16 @@ unittest
         ['T', 'h', 'u', ' ', 'S', 'e', 'p', ' ',  '1', '0', ':', '3', '6', ':', '2', '8']
     );
     assert(b.parse == SysTime(DateTime(1, 9, 5, 10, 36, 28)));
+
+    // bidirectional ranges
+    assert("2003-09-25T10:49:41-03:00".byCodeUnit.parse == SysTime(
+        DateTime(2003, 9, 25, 10, 49, 41)));
+    assert("Thu Sep 10:36:28".byCodeUnit.parse == SysTime(
+        DateTime(1, 9, 5, 10, 36, 28)));
 }
 
-unittest  // Issue #1
+// Issue #1
+unittest
 {
     assert(parse("Sat, 12 Mar 2016 01:30:59 -0900",
         Yes.ignoreTimezone) == SysTime(DateTime(2016, 3, 12, 01, 30, 59)));
@@ -634,10 +646,11 @@ private:
      */
     auto parseMS(string value)
     {
-        import std.string : indexOf, leftJustify;
+        import std.string : leftJustify;
+        import std.algorithm.searching : canFind;
         import std.typecons : tuple;
 
-        if (!(value.indexOf(".") > -1))
+        if (!(value.canFind(".")))
         {
             return tuple(to!int(value), 0);
         }
@@ -695,6 +708,7 @@ private:
     if (isForwardRange!Range && is(ElementEncodingType!Range : const char))
     {
         import std.string : indexOf;
+        import std.algorithm.searching : canFind;
         import std.algorithm.iteration : filter;
         import std.uni : isUpper, isNumber;
 
@@ -773,7 +787,7 @@ private:
                     //YYMMDD || HHMMSS[.ss]
                     auto s = tokens[i - 1];
 
-                    if (ymd.length == 0 && tokens[i - 1].indexOf('.') == -1)
+                    if (ymd.length == 0 && !tokens[i - 1].canFind('.'))
                     {
                         ymd.put(s[0 .. 2]);
                         ymd.put(s[2 .. 4]);
@@ -950,7 +964,7 @@ private:
                             if (!value.isNull())
                             {
                                 ymd.put(value.get());
-                                mstridx = to!long(ymd.length == 0 ? 0 : ymd.length - 1);
+                                mstridx = cast(long) (ymd.length == 0 ? 0 : ymd.length - 1);
                             }
                             else
                             {
