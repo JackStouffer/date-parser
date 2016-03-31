@@ -86,7 +86,7 @@ SysTime parse(Range)(Range timeString,
     const(TimeZone)[string] timezoneInfos = null,
     Flag!"dayFirst" dayFirst = No.dayFirst,
     Flag!"yearFirst" yearFirst = No.yearFirst, Flag!"fuzzy" fuzzy = No.fuzzy)
-if (isForwardRange!Range && is(ElementEncodingType!Range : const char))
+if (isForwardRange!Range && !isInfinite!Range && is(ElementEncodingType!Range : const char))
 {
     return defaultParser.parse(timeString, ignoreTimezone, timezoneInfos,
         dayFirst, yearFirst, fuzzy);
@@ -515,7 +515,7 @@ public:
         const(TimeZone)[string] timezoneInfos = null,
         Flag!"dayFirst" dayFirst = No.dayFirst,
         Flag!"yearFirst" yearFirst = No.yearFirst, Flag!"fuzzy" fuzzy = No.fuzzy)
-    if (isForwardRange!Range && is(ElementEncodingType!Range : const char))
+    if (isForwardRange!Range && !isInfinite!Range && is(ElementEncodingType!Range : const char))
     {
         SysTime returnDate = SysTime(DateTime(1, 1, 1));
 
@@ -727,7 +727,7 @@ private:
     */
     Result parseImpl(Range)(Range timeString, bool dayFirst = false,
         bool yearFirst = false, bool fuzzy = false)
-    if (isForwardRange!Range && is(ElementEncodingType!Range : const char))
+    if (isForwardRange!Range && !isInfinite!Range && is(ElementEncodingType!Range : const char))
     {
         import std.string : indexOf;
         import std.algorithm.searching : canFind;
