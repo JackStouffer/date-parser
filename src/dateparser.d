@@ -945,16 +945,18 @@ private:
                     //HH:MM[:SS[.ss]]
                     static if (isSomeString!Range)
                     {
-                        version(dateparser_test) writeln("ISO test");
-                        try
+                        if (tokensLength == 5 && info.ampm(tokens[4]) == -1)
                         {
-                            res.possibleResult = SysTime(DateTime(
-                                Date(1, 1, 1),
-                                TimeOfDay.fromISOExtString(timeString)
-                            ));
-                            return res;
+                            try
+                            {
+                                res.possibleResult = SysTime(DateTime(
+                                    Date(1, 1, 1),
+                                    TimeOfDay.fromISOExtString(timeString)
+                                ));
+                                return res;
+                            }
+                            catch (DateTimeException) {}
                         }
-                        catch (DateTimeException) {}
                     }
                     res.hour = to!int(value.get());
                     ++i;
@@ -991,20 +993,18 @@ private:
                             //01-01[-01]
                             static if (isSomeString!Range)
                             {
-                                try
+                                if (tokensLength >= 11)
                                 {
-                                    res.possibleResult = SysTime.fromISOExtString(timeString);
-                                    return res;
-                                }
-                                catch (DateTimeException)
-                                {
-                                    ymd.put(tokens[i]);
+                                    try
+                                    {
+                                        res.possibleResult = SysTime.fromISOExtString(timeString);
+                                        return res;
+                                    }
+                                    catch (DateTimeException) {}
                                 }
                             }
-                            else
-                            {
-                                ymd.put(tokens[i]);
-                            }
+                            
+                            ymd.put(tokens[i]);
                         }
                         else
                         {
