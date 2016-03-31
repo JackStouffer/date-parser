@@ -1,7 +1,7 @@
 import std.typecons;
 import std.datetime;
 
-package final class Result
+final class Result
 {
     Nullable!(int, int.min) year;
     Nullable!(int, int.min) month;

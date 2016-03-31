@@ -5,7 +5,7 @@ import std.range.primitives;
 
 import timelexer;
 
-package struct YMD(R) if (isForwardRange!R && is(ElementEncodingType!R : const char))
+struct YMD(R) if (isForwardRange!R && is(ElementEncodingType!R : const char))
 {
 private:
     bool century_specified = false;

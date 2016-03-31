@@ -209,7 +209,6 @@ public:
         }
     }
 
-package:
     final bool jump(S)(const S name) const if (isSomeString!S)
     {
         return name.toLower() in jumpAA ? true : false;
