@@ -533,87 +533,88 @@ public:
             throw new ConvException("String does not contain a date.");
         }
 
-        if (!res.possibleResult.isNull)
+        if (res.possibleResult.isNull)
         {
-            return res.possibleResult;
-        }
-
-        if (res.day.isNull)
-        {
-            //If the returnDate day exceeds the last day of the month, fall back to
-            //the end of the month.
-            immutable cyear = res.year.isNull() ? returnDate.year : res.year;
-            immutable cmonth = res.month.isNull() ? returnDate.month : res.month;
-            immutable cday = res.day.isNull() ? returnDate.day : res.day;
-
-            immutable days = Date(cyear, cmonth, 1).daysInMonth;
-            if (cday > days)
+            if (res.day.isNull)
             {
-                res.day = days;
+                //If the returnDate day exceeds the last day of the month, fall back to
+                //the end of the month.
+                immutable cyear = res.year.isNull() ? returnDate.year : res.year;
+                immutable cmonth = res.month.isNull() ? returnDate.month : res.month;
+                immutable cday = res.day.isNull() ? returnDate.day : res.day;
+
+                immutable days = Date(cyear, cmonth, 1).daysInMonth;
+                if (cday > days)
+                {
+                    res.day = days;
+                }
             }
-        }
 
-        if (!res.year.isNull)
-            returnDate.year(res.year);
+            if (!res.year.isNull)
+                returnDate.year(res.year);
 
-        if (!res.day.isNull)
-        {
-            returnDate.day(res.day);
-        }
-        else
-        {
-            returnDate.day(1);
-        }
+            if (!res.day.isNull)
+            {
+                returnDate.day(res.day);
+            }
+            else
+            {
+                returnDate.day(1);
+            }
 
-        if (!res.month.isNull)
-        {
-            returnDate.month(to!Month(res.month));
-        }
-        else
-        {
-            returnDate.month(to!Month(1));
-        }
+            if (!res.month.isNull)
+            {
+                returnDate.month(to!Month(res.month));
+            }
+            else
+            {
+                returnDate.month(to!Month(1));
+            }
 
-        if (!res.hour.isNull)
-        {
-            returnDate.hour(res.hour);
-        }
-        else
-        {
-            returnDate.hour(0);
-        }
+            if (!res.hour.isNull)
+            {
+                returnDate.hour(res.hour);
+            }
+            else
+            {
+                returnDate.hour(0);
+            }
 
-        if (!res.minute.isNull)
-        {
-            returnDate.minute(res.minute);
-        }
-        else
-        {
-            returnDate.minute(0);
-        }
+            if (!res.minute.isNull)
+            {
+                returnDate.minute(res.minute);
+            }
+            else
+            {
+                returnDate.minute(0);
+            }
 
-        if (!res.second.isNull)
-        {
-            returnDate.second(res.second);
-        }
-        else
-        {
-            returnDate.second(0);
-        }
+            if (!res.second.isNull)
+            {
+                returnDate.second(res.second);
+            }
+            else
+            {
+                returnDate.second(0);
+            }
 
-        if (!res.microsecond.isNull)
-        {
-            returnDate.fracSecs(usecs(res.microsecond));
-        }
-        else
-        {
-            returnDate.fracSecs(usecs(0));
-        }
+            if (!res.microsecond.isNull)
+            {
+                returnDate.fracSecs(usecs(res.microsecond));
+            }
+            else
+            {
+                returnDate.fracSecs(usecs(0));
+            }
 
-        if (!res.weekday.isNull() && (res.day.isNull || !res.day))
-        {
-            int delta_days = daysToDayOfWeek(returnDate.dayOfWeek(), to!DayOfWeek(res.weekday));
-            returnDate += dur!"days"(delta_days);
+            if (!res.weekday.isNull() && (res.day.isNull || !res.day))
+            {
+                int delta_days = daysToDayOfWeek(
+                    returnDate.dayOfWeek(),
+                    to!DayOfWeek(res.weekday)
+                );
+                returnDate += dur!"days"(delta_days);
+            }
         }
 
         if (!ignoreTimezone)
@@ -640,8 +641,20 @@ public:
                 ));
             }
         }
+        else if (ignoreTimezone && !res.possibleResult.isNull
+            && res.possibleResult.timezone !is null)
+        {
+            res.possibleResult = res.possibleResult.toUTC();
+        }
 
-        return returnDate;
+        if (!res.possibleResult.isNull)
+        {
+            return res.possibleResult;
+        }
+        else
+        {
+            return returnDate;
+        }
     }
 
 private:
