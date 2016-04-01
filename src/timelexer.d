@@ -9,7 +9,6 @@ import std.compiler;
 private enum bool useAllocators = version_major == 2 && version_minor >= 69;
 private enum split_decimal = ctRegex!(`([\.,])`);
 
-// FIXME
 /**
  * Split a string into an array of strings, split by `pattern`. This keeps
  * the split points in the final result.

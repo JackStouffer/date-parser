@@ -720,8 +720,6 @@ private:
     *     yearFirst = Whether to interpret the first value in an ambiguous 3-integer date
     *     (e.g. 01/05/09) as the year. If true, the first number is taken
     *     to be the year, otherwise the last number is taken to be the year.
-    *     If this is set to null, the value is retrieved from the current
-    *     :class:ParserInfo object (which itself defaults to false).
     *     fuzzy = Whether to allow fuzzy parsing, allowing for string like "Today is
     *     January 1, 2047 at 8:21:00AM".
     */

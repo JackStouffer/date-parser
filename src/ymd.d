@@ -2,8 +2,11 @@ version (dateparser_test) import std.stdio;
 import std.traits;
 import std.conv;
 import std.range.primitives;
+import std.compiler;
 
 import timelexer;
+
+private enum bool useAllocators = version_major == 2 && version_minor >= 69;
 
 struct YMD(R) if (isForwardRange!R && is(ElementEncodingType!R : const char))
 {
@@ -30,7 +33,15 @@ public:
 
         if (token.front.isNumber)
         {
-            return assumeWontThrow(to!int(token)) == year;
+            static if (useAllocators)
+            {
+                import std.algorithm.comparison : equal;
+                return year.toChars.equal(token);
+            }
+            else
+            {
+                return assumeWontThrow(to!int(token)) == year;
+            }
         }
         else
         {
