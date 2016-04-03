@@ -19,11 +19,6 @@ enum stringThree = "2003-09-25";
 enum stringFour = "2003-09-25T10:49:41.5-03:00";
 enum stringFive = "25-Sep-2003";
 
-SysTime parse_test(string val)
-{
-    return parse(val);
-}
-
 void main()
 {
     version(unittest) {} else
@@ -36,11 +31,11 @@ void main()
             theAllocator(a);
         }
 
-        auto result = to!Duration(benchmark!(() => parse_test(stringOne))(testCount)[0] / testCount);
-        auto result2 = to!Duration(benchmark!(() => parse_test(stringTwo))(testCount)[0] / testCount);
-        auto result3 = to!Duration(benchmark!(() => parse_test(stringThree))(testCount)[0] / testCount);
-        auto result4 = to!Duration(benchmark!(() => parse_test(stringFour))(testCount)[0] / testCount);
-        auto result5 = to!Duration(benchmark!(() => parse_test(stringFive))(testCount)[0] / testCount);
+        auto result = to!Duration(benchmark!(() => parse(stringOne))(testCount)[0] / testCount);
+        auto result2 = to!Duration(benchmark!(() => parse(stringTwo))(testCount)[0] / testCount);
+        auto result3 = to!Duration(benchmark!(() => parse(stringThree))(testCount)[0] / testCount);
+        auto result4 = to!Duration(benchmark!(() => parse(stringFour))(testCount)[0] / testCount);
+        auto result5 = to!Duration(benchmark!(() => parse(stringFive))(testCount)[0] / testCount);
 
         writeln(stringOne, "\t", result);
         writeln(stringTwo, "\t\t\t", result2);
