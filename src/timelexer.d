@@ -7,46 +7,122 @@ import std.traits;
 import std.compiler;
 
 private enum bool useAllocators = version_major == 2 && version_minor >= 69;
-private enum split_decimal = ctRegex!(`([\.,])`);
+private enum split_decimal = ctRegex!(`([\.,])`, "g");
 
 /**
- * Split a string into an array of strings, split by `pattern`. This keeps
- * the split points in the final result.
+ * Split the given string on `pat`, but keep the matches in the final result.
  *
  * Params:
- *     data = the string to split
- *     pattern = the regex pattern to match
- *
+ *     r = the string to be split
+ *     pat = the regex pattern
  * Returns:
- *     an array of strings
+ *     A forward range of strings
  */
-private auto splitWithMatches(S, RegEx)(S data, RegEx pattern) if (isSomeString!S)
-in
+auto splitterWithMatches(Range, RegEx)(Range r, RegEx pat)
+    if(is(Unqual!(ElementEncodingType!Range) : dchar))
 {
-    assert(!data.empty);
+    /++
+    Range that splits a string using a regular expression as a
+    separator.
+    +/
+    static struct Result(Range, alias RegEx = Regex)
+    {
+    private:
+        Range _input;
+        size_t _offset;
+        bool onMatch = false;
+        alias Rx = typeof(match(Range.init,RegEx.init));
+        Rx _match;
+
+        @trusted this(Range input, RegEx separator)
+        {//@@@BUG@@@ generated opAssign of RegexMatch is not @trusted
+            _input = input;
+            //separator.flags |= RegexOption.global;
+            if (_input.empty)
+            {
+                //there is nothing to match at all, make _offset > 0
+                _offset = 1;
+            }
+            else
+            {
+                _match = Rx(_input, separator);
+            }
+        }
+
+    public:
+        auto ref opSlice()
+        {
+            return this.save;
+        }
+
+        ///Forward range primitives.
+        @property Range front()
+        {
+            import std.algorithm : min;
+
+            assert(!empty && _offset <= _match.pre.length
+                    && _match.pre.length <= _input.length);
+
+            if (!onMatch)
+                return _input[_offset .. min($, _match.pre.length)];
+            else
+                return _match.hit();
+        }
+
+        ///ditto
+        @property bool empty()
+        {
+            return _offset >= _input.length;
+        }
+
+        ///ditto
+        void popFront()
+        {
+            assert(!empty);
+            if (_match.empty)
+            {
+                //No more separators, work is done here
+                _offset = _input.length + 1;
+            }
+            else
+            {
+                if (!onMatch)
+                {
+                    //skip past the separator
+                    _offset = _match.pre.length;
+                    onMatch = true;
+                }
+                else
+                {
+                    onMatch = false;
+                    _offset += _match.hit.length;
+                    _match.popFront();
+                }
+            }
+        }
+
+        ///ditto
+        @property auto save()
+        {
+            return this;
+        }
+    }
+
+    return Result!(Range, RegEx)(r, pat);
 }
-body
+
+///
+unittest
 {
-    import std.range : roundRobin;
+    import std.algorithm.comparison : equal;
 
-    static if (useAllocators)
-    {
-        import std.experimental.allocator : theAllocator, makeArray, dispose;
+    assert("2003.04.05"
+        .splitterWithMatches(regex(`([\.,])`, "g"))
+        .equal(["2003", ".", "04", ".", "05"]));
 
-        auto splitMatches = theAllocator.makeArray!(string)(
-            data.splitter(pattern)
-        );
-        scope(exit) theAllocator.dispose(splitMatches);
-    }
-    else
-    {
-        auto splitMatches = data.split(pattern);
-    }
-
-    return roundRobin(
-        splitMatches,
-        repeat(".", splitMatches.length > 1 ? splitMatches.length - 1 : 1)
-    ).array;
+    assert("10:00a.m."
+        .splitterWithMatches(regex(`([\.,])`, "g"))
+        .equal(["10:00a", ".", "m", "."]));
 }
 
 /**
@@ -100,7 +176,7 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
 
         void popFront()
         {
-            import std.algorithm.searching : count;
+            import std.algorithm.searching : canFind;
             import std.uni : isNumber, isSpace, isAlpha;
 
             if (tokenStack.length > 0)
@@ -251,9 +327,11 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                     && (seenLetters || token.count('.') > 1
                     || (token[$ - 1] == '.' || token[$ - 1] == ',')))
             {
-                auto l = splitWithMatches(token[], split_decimal);
-                token = l[0];
-                foreach (tok; l[1 .. $])
+                auto l = splitterWithMatches(token[], split_decimal);
+                token = l.front;
+                l.popFront;
+
+                foreach (tok; l)
                 {
                     if (tok.length > 0)
                     {
@@ -262,7 +340,7 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                 }
             }
 
-            if (state == State.NUMERIC_PERIOD && token.count('.') == 0)
+            if (state == State.NUMERIC_PERIOD && !token.canFind('.'))
             {
                 token = token.replace(",", ".");
             }
