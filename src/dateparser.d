@@ -1,11 +1,8 @@
 version (dateparser_test) import std.stdio;
 import std.datetime;
 import std.traits;
-import std.conv;
 import std.typecons;
-import std.array;
 import std.compiler;
-import std.string;
 import std.regex;
 import std.range;
 
@@ -243,6 +240,7 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
 
         void popFront()
         {
+            import std.string : count;
             import std.algorithm.searching : canFind;
             import std.uni : isNumber, isSpace, isAlpha;
 
@@ -456,6 +454,7 @@ public:
     {
         import std.uni : isNumber;
         import std.exception : assumeWontThrow;
+        import std.conv : to, toChars;
 
         if (token.front.isNumber)
         {
@@ -538,6 +537,8 @@ public:
     }
     body
     {
+        import std.conv : to;
+
         data[dataPosition] = to!int(val);
         ++dataPosition;
 
@@ -781,6 +782,9 @@ public:
             || isSomeChar!(
             ElementEncodingType!(ElementEncodingType!(ElementEncodingType!(Range)))))
     {
+        import std.array : array;
+        import std.conv : to;
+
         int[string] dictionary;
 
         foreach (int i, value; list)
@@ -1052,6 +1056,7 @@ unittest
 unittest
 {
     import std.exception : assertThrown;
+    import std.conv : ConvException;
 
     assertThrown!ConvException(parse(""));
     assertThrown!ConvException(parse("AM"));
@@ -1449,6 +1454,8 @@ public:
         Flag!"yearFirst" yearFirst = No.yearFirst, Flag!"fuzzy" fuzzy = No.fuzzy)
     if (isForwardRange!Range && !isInfinite!Range && is(ElementEncodingType!Range : const char))
     {
+        import std.conv : to, ConvException;
+
         SysTime returnDate = SysTime(DateTime(1, 1, 1));
 
         auto res = parseImpl(timeString, dayFirst, yearFirst, fuzzy);
@@ -1603,6 +1610,7 @@ private:
         import std.string : leftJustify;
         import std.algorithm.searching : canFind;
         import std.typecons : tuple;
+        import std.conv : to;
 
         if (!(value.canFind(".")))
         {
@@ -1663,6 +1671,7 @@ private:
         import std.algorithm.searching : canFind;
         import std.algorithm.iteration : filter;
         import std.uni : isUpper, isNumber;
+        import std.conv : to, ConvException;
 
         auto res = new Result();
 
@@ -1670,9 +1679,9 @@ private:
         {
             import std.experimental.allocator : theAllocator, makeArray,
                 dispose;
-            import std.experimental.allocator.mallocator;
+            import std.experimental.allocator.mallocator : Mallocator;
             import std.range.primitives : put;
-            import containers.dynamicarray;
+            import containers.dynamicarray : DynamicArray;
 
             DynamicArray!(string, Mallocator, true) tokens;
             put(tokens, timeString.save.timeLexer);
