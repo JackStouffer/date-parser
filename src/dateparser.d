@@ -5,12 +5,9 @@ import std.conv;
 import std.typecons;
 import std.array;
 import std.compiler;
-import std.range.primitives;
-
-public import parserinfo;
-import result;
-import timelexer;
-import ymd;
+import std.string;
+import std.regex;
+import std.range;
 
 private Parser defaultParser;
 static this()
@@ -19,8 +16,943 @@ static this()
 }
 
 private enum bool useAllocators = version_major == 2 && version_minor >= 69;
+private enum split_decimal = ctRegex!(`([\.,])`, "g");
+
+// dfmt off
+//m from a.m/p.m, t from ISO T separator
+enum JUMP_DEFAULT = ParserInfo.convert([
+    " ", ".", ",", ";", "-", "/", "'", "at", "on",
+    "and", "ad", "m", "t", "of", "st", "nd", "rd",
+    "th"]);
+
+enum WEEKDAYS_DEFAULT = ParserInfo.convert([
+    ["Mon", "Monday"],
+    ["Tue", "Tuesday"], 
+    ["Wed", "Wednesday"],
+    ["Thu", "Thursday"],
+    ["Fri", "Friday"],
+    ["Sat", "Saturday"],
+    ["Sun", "Sunday"]
+]);
+enum MONTHS_DEFAULT = ParserInfo.convert([
+    ["Jan", "January"],
+    ["Feb", "February"],
+    ["Mar", "March"],
+    ["Apr", "April"],
+    ["May", "May"],
+    ["Jun", "June"],
+    ["Jul", "July"],
+    ["Aug", "August"],
+    ["Sep", "Sept", "September"],
+    ["Oct", "October"],
+    ["Nov", "November"],
+    ["Dec","December"]
+]);
+enum HMS_DEFAULT = ParserInfo.convert([
+    ["h", "hour", "hours"],
+    ["m", "minute", "minutes"],
+    ["s", "second", "seconds"]
+]);
+enum AMPM_DEFAULT = ParserInfo.convert([["am", "a"], ["pm", "p"]]);
+enum UTCZONE_DEFAULT = ParserInfo.convert(["UTC", "GMT", "Z"]);
+enum PERTAIN_DEFAULT = ParserInfo.convert(["of"]);
+int[string] TZOFFSET;
+// dfmt on
+
+final class Result
+{
+    Nullable!(int, int.min) year;
+    Nullable!(int, int.min) month;
+    Nullable!(int, int.min) day;
+    Nullable!(int, int.min) weekday;
+    Nullable!(int, int.min) hour;
+    Nullable!(int, int.min) minute;
+    Nullable!(int, int.min) second;
+    Nullable!(int, int.min) microsecond;
+    Nullable!(int, int.min) tzoffset;
+    Nullable!(int, int.min) ampm;
+    bool centurySpecified;
+    string tzname;
+    Nullable!(SysTime) possibleResult;
+}
+
+/**
+ * Split the given string on `pat`, but keep the matches in the final result.
+ *
+ * Params:
+ *     r = the string to be split
+ *     pat = the regex pattern
+ * Returns:
+ *     A forward range of strings
+ */
+auto splitterWithMatches(Range, RegEx)(Range r, RegEx pat)
+    if(is(Unqual!(ElementEncodingType!Range) : dchar))
+{
+    /++
+    Range that splits a string using a regular expression as a
+    separator.
+    +/
+    static struct Result(Range, alias RegEx = Regex)
+    {
+    private:
+        Range _input;
+        size_t _offset;
+        bool onMatch = false;
+        alias Rx = typeof(match(Range.init,RegEx.init));
+        Rx _match;
+
+        @trusted this(Range input, RegEx separator)
+        {//@@@BUG@@@ generated opAssign of RegexMatch is not @trusted
+            _input = input;
+            //separator.flags |= RegexOption.global;
+            if (_input.empty)
+            {
+                //there is nothing to match at all, make _offset > 0
+                _offset = 1;
+            }
+            else
+            {
+                _match = Rx(_input, separator);
+            }
+        }
+
+    public:
+        auto ref opSlice()
+        {
+            return this.save;
+        }
+
+        ///Forward range primitives.
+        @property Range front()
+        {
+            import std.algorithm : min;
+
+            assert(!empty && _offset <= _match.pre.length
+                    && _match.pre.length <= _input.length);
+
+            if (!onMatch)
+                return _input[_offset .. min($, _match.pre.length)];
+            else
+                return _match.hit();
+        }
+
+        ///ditto
+        @property bool empty()
+        {
+            return _offset >= _input.length;
+        }
+
+        ///ditto
+        void popFront()
+        {
+            assert(!empty);
+            if (_match.empty)
+            {
+                //No more separators, work is done here
+                _offset = _input.length + 1;
+            }
+            else
+            {
+                if (!onMatch)
+                {
+                    //skip past the separator
+                    _offset = _match.pre.length;
+                    onMatch = true;
+                }
+                else
+                {
+                    onMatch = false;
+                    _offset += _match.hit.length;
+                    _match.popFront();
+                }
+            }
+        }
+
+        ///ditto
+        @property auto save()
+        {
+            return this;
+        }
+    }
+
+    return Result!(Range, RegEx)(r, pat);
+}
+
+///
+unittest
+{
+    import std.algorithm.comparison : equal;
+
+    assert("2003.04.05"
+        .splitterWithMatches(regex(`([\.,])`, "g"))
+        .equal(["2003", ".", "04", ".", "05"]));
+
+    assert("10:00a.m."
+        .splitterWithMatches(regex(`([\.,])`, "g"))
+        .equal(["10:00a", ".", "m", "."]));
+}
+
+/**
+* This function breaks the time string into lexical units (tokens), which
+* can be parsed by the parser. Lexical units are demarcated by changes in
+* the character set, so any continuous string of letters is considered
+* one unit, any continuous string of numbers is considered one unit.
+*
+* The main complication arises from the fact that dots ('.') can be used
+* both as separators (e.g. "Sep.20.2009") or decimal points (e.g.
+* "4:30:21.447"). As such, it is necessary to read the full context of
+* any dot-separated strings before breaking it into tokens; as such, this
+* function maintains a "token stack", for when the ambiguous context
+* demands that multiple tokens be parsed at once.
+*
+* Params:
+*     r = the range to parse
+* Returns:
+*     a input range of strings
+*/
+auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEncodingType!Range))
+{
+    static struct Result
+    {
+    private:
+        Range source;
+        string charStack;
+        string[] tokenStack;
+        string token;
+        enum State
+        {
+            EMPTY,
+            ALPHA,
+            NUMERIC,
+            ALPHA_PERIOD,
+            PERIOD,
+            NUMERIC_PERIOD
+        }
+
+    public:
+        this(Range r)
+        {
+            source = r;
+            popFront();
+        }
+
+        auto front() @property
+        {
+            return token;
+        }
+
+        void popFront()
+        {
+            import std.algorithm.searching : canFind;
+            import std.uni : isNumber, isSpace, isAlpha;
+
+            if (tokenStack.length > 0)
+            {
+                immutable f = tokenStack.front;
+                tokenStack.popFront;
+                token = f;
+                return;
+            }
+
+            bool seenLetters = false;
+            State state = State.EMPTY;
+            token = string.init;
+
+            while (!source.empty || !charStack.empty)
+            {
+                // We only realize that we've reached the end of a token when we
+                // find a character that's not part of the current token - since
+                // that character may be part of the next token, it's stored in the
+                // charStack.
+                dchar nextChar;
+
+                if (!charStack.empty)
+                {
+                    nextChar = charStack.front;
+                    charStack.popFront;
+                }
+                else
+                {
+                    nextChar = source.front;
+                    source.popFront;
+                }
+
+                if (state == State.EMPTY)
+                {
+                    version(dateparser_test) writeln("EMPTY");
+                    // First character of the token - determines if we're starting
+                    // to parse a word, a number or something else.
+                    token ~= nextChar;
+                    if (nextChar.isAlpha)
+                    {
+                        state = State.ALPHA;
+                    }
+                    else if (nextChar.isNumber)
+                    {
+                        state = State.NUMERIC;
+                    }
+                    else if (isSpace(nextChar))
+                    {
+                        token = " ";
+                        break; //emit token
+                    }
+                    else
+                    {
+                        break; //emit token
+                    }
+                    version(dateparser_test) writeln("TOKEN ", token, " STATE ", state);
+                }
+                else if (state == State.ALPHA)
+                {
+                    version(dateparser_test) writeln("STATE ", state, " nextChar: ", nextChar);
+                    // If we've already started reading a word, we keep reading
+                    // letters until we find something that's not part of a word.
+                    seenLetters = true;
+                    if (nextChar.isAlpha)
+                    {
+                        token ~= nextChar;
+                    }
+                    else if (nextChar == '.')
+                    {
+                        token ~= nextChar;
+                        state = State.ALPHA_PERIOD;
+                    }
+                    else
+                    {
+                        charStack ~= nextChar;
+                        break; //emit token
+                    }
+                }
+                else if (state == State.NUMERIC)
+                {
+                    // If we've already started reading a number, we keep reading
+                    // numbers until we find something that doesn't fit.
+                    version(dateparser_test) writeln("STATE ", state, " nextChar: ", nextChar);
+                    if (nextChar.isNumber)
+                    {
+                        token ~= nextChar;
+                    }
+                    else if (nextChar == '.' || (nextChar == ',' && token.length >= 2))
+                    {
+                        token ~= nextChar;
+                        state = State.NUMERIC_PERIOD;
+                    }
+                    else
+                    {
+                        charStack ~= nextChar;
+                        version(dateparser_test) writeln("charStack add: ", charStack);
+                        break; //emit token
+                    }
+                }
+                else if (state == State.ALPHA_PERIOD)
+                {
+                    version(dateparser_test) writeln("STATE ", state, " nextChar: ", nextChar);
+                    // If we've seen some letters and a dot separator, continue
+                    // parsing, and the tokens will be broken up later.
+                    seenLetters = true;
+                    if (nextChar == '.' || nextChar.isAlpha)
+                    {
+                        token ~= nextChar;
+                    }
+                    else if (nextChar.isNumber && token[$ - 1] == '.')
+                    {
+                        token ~= nextChar;
+                        state = State.NUMERIC_PERIOD;
+                    }
+                    else
+                    {
+                        charStack ~= nextChar;
+                        break; //emit token
+                    }
+                }
+                else if (state == State.NUMERIC_PERIOD)
+                {
+                    version(dateparser_test) writeln("STATE ", state, " nextChar: ", nextChar);
+                    // If we've seen at least one dot separator, keep going, we'll
+                    // break up the tokens later.
+                    if (nextChar == '.' || nextChar.isNumber)
+                    {
+                        token ~= nextChar;
+                    }
+                    else if (nextChar.isAlpha && token[$-1] == '.')
+                    {
+                        token ~= nextChar;
+                        state = State.ALPHA_PERIOD;
+                    }
+                    else
+                    {
+                        charStack ~= nextChar;
+                        break; //emit token
+                    }
+                }
+            }
+
+            version(dateparser_test) writeln("STATE ", state, " seenLetters: ", seenLetters);
+            if ((state == State.ALPHA_PERIOD || state == State.NUMERIC_PERIOD) &&
+                (seenLetters || token.count('.') > 1 || (token[$ - 1] == '.' || token[$ - 1] == ',')))
+            if ((state == State.ALPHA_PERIOD || state == State.NUMERIC_PERIOD)
+                    && (seenLetters || token.count('.') > 1
+                    || (token[$ - 1] == '.' || token[$ - 1] == ',')))
+            {
+                auto l = splitterWithMatches(token[], split_decimal);
+                token = l.front;
+                l.popFront;
+
+                foreach (tok; l)
+                {
+                    if (tok.length > 0)
+                    {
+                        tokenStack ~= tok;
+                    }
+                }
+            }
+
+            if (state == State.NUMERIC_PERIOD && !token.canFind('.'))
+            {
+                token = token.replace(",", ".");
+            }
+        }
+
+        bool empty()() @property
+        {
+            return token.empty && source.empty && charStack.empty && tokenStack.empty;
+        }
+    }
+
+    return Result(r);
+}
+
+unittest
+{
+    import std.internal.test.dummyrange : ReferenceInputRange;
+    import std.algorithm.comparison : equal;
+
+    auto a = new ReferenceInputRange!dchar("10:10");
+    assert(a.timeLexer.equal(["10", ":", "10"]));
+
+    auto b = new ReferenceInputRange!dchar("Thu Sep 10:36:28");
+    assert(b.timeLexer.equal(["Thu", " ", "Sep", " ", "10", ":", "36", ":", "28"]));
+}
+
+struct YMD(R) if (isForwardRange!R && is(ElementEncodingType!R : const char))
+{
+private:
+    bool century_specified = false;
+    int[3] data;
+    int dataPosition;
+    R tzstr;
 
 public:
+    this(R tzstr)
+    {
+        this.tzstr = tzstr;
+    }
+
+    /**
+     * Params
+     */
+    static bool couldBeYear(Range, N)(Range token, N year) if (isInputRange!Range
+            && isSomeChar!(ElementEncodingType!Range) && is(NumericTypeOf!N : int))
+    {
+        import std.uni : isNumber;
+        import std.exception : assumeWontThrow;
+
+        if (token.front.isNumber)
+        {
+            static if (useAllocators)
+            {
+                import std.algorithm.comparison : equal;
+                return year.toChars.equal(token);
+            }
+            else
+            {
+                return assumeWontThrow(to!int(token)) == year;
+            }
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    /**
+     * Attempt to deduce if a pre 100 year was lost due to padded zeros being
+     * taken off
+     *
+     * Params:
+     *     tokens = a range of tokens
+     * Returns:
+     *     the index of the year token. If no probable result was found, then -1
+     *     is returned
+     */
+    int probableYearIndex(Range)(Range tokens) const if (isInputRange!Range
+            && isNarrowString!(ElementType!(Range)))
+    {
+        import std.algorithm.iteration : filter;
+        import std.range : walkLength;
+
+        foreach (int index, ref token; data[])
+        {
+            auto potentialYearTokens = tokens.filter!(a => YMD.couldBeYear(a, token));
+            immutable frontLength = potentialYearTokens.front.length;
+            immutable length = potentialYearTokens.walkLength(3);
+
+            if (length == 1 && frontLength > 2)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    /// Put a value in that represents a year, month, or day
+    void put(N)(N val) if (isNumeric!N)
+    in
+    {
+        assert(dataPosition <= 3);
+    }
+    body
+    {
+        static if (is(N : int))
+        {
+            if (val > 100)
+            {
+                this.century_specified = true;
+            }
+
+            data[dataPosition] = val;
+            ++dataPosition;
+        }
+        else
+        {
+            put(cast(int) val);
+        }
+    }
+
+    /// ditto
+    void put(S)(const S val) if (isSomeString!S)
+    in
+    {
+        assert(dataPosition <= 3);
+    }
+    body
+    {
+        data[dataPosition] = to!int(val);
+        ++dataPosition;
+
+        if (val.length > 2)
+        {
+            this.century_specified = true;
+        }
+    }
+
+    /// length getter
+    size_t length() @property const @safe pure nothrow @nogc
+    {
+        return dataPosition;
+    }
+
+    /// century_specified getter
+    bool centurySpecified() @property const @safe pure nothrow @nogc
+    {
+        return century_specified;
+    }
+
+    /**
+     * Turns the array of ints into a `Tuple` of three, representing the year,
+     * month, and day.
+     *
+     * Params:
+     *     mstridx = The index of the month in the data
+     *     yearfirst = if the year is first in the string
+     *     dayfirst = if the day is first in the string
+     * Returns:
+     *     tuple of three ints
+     */
+    auto resolveYMD(N)(N mstridx, bool yearfirst, bool dayfirst) if (is(NumericTypeOf!N : size_t))
+    {
+        import std.algorithm.mutation : remove;
+        import std.typecons : tuple;
+
+        int year = -1;
+        int month;
+        int day;
+
+        if (dataPosition == 1 || (mstridx != -1 && dataPosition == 2)) //One member, or two members with a month string
+        {
+            if (mstridx != -1)
+            {
+                month = data[mstridx];
+                switch (mstridx)
+                {
+                    case 0:
+                        data[0] = data[1];
+                        data[1] = data[2];
+                        data[2] = 0;
+                        break;
+                    case 1:
+                        data[1] = data[2];
+                        data[2] = 0;
+                        break;
+                    case 2:
+                        data[2] = 0;
+                        break;
+                    default: break;
+                }                
+            }
+
+            if (dataPosition > 1 || mstridx == -1)
+            {
+                if (data[0] > 31)
+                {
+                    year = data[0];
+                }
+                else
+                {
+                    day = data[0];
+                }
+            }
+        }
+        else if (dataPosition == 2) //Two members with numbers
+        {
+            if (data[0] > 31)
+            {
+                //99-01
+                year = data[0];
+                month = data[1];
+            }
+            else if (data[1] > 31)
+            {
+                //01-99
+                month = data[0];
+                year = data[1];
+            }
+            else if (dayfirst && data[1] <= 12)
+            {
+                //13-01
+                day = data[0];
+                month = data[1];
+            }
+            else
+            {
+                //01-13
+                month = data[0];
+                day = data[1];
+            }
+
+        }
+        else if (dataPosition == 3) //Three members
+        {
+            if (mstridx == 0)
+            {
+                month = data[0];
+                day = data[1];
+                year = data[2];
+            }
+            else if (mstridx == 1)
+            {
+                if (data[0] > 31 || (yearfirst && data[2] <= 31))
+                {
+                    //99-Jan-01
+                    year = data[0];
+                    month = data[1];
+                    day = data[2];
+                }
+                else
+                {
+                    //01-Jan-01
+                    //Give precendence to day-first, since
+                    //two-digit years is usually hand-written.
+                    day = data[0];
+                    month = data[1];
+                    year = data[2];
+                }
+            }
+            else if (mstridx == 2)
+            {
+                if (data[1] > 31)
+                {
+                    //01-99-Jan
+                    day = data[0];
+                    year = data[1];
+                    month = data[2];
+                }
+                else
+                {
+                    //99-01-Jan
+                    year = data[0];
+                    day = data[1];
+                    month = data[2];
+                }
+            }
+            else
+            {
+                if (data[0] > 31 || probableYearIndex(tzstr.timeLexer) == 0
+                        || (yearfirst && data[1] <= 12 && data[2] <= 31))
+                {
+                    //99-01-01
+                    year = data[0];
+                    month = data[1];
+                    day = data[2];
+                }
+                else if (data[0] > 12 || (dayfirst && data[1] <= 12))
+                {
+                    //13-01-01
+                    day = data[0];
+                    month = data[1];
+                    year = data[2];
+                }
+                else
+                {
+                    //01-13-01
+                    month = data[0];
+                    day = data[1];
+                    year = data[2];
+                }
+            }
+        }
+
+        return tuple(year, month, day);
+    }
+}
+
+public:
+
+/**
+Class which handles what inputs are accepted. Subclass this to customize
+the language and acceptable values for each parameter.
+
+Params:
+    dayFirst = Whether to interpret the first value in an ambiguous 3-integer date
+        (e.g. 01/05/09) as the day (`true`) or month (`false`). If
+        `yearFirst` is set to `true`, this distinguishes between YDM
+        and YMD. Default is `false`.
+    yearFirst = Whether to interpret the first value in an ambiguous 3-integer date
+        (e.g. 01/05/09) as the year. If `true`, the first number is taken
+        to be the year, otherwise the last number is taken to be the year.
+        Default is `false`.
+*/
+class ParserInfo
+{
+    import std.datetime : Clock;
+    import std.uni : toLower, asLowerCase;
+
+private:
+    bool dayFirst;
+    bool yearFirst;
+    short year;
+    short century;
+
+public:
+    /**
+     * AAs used for matching strings to calendar numbers, e.g. Jan is 1
+     */
+    int[string] jumpAA;
+    ///ditto
+    int[string] weekdaysAA;
+    ///ditto
+    int[string] monthsAA;
+    ///ditto
+    int[string] hmsAA;
+    ///ditto
+    int[string] ampmAA;
+    ///ditto
+    int[string] utczoneAA;
+    ///ditto
+    int[string] pertainAA;
+
+    /**
+     * Take a range of character ranges or a range of ranges of character
+     * ranges and converts it to an associative array that the internal
+     * parser info methods can use.
+     *
+     * Use this method in order to override the default parser info field
+     * values. See the example on the $(REF parse).
+     *
+     * Params:
+     *     list = a range of character ranges
+     *
+     * Returns:
+     *     An associative array of `int`s accessed by strings
+     */
+    static int[string] convert(Range)(Range list) if (isInputRange!Range
+            && isSomeChar!(ElementEncodingType!(ElementEncodingType!(Range)))
+            || isSomeChar!(
+            ElementEncodingType!(ElementEncodingType!(ElementEncodingType!(Range)))))
+    {
+        int[string] dictionary;
+
+        foreach (int i, value; list)
+        {
+            // tuple of strings or multidimensional string array
+            static if (isInputRange!(ElementType!(ElementType!(Range))))
+            {
+                foreach (item; value)
+                {
+                    dictionary[item.asLowerCase.array.to!string] = i;
+                }
+            }
+            else
+            {
+                dictionary[value.asLowerCase.array.to!string] = i;
+            }
+        }
+
+        return dictionary;
+    }
+
+    /// Ctor
+    this(bool dayFirst = false, bool yearFirst = false) @safe
+    {
+        dayFirst = dayFirst;
+        yearFirst = yearFirst;
+
+        year = Clock.currTime.year;
+        century = (year / 100) * 100;
+
+        jumpAA = JUMP_DEFAULT;
+        weekdaysAA = WEEKDAYS_DEFAULT;
+        monthsAA = MONTHS_DEFAULT;
+        hmsAA = HMS_DEFAULT;
+        ampmAA = AMPM_DEFAULT;
+        utczoneAA = UTCZONE_DEFAULT;
+        pertainAA = PERTAIN_DEFAULT;
+    }
+
+    /**
+     * If the century isn't specified, e.g. `"'07"`, then assume that the year
+     * is in the current century and return it as such. Otherwise do nothing
+     *
+     * Params:
+     *     convertYear = year to be converted
+     *     centurySpecified = is the century given in the year
+     *
+     * Returns:
+     *     the converted year
+     */
+    final int convertYear(int convertYear, bool centurySpecified = false) @safe @nogc pure nothrow const
+    {
+        import std.math : abs;
+
+        if (convertYear < 100 && !centurySpecified)
+        {
+            convertYear += century;
+            if (abs(convertYear - year) >= 50)
+            {
+                if (convertYear < year)
+                {
+                    convertYear += 100;
+                }
+                else
+                {
+                    convertYear -= 100;
+                }
+            }
+        }
+
+        return convertYear;
+    }
+
+    /**
+     * Takes and Result and converts it year and checks if the timezone is UTC
+     */
+    final void validate(Result res) @safe pure const
+    {
+        //move to info
+        if (!res.year.isNull)
+        {
+            res.year = convertYear(res.year, res.centurySpecified);
+        }
+
+        if (res.tzoffset.isNull || (!res.tzoffset.isNull && res.tzoffset == 0)
+                && (res.tzname.length == 0 || res.tzname == "Z"))
+        {
+            res.tzname = "UTC";
+            res.tzoffset = 0;
+        }
+        else if (!res.tzoffset.isNull && res.tzoffset != 0 && res.tzname && this.utczone(
+                res.tzname))
+        {
+            res.tzoffset = 0;
+        }
+    }
+
+    final bool jump(S)(const S name) const if (isSomeString!S)
+    {
+        return name.toLower() in jumpAA ? true : false;
+    }
+
+    final int weekday(S)(const S name) const if (isSomeString!S)
+    {
+        if (name.length >= 3 && name.toLower() in weekdaysAA)
+        {
+            return weekdaysAA[name.toLower()];
+        }
+        else
+        {
+            return -1;
+        }
+    }
+
+    final int month(S)(const S name) const if (isSomeString!S)
+    {
+        if (name.length >= 3 && name.toLower() in monthsAA)
+        {
+            return monthsAA[name.toLower()] + 1;
+        }
+        else
+        {
+            return -1;
+        }
+    }
+
+    final int hms(S)(const S name) const if (isSomeString!S)
+    {
+        if (name.toLower() in hmsAA)
+        {
+            return hmsAA[name.toLower()];
+        }
+        else
+        {
+            return -1;
+        }
+    }
+
+    final int ampm(S)(const S name) const if (isSomeString!S)
+    {
+        if (name.toLower() in ampmAA)
+        {
+            return ampmAA[name.toLower()];
+        }
+        else
+        {
+            return -1;
+        }
+    }
+
+    final bool pertain(S)(const S name) const if (isSomeString!S)
+    {
+        return name.toLower() in pertainAA ? true : false;
+    }
+
+    final bool utczone(S)(const S name) const if (isSomeString!S)
+    {
+        return name.toLower() in utczoneAA ? true : false;
+    }
+
+    final int tzoffset(S)(const S name) const if (isSomeString!S)
+    {
+        if (name in utczoneAA)
+        {
+            return 0;
+        }
+        else
+        {
+            return name in TZOFFSET ? TZOFFSET[name] : -1;
+        }
+    }
+}
 
 /**
 This function offers a generic date/time string Parser which is able to parse
