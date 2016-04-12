@@ -6,14 +6,15 @@ import std.compiler;
 import std.regex;
 import std.range;
 
-private Parser defaultParser;
+private:
+Parser defaultParser;
 static this()
 {
     defaultParser = new Parser(new ParserInfo());
 }
 
-private enum bool useAllocators = version_major == 2 && version_minor >= 69;
-private enum split_decimal = ctRegex!(`([\.,])`, "g");
+enum bool useAllocators = version_major == 2 && version_minor >= 69;
+enum split_decimal = ctRegex!(`([\.,])`, "g");
 
 // dfmt off
 //m from a.m/p.m, t from ISO T separator
@@ -82,8 +83,8 @@ final class Result
  * Returns:
  *     A forward range of strings
  */
-auto splitterWithMatches(Range, RegEx)(Range r, RegEx pat)
-    if(is(Unqual!(ElementEncodingType!Range) : dchar))
+auto splitterWithMatches(Range, RegEx)(Range r, RegEx pat) if (
+        is(Unqual!(ElementEncodingType!Range) : dchar))
 {
     /++
     Range that splits a string using a regular expression as a
@@ -95,11 +96,11 @@ auto splitterWithMatches(Range, RegEx)(Range r, RegEx pat)
         Range _input;
         size_t _offset;
         bool onMatch = false;
-        alias Rx = typeof(match(Range.init,RegEx.init));
+        alias Rx = typeof(match(Range.init, RegEx.init));
         Rx _match;
 
         @trusted this(Range input, RegEx separator)
-        {//@@@BUG@@@ generated opAssign of RegexMatch is not @trusted
+        { //@@@BUG@@@ generated opAssign of RegexMatch is not @trusted
             _input = input;
             //separator.flags |= RegexOption.global;
             if (_input.empty)
@@ -124,8 +125,7 @@ auto splitterWithMatches(Range, RegEx)(Range r, RegEx pat)
         {
             import std.algorithm : min;
 
-            assert(!empty && _offset <= _match.pre.length
-                    && _match.pre.length <= _input.length);
+            assert(!empty && _offset <= _match.pre.length && _match.pre.length <= _input.length);
 
             if (!onMatch)
                 return _input[_offset .. min($, _match.pre.length)];
@@ -372,7 +372,7 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                     {
                         token ~= nextChar;
                     }
-                    else if (nextChar.isAlpha && token[$-1] == '.')
+                    else if (nextChar.isAlpha && token[$ - 1] == '.')
                     {
                         token ~= nextChar;
                         state = State.ALPHA_PERIOD;
@@ -385,25 +385,27 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                 }
             }
 
-            version(dateparser_test) writeln("STATE ", state, " seenLetters: ", seenLetters);
-            if ((state == State.ALPHA_PERIOD || state == State.NUMERIC_PERIOD) &&
-                (seenLetters || token.count('.') > 1 || (token[$ - 1] == '.' || token[$ - 1] == ',')))
+            version (dateparser_test)
+                writeln("STATE ", state, " seenLetters: ", seenLetters);
             if ((state == State.ALPHA_PERIOD || state == State.NUMERIC_PERIOD)
                     && (seenLetters || token.count('.') > 1
                     || (token[$ - 1] == '.' || token[$ - 1] == ',')))
-            {
-                auto l = splitterWithMatches(token[], split_decimal);
-                token = l.front;
-                l.popFront;
-
-                foreach (tok; l)
+                if ((state == State.ALPHA_PERIOD
+                        || state == State.NUMERIC_PERIOD) && (seenLetters
+                        || token.count('.') > 1 || (token[$ - 1] == '.' || token[$ - 1] == ',')))
                 {
-                    if (tok.length > 0)
+                    auto l = splitterWithMatches(token[], split_decimal);
+                    token = l.front;
+                    l.popFront;
+
+                    foreach (tok; l)
                     {
-                        tokenStack ~= tok;
+                        if (tok.length > 0)
+                        {
+                            tokenStack ~= tok;
+                        }
                     }
                 }
-            }
 
             if (state == State.NUMERIC_PERIOD && !token.canFind('.'))
             {
@@ -461,6 +463,7 @@ public:
             static if (useAllocators)
             {
                 import std.algorithm.comparison : equal;
+
                 return year.toChars.equal(token);
             }
             else
@@ -882,11 +885,13 @@ public:
         }
     }
 
+    /// Tests for presence of `name` in each of the AAs
     final bool jump(S)(const S name) const if (isSomeString!S)
     {
         return name.toLower() in jumpAA ? true : false;
     }
 
+    /// ditto
     final int weekday(S)(const S name) const if (isSomeString!S)
     {
         if (name.length >= 3 && name.toLower() in weekdaysAA)
@@ -899,6 +904,7 @@ public:
         }
     }
 
+    /// ditto
     final int month(S)(const S name) const if (isSomeString!S)
     {
         if (name.length >= 3 && name.toLower() in monthsAA)
@@ -911,6 +917,7 @@ public:
         }
     }
 
+    /// ditto
     final int hms(S)(const S name) const if (isSomeString!S)
     {
         if (name.toLower() in hmsAA)
@@ -923,6 +930,7 @@ public:
         }
     }
 
+    /// ditto
     final int ampm(S)(const S name) const if (isSomeString!S)
     {
         if (name.toLower() in ampmAA)
@@ -935,16 +943,19 @@ public:
         }
     }
 
+    /// ditto
     final bool pertain(S)(const S name) const if (isSomeString!S)
     {
         return name.toLower() in pertainAA ? true : false;
     }
 
+    /// ditto
     final bool utczone(S)(const S name) const if (isSomeString!S)
     {
         return name.toLower() in utczoneAA ? true : false;
     }
 
+    /// ditto
     final int tzoffset(S)(const S name) const if (isSomeString!S)
     {
         if (name in utczoneAA)
@@ -1021,8 +1032,8 @@ SysTime parse(Range)(Range timeString,
     Flag!"ignoreTimezone" ignoreTimezone = No.ignoreTimezone,
     const(TimeZone)[string] timezoneInfos = null,
     Flag!"dayFirst" dayFirst = No.dayFirst,
-    Flag!"yearFirst" yearFirst = No.yearFirst, Flag!"fuzzy" fuzzy = No.fuzzy)
-if (isForwardRange!Range && !isInfinite!Range && is(ElementEncodingType!Range : const char))
+    Flag!"yearFirst" yearFirst = No.yearFirst, Flag!"fuzzy" fuzzy = No.fuzzy) if (
+        isForwardRange!Range && !isInfinite!Range && is(ElementEncodingType!Range : const char))
 {
     return defaultParser.parse(timeString, ignoreTimezone, timezoneInfos,
         dayFirst, yearFirst, fuzzy);
@@ -1451,8 +1462,8 @@ public:
         Flag!"ignoreTimezone" ignoreTimezone = No.ignoreTimezone,
         const(TimeZone)[string] timezoneInfos = null,
         Flag!"dayFirst" dayFirst = No.dayFirst,
-        Flag!"yearFirst" yearFirst = No.yearFirst, Flag!"fuzzy" fuzzy = No.fuzzy)
-    if (isForwardRange!Range && !isInfinite!Range && is(ElementEncodingType!Range : const char))
+        Flag!"yearFirst" yearFirst = No.yearFirst, Flag!"fuzzy" fuzzy = No.fuzzy) if (
+            isForwardRange!Range && !isInfinite!Range && is(ElementEncodingType!Range : const char))
     {
         import std.conv : to, ConvException;
 
@@ -1664,8 +1675,8 @@ private:
     *     January 1, 2047 at 8:21:00AM".
     */
     Result parseImpl(Range)(Range timeString, bool dayFirst = false,
-        bool yearFirst = false, bool fuzzy = false)
-    if (isForwardRange!Range && !isInfinite!Range && is(ElementEncodingType!Range : const char))
+        bool yearFirst = false, bool fuzzy = false) if (isForwardRange!Range
+            && !isInfinite!Range && is(ElementEncodingType!Range : const char))
     {
         import std.string : indexOf;
         import std.algorithm.searching : canFind;
