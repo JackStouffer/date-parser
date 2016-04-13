@@ -72,7 +72,8 @@ struct ParseResult
     Nullable!(int, int.min) ampm;
     bool centurySpecified;
     string tzname;
-    Nullable!(SysTime) possibleResult;
+    Nullable!(SysTime) shortcutResult;
+    Nullable!(TimeOfDay) shortcutTimeResult;
 }
 
 /**
@@ -979,7 +980,7 @@ This function attempts to be forgiving with regards to unlikely input formats,
 returning a SysTime object even for dates which are ambiguous. If an element
 of a date/time stamp is omitted, the following rules are applied:
 
-$(OL
+$(UL
     $(LI If AM or PM is left unspecified, a 24-hour clock is assumed, however,
     an hour on a 12-hour clock (0 <= hour <= 12) *must* be specified if
     AM or PM is specified.)
@@ -987,12 +988,15 @@ $(OL
 )
 
 Missing information is allowed, and what ever is given is applied on top of
-January 1st 1 AD at midnight.
+the `defaultDate` parameter, which defaults to the current time and timezone
+of the host. E.g. a string of "10:00 AM" with a `defaultDate` of
+`SysTime(Date(2016, 1, 1))` will yield `SysTime(DateTime(2016, 1, 1, 10, 0, 0))`.
 
 If your date string uses timezone names in place of UTC offsets, then timezone
 information must be user provided, as there is no way to reliably get timezones
 from the OS by abbreviation. But, the timezone will be properly set if an offset
-is given.
+is given. Timezone info and their abbreviations change constantly, so it's a
+good idea to not rely on `timezoneInfos` too much.
 
 This function is `std.experimental.allocator.theAllocator` aware and will use it
 for some operations. It assumes that `allocate` and `deallocate` are thread safe.
@@ -1015,6 +1019,8 @@ Params:
                 be the year, otherwise the last number is taken to be the year.
     fuzzy = Whether to allow fuzzy parsing, allowing for string like "Today is
             January 1, 2047 at 8:21:00AM".
+    defaultDate = The date to apply the given information on top of. Defaults to
+    January 1st, 1 AD
 
 Returns:
     A SysTime object representing the parsed string
@@ -1034,14 +1040,23 @@ SysTime parse(Range)(Range timeString,
     Flag!"ignoreTimezone" ignoreTimezone = No.ignoreTimezone,
     const(TimeZone)[string] timezoneInfos = null,
     Flag!"dayFirst" dayFirst = No.dayFirst,
-    Flag!"yearFirst" yearFirst = No.yearFirst, Flag!"fuzzy" fuzzy = No.fuzzy) if (
+    Flag!"yearFirst" yearFirst = No.yearFirst,
+    Flag!"fuzzy" fuzzy = No.fuzzy,
+    SysTime defaultDate = SysTime(DateTime(1, 1, 1))) if (
         isForwardRange!Range && !isInfinite!Range && is(ElementEncodingType!Range : const char))
 {
-    return defaultParser.parse(timeString, ignoreTimezone, timezoneInfos,
-        dayFirst, yearFirst, fuzzy);
+    // dfmt off
+    return defaultParser.parse(
+        timeString,
+        ignoreTimezone,
+        timezoneInfos,
+        dayFirst,
+        yearFirst,
+        fuzzy,
+        defaultDate
+    );
 }
 
-// dfmt off
 ///
 unittest
 {
@@ -1078,6 +1093,20 @@ unittest
     assertThrown!TimeException(parse("Jan 20, 2015 PM"));
     assertThrown!ConvException(parse("13:44 AM"));
     assertThrown!ConvException(parse("January 25, 1921 23:13 PM"));
+}
+
+/// Apply information on top of `defaultDate`
+unittest
+{
+    assert("10:36:28".parse(No.ignoreTimezone, null, No.dayFirst, No.yearFirst,
+        No.fuzzy, SysTime(DateTime(2016, 3, 15)))
+    == SysTime(DateTime(2016, 3, 15, 10, 36, 28)));
+    assert("August 07".parse(No.ignoreTimezone, null, No.dayFirst, No.yearFirst,
+        No.fuzzy, SysTime(DateTime(2016, 1, 1)))
+    == SysTime(Date(2016, 8, 7)));
+    assert("2000".parse(No.ignoreTimezone, null, No.dayFirst, No.yearFirst,
+        No.fuzzy, SysTime(DateTime(2016, 3, 1)))
+    == SysTime(Date(2000, 3, 1)));
 }
 // dfmt on
 
@@ -1374,7 +1403,6 @@ unittest
 
     auto rusParser = new Parser(new RusParserInfo());
     immutable parsedTime = rusParser.parse("10 Сентябрь 2015 10:20");
-
     assert(parsedTime == SysTime(DateTime(2015, 9, 10, 10, 20)));
 }
 // dfmt on
@@ -1464,12 +1492,12 @@ public:
         Flag!"ignoreTimezone" ignoreTimezone = No.ignoreTimezone,
         const(TimeZone)[string] timezoneInfos = null,
         Flag!"dayFirst" dayFirst = No.dayFirst,
-        Flag!"yearFirst" yearFirst = No.yearFirst, Flag!"fuzzy" fuzzy = No.fuzzy) if (
+        Flag!"yearFirst" yearFirst = No.yearFirst,
+        Flag!"fuzzy" fuzzy = No.fuzzy,
+        SysTime defaultDate = SysTime(Date(1, 1, 1))) if (
             isForwardRange!Range && !isInfinite!Range && is(ElementEncodingType!Range : const char))
     {
         import std.conv : to, ConvException;
-
-        SysTime returnDate = SysTime(DateTime(1, 1, 1));
 
         auto res = parseImpl(timeString, dayFirst, yearFirst, fuzzy);
 
@@ -1480,20 +1508,21 @@ public:
 
         if (res.year.isNull() && res.month.isNull() && res.day.isNull()
                 && res.hour.isNull() && res.minute.isNull()
-                && res.second.isNull() && res.weekday.isNull() && res.possibleResult.isNull())
+                && res.second.isNull() && res.weekday.isNull()
+                && res.shortcutResult.isNull() && res.shortcutTimeResult.isNull())
         {
             throw new ConvException("String does not contain a date.");
         }
 
-        if (res.possibleResult.isNull)
+        if (res.shortcutResult.isNull && res.shortcutTimeResult.isNull)
         {
             if (res.day.isNull)
             {
-                //If the returnDate day exceeds the last day of the month, fall back to
+                //If the defaultDate day exceeds the last day of the month, fall back to
                 //the end of the month.
-                immutable cyear = res.year.isNull() ? returnDate.year : res.year;
-                immutable cmonth = res.month.isNull() ? returnDate.month : res.month;
-                immutable cday = res.day.isNull() ? returnDate.day : res.day;
+                immutable cyear = res.year.isNull() ? defaultDate.year : res.year;
+                immutable cmonth = res.month.isNull() ? defaultDate.month : res.month;
+                immutable cday = res.day.isNull() ? defaultDate.day : res.day;
 
                 immutable days = Date(cyear, cmonth, 1).daysInMonth;
                 if (cday > days)
@@ -1503,109 +1532,81 @@ public:
             }
 
             if (!res.year.isNull)
-                returnDate.year(res.year);
+                defaultDate.year(res.year);
 
             if (!res.day.isNull)
-            {
-                returnDate.day(res.day);
-            }
-            else
-            {
-                returnDate.day(1);
-            }
+                defaultDate.day(res.day);
 
             if (!res.month.isNull)
-            {
-                returnDate.month(to!Month(res.month));
-            }
-            else
-            {
-                returnDate.month(to!Month(1));
-            }
+                defaultDate.month(to!Month(res.month));
 
             if (!res.hour.isNull)
-            {
-                returnDate.hour(res.hour);
-            }
-            else
-            {
-                returnDate.hour(0);
-            }
+                defaultDate.hour(res.hour);
 
             if (!res.minute.isNull)
-            {
-                returnDate.minute(res.minute);
-            }
-            else
-            {
-                returnDate.minute(0);
-            }
+                defaultDate.minute(res.minute);
 
             if (!res.second.isNull)
-            {
-                returnDate.second(res.second);
-            }
-            else
-            {
-                returnDate.second(0);
-            }
+                defaultDate.second(res.second);
 
             if (!res.microsecond.isNull)
-            {
-                returnDate.fracSecs(usecs(res.microsecond));
-            }
-            else
-            {
-                returnDate.fracSecs(usecs(0));
-            }
+                defaultDate.fracSecs(usecs(res.microsecond));
 
             if (!res.weekday.isNull() && (res.day.isNull || !res.day))
             {
                 int delta_days = daysToDayOfWeek(
-                    returnDate.dayOfWeek(),
+                    defaultDate.dayOfWeek(),
                     to!DayOfWeek(res.weekday)
                 );
-                returnDate += dur!"days"(delta_days);
+                defaultDate += dur!"days"(delta_days);
             }
+        }
+        else if (!res.shortcutTimeResult.isNull)
+        {
+            defaultDate = SysTime(DateTime(Date(
+                defaultDate.year,
+                defaultDate.month,
+                defaultDate.day,
+            ), res.shortcutTimeResult.get()));
         }
 
         if (!ignoreTimezone)
         {
             if (res.tzname in timezoneInfos)
             {
-                returnDate = returnDate.toOtherTZ(
+                defaultDate = defaultDate.toOtherTZ(
                     cast(immutable) timezoneInfos[res.tzname]
                 );
             }
             else if (res.tzname.length > 0 && (res.tzname == LocalTime().stdName
                     || res.tzname == LocalTime().dstName))
             {
-                returnDate = returnDate.toLocalTime();
+                defaultDate = defaultDate.toLocalTime();
             }
             else if (!res.tzoffset.isNull && res.tzoffset == 0)
             {
-                returnDate = returnDate.toUTC();
+                defaultDate = defaultDate.toUTC();
             }
             else if (!res.tzoffset.isNull && res.tzoffset != 0)
             {
-                returnDate = returnDate.toOtherTZ(new immutable SimpleTimeZone(
+                defaultDate = defaultDate.toOtherTZ(new immutable SimpleTimeZone(
                     dur!"seconds"(res.tzoffset), res.tzname
                 ));
             }
         }
-        else if (ignoreTimezone && !res.possibleResult.isNull
-            && res.possibleResult.timezone !is null)
+        else if (ignoreTimezone && !res.shortcutResult.isNull
+            && res.shortcutResult.timezone !is null)
         {
-            res.possibleResult = res.possibleResult.toUTC();
+            res.shortcutResult = res.shortcutResult.toUTC();
         }
 
-        if (!res.possibleResult.isNull)
+        if (!res.shortcutResult.isNull)
         {
-            return res.possibleResult;
+            return res.shortcutResult;
         }
         else
         {
-            return returnDate;
+            return defaultDate;
         }
     }
 
@@ -1901,10 +1902,7 @@ private:
                         {
                             try
                             {
-                                res.possibleResult = SysTime(DateTime(
-                                    Date(1, 1, 1),
-                                    TimeOfDay.fromISOExtString(timeString)
-                                ));
+                                res.shortcutTimeResult = TimeOfDay.fromISOExtString(timeString);
                                 return res;
                             }
                             catch (DateTimeException) {}
@@ -1949,7 +1947,7 @@ private:
                                 {
                                     try
                                     {
-                                        res.possibleResult = SysTime.fromISOExtString(timeString);
+                                        res.shortcutResult = SysTime.fromISOExtString(timeString);
                                         return res;
                                     }
                                     catch (DateTimeException) {}
