@@ -457,13 +457,14 @@ public:
     {
         import std.uni : isNumber;
         import std.exception : assumeWontThrow;
-        import std.conv : to, toChars;
+        import std.conv : to;
 
         if (token.front.isNumber)
         {
             static if (useAllocators)
             {
                 import std.algorithm.comparison : equal;
+                import std.conv : toChars;
 
                 return year.toChars.equal(token);
             }

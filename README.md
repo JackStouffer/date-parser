@@ -16,7 +16,7 @@ In order to use this with LDC v0.17.0 and DMD 2.068, you must download and compi
 {
     ...
     "dependencies": {
-        "dateparser": "~>1.1.0"
+        "dateparser": "~>2.0.0"
     }
 }
 ```
@@ -43,5 +43,5 @@ String | Python | LDC | DMD
 ------ | ------ | --- | ---
 Thu Sep 25 10:36:28 BRST 2003 | 156 µs | 17 μs | 24 μs
 2003-09-25T10:49:41.5-03:00 | 136 µs | 7 μs | 12 μs
-09.25.2003 | 124 µs | 13 μs | 20 μs
+09.25.2003 | 124 µs | 11 μs | 20 μs
 2003-09-25 | 66.4 µs | 9 μs | 10 μs
