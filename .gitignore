@@ -2,6 +2,7 @@
 .dub/
 test.d
 main
+test
 parser
 dateparse
 dateparser

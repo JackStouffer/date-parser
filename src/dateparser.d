@@ -57,8 +57,9 @@ enum PERTAIN_DEFAULT = ParserInfo.convert(["of"]);
 int[string] TZOFFSET;
 // dfmt on
 
-final class Result
+struct ParseResult
 {
+    bool badData = false;
     Nullable!(int, int.min) year;
     Nullable!(int, int.min) month;
     Nullable!(int, int.min) day;
@@ -864,7 +865,7 @@ public:
     /**
      * Takes and Result and converts it year and checks if the timezone is UTC
      */
-    final void validate(Result res) @safe pure const
+    final void validate(ref ParseResult res) @safe pure const
     {
         //move to info
         if (!res.year.isNull)
@@ -1471,7 +1472,7 @@ public:
 
         auto res = parseImpl(timeString, dayFirst, yearFirst, fuzzy);
 
-        if (res is null)
+        if (res.badData)
         {
             throw new ConvException("Unknown string format");
         }
@@ -1674,7 +1675,7 @@ private:
     *     fuzzy = Whether to allow fuzzy parsing, allowing for string like "Today is
     *     January 1, 2047 at 8:21:00AM".
     */
-    Result parseImpl(Range)(Range timeString, bool dayFirst = false,
+    ParseResult parseImpl(Range)(Range timeString, bool dayFirst = false,
         bool yearFirst = false, bool fuzzy = false) if (isForwardRange!Range
             && !isInfinite!Range && is(ElementEncodingType!Range : const char))
     {
@@ -1684,7 +1685,7 @@ private:
         import std.uni : isUpper, isNumber;
         import std.conv : to, ConvException;
 
-        auto res = new Result();
+        ParseResult res;
 
         static if (useAllocators)
         {
@@ -1968,7 +1969,8 @@ private:
                             }
                             else
                             {
-                                return null;
+                                res.badData = true;
+                                return res;
                             }
                         }
 
@@ -2038,7 +2040,8 @@ private:
                 else if (!fuzzy)
                 {
                     version(dateparser_test) writeln("branch 10");
-                    return null;
+                    res.badData = true;
+                    return res;
                 }
                 else
                 {
@@ -2231,7 +2234,8 @@ private:
                 }
                 else
                 {
-                    return null;
+                    res.badData = true;
+                    return res;
                 }
                 ++i;
 
@@ -2268,7 +2272,8 @@ private:
             if (!(info.jump(tokens[i]) || fuzzy))
             {
                 version(dateparser_test) writeln("branch 17");
-                return null;
+                res.badData = true;
+                return res;
             }
 
             last_skipped_token_i = i;
