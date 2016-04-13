@@ -13,7 +13,6 @@ static this()
     defaultParser = new Parser(new ParserInfo());
 }
 
-enum bool useAllocators = version_major == 2 && version_minor >= 69;
 enum split_decimal = ctRegex!(`([\.,])`, "g");
 
 // dfmt off
@@ -462,7 +461,7 @@ public:
 
         if (token.front.isNumber)
         {
-            static if (useAllocators)
+            static if (version_major == 2 && version_minor >= 69)
             {
                 import std.algorithm.comparison : equal;
                 import std.conv : toChars;
@@ -1689,21 +1688,14 @@ private:
 
         ParseResult res;
 
-        static if (useAllocators)
-        {
-            import std.experimental.allocator : theAllocator, makeArray,
-                dispose;
-            import std.experimental.allocator.mallocator : Mallocator;
-            import std.range.primitives : put;
-            import containers.dynamicarray : DynamicArray;
+        import std.experimental.allocator : theAllocator, makeArray,
+            dispose;
+        import std.experimental.allocator.mallocator : Mallocator;
+        import std.range.primitives : put;
+        import containers.dynamicarray : DynamicArray;
 
-            DynamicArray!(string, Mallocator, true) tokens;
-            put(tokens, timeString.save.timeLexer);
-        }
-        else
-        {
-            auto tokens = timeLexer(timeString).array;
-        }
+        DynamicArray!(string, Mallocator, true) tokens;
+        put(tokens, timeString.save.timeLexer);
 
         version(dateparser_test) writeln("tokens: ", tokens[]);
 
@@ -2167,17 +2159,10 @@ private:
             }
 
             //Check for a timezone name
-            static if (useAllocators)
-            {
-                auto itemUpper = theAllocator.makeArray!(dchar)(
-                    tokens[i].filter!(a => !isUpper(a))
-                );
-                scope(exit) theAllocator.dispose(itemUpper);
-            }
-            else
-            {
-                immutable itemUpper = tokens[i].filter!(a => !isUpper(a)).array;
-            }
+            auto itemUpper = theAllocator.makeArray!(dchar)(
+                tokens[i].filter!(a => !isUpper(a))
+            );
+            scope(exit) theAllocator.dispose(itemUpper);
 
             if (!res.hour.isNull && tokens[i].length <= 5
                     && res.tzname.length == 0 && res.tzoffset.isNull && itemUpper.length == 0)
@@ -2243,17 +2228,10 @@ private:
                 //Look for a timezone name between parenthesis
                 if (i + 3 < tokensLength)
                 {
-                    static if (useAllocators)
-                    {
-                        auto itemForwardUpper = theAllocator.makeArray!(dchar)(
-                            tokens[i + 2].filter!(a => !isUpper(a))
-                        );
-                        scope(exit) theAllocator.dispose(itemForwardUpper);
-                    }
-                    else
-                    {
-                        immutable itemForwardUpper = tokens[i + 2].filter!(a => !isUpper(a)).array;
-                    }
+                    auto itemForwardUpper = theAllocator.makeArray!(dchar)(
+                        tokens[i + 2].filter!(a => !isUpper(a))
+                    );
+                    scope(exit) theAllocator.dispose(itemForwardUpper);
 
                     if (info.jump(tokens[i]) && tokens[i + 1] == "("
                             && tokens[i + 3] == ")" && 3 <= tokens[i + 2].length
