@@ -2,6 +2,7 @@ language: d
 d:
   - dmd-2.070.2
   - dmd-2.069.2
+  - ldc-0.17.0
 script:
   - dub fetch doveralls
   - dub test -b unittest-cov

@@ -282,23 +282,18 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                     // First character of the token - determines if we're starting
                     // to parse a word, a number or something else.
                     token ~= nextChar;
+
                     if (nextChar.isAlpha)
-                    {
                         state = State.ALPHA;
-                    }
                     else if (nextChar.isNumber)
-                    {
                         state = State.NUMERIC;
-                    }
-                    else if (isSpace(nextChar))
+                    else if (nextChar.isSpace)
                     {
                         token = " ";
                         break; //emit token
                     }
                     else
-                    {
                         break; //emit token
-                    }
                     version(dateparser_test) writeln("TOKEN ", token, " STATE ", state);
                 }
                 else if (state == State.ALPHA)
@@ -307,10 +302,9 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                     // If we've already started reading a word, we keep reading
                     // letters until we find something that's not part of a word.
                     seenLetters = true;
+
                     if (nextChar.isAlpha)
-                    {
                         token ~= nextChar;
-                    }
                     else if (nextChar == '.')
                     {
                         token ~= nextChar;
@@ -328,9 +322,7 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                     // numbers until we find something that doesn't fit.
                     version(dateparser_test) writeln("STATE ", state, " nextChar: ", nextChar);
                     if (nextChar.isNumber)
-                    {
                         token ~= nextChar;
-                    }
                     else if (nextChar == '.' || (nextChar == ',' && token.length >= 2))
                     {
                         token ~= nextChar;
@@ -350,9 +342,7 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                     // parsing, and the tokens will be broken up later.
                     seenLetters = true;
                     if (nextChar == '.' || nextChar.isAlpha)
-                    {
                         token ~= nextChar;
-                    }
                     else if (nextChar.isNumber && token[$ - 1] == '.')
                     {
                         token ~= nextChar;
@@ -370,9 +360,7 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                     // If we've seen at least one dot separator, keep going, we'll
                     // break up the tokens later.
                     if (nextChar == '.' || nextChar.isNumber)
-                    {
                         token ~= nextChar;
-                    }
                     else if (nextChar.isAlpha && token[$ - 1] == '.')
                     {
                         token ~= nextChar;
@@ -386,8 +374,7 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                 }
             }
 
-            version (dateparser_test)
-                writeln("STATE ", state, " seenLetters: ", seenLetters);
+            version (dateparser_test) writeln("STATE ", state, " seenLetters: ", seenLetters);
             if ((state == State.ALPHA_PERIOD || state == State.NUMERIC_PERIOD)
                     && (seenLetters || token.count('.') > 1
                     || (token[$ - 1] == '.' || token[$ - 1] == ',')))
@@ -400,18 +387,12 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                     l.popFront;
 
                     foreach (tok; l)
-                    {
                         if (tok.length > 0)
-                        {
                             tokenStack ~= tok;
-                        }
-                    }
                 }
 
             if (state == State.NUMERIC_PERIOD && !token.canFind('.'))
-            {
                 token = token.replace(",", ".");
-            }
         }
 
         bool empty()() @property
@@ -469,14 +450,10 @@ public:
                 return year.toChars.equal(token);
             }
             else
-            {
                 return assumeWontThrow(to!int(token)) == year;
-            }
         }
         else
-        {
             return false;
-        }
     }
 
     /**
@@ -502,9 +479,7 @@ public:
             immutable length = potentialYearTokens.walkLength(3);
 
             if (length == 1 && frontLength > 2)
-            {
                 return index;
-            }
         }
 
         return -1;
@@ -521,17 +496,13 @@ public:
         static if (is(N : int))
         {
             if (val > 100)
-            {
                 this.century_specified = true;
-            }
 
             data[dataPosition] = val;
             ++dataPosition;
         }
         else
-        {
             put(cast(int) val);
-        }
     }
 
     /// ditto
@@ -548,9 +519,7 @@ public:
         ++dataPosition;
 
         if (val.length > 2)
-        {
             this.century_specified = true;
-        }
     }
 
     /// length getter
@@ -611,13 +580,9 @@ public:
             if (dataPosition > 1 || mstridx == -1)
             {
                 if (data[0] > 31)
-                {
                     year = data[0];
-                }
                 else
-                {
                     day = data[0];
-                }
             }
         }
         else if (dataPosition == 2) //Two members with numbers
@@ -796,16 +761,10 @@ public:
         {
             // tuple of strings or multidimensional string array
             static if (isInputRange!(ElementType!(ElementType!(Range))))
-            {
                 foreach (item; value)
-                {
                     dictionary[item.asLowerCase.array.to!string] = i;
-                }
-            }
             else
-            {
                 dictionary[value.asLowerCase.array.to!string] = i;
-            }
         }
 
         return dictionary;
@@ -850,13 +809,9 @@ public:
             if (abs(convertYear - year) >= 50)
             {
                 if (convertYear < year)
-                {
                     convertYear += 100;
-                }
                 else
-                {
                     convertYear -= 100;
-                }
             }
         }
 
@@ -870,9 +825,7 @@ public:
     {
         //move to info
         if (!res.year.isNull)
-        {
             res.year = convertYear(res.year, res.centurySpecified);
-        }
 
         if (res.tzoffset.isNull || (!res.tzoffset.isNull && res.tzoffset == 0)
                 && (res.tzname.length == 0 || res.tzname == "Z"))
@@ -880,11 +833,9 @@ public:
             res.tzname = "UTC";
             res.tzoffset = 0;
         }
-        else if (!res.tzoffset.isNull && res.tzoffset != 0 && res.tzname && this.utczone(
-                res.tzname))
-        {
+        else if (!res.tzoffset.isNull && res.tzoffset != 0 && res.tzname
+                 && this.utczone(res.tzname))
             res.tzoffset = 0;
-        }
     }
 
     /// Tests for presence of `name` in each of the AAs
@@ -897,52 +848,36 @@ public:
     final int weekday(S)(const S name) const if (isSomeString!S)
     {
         if (name.length >= 3 && name.toLower() in weekdaysAA)
-        {
             return weekdaysAA[name.toLower()];
-        }
         else
-        {
             return -1;
-        }
     }
 
     /// ditto
     final int month(S)(const S name) const if (isSomeString!S)
     {
         if (name.length >= 3 && name.toLower() in monthsAA)
-        {
             return monthsAA[name.toLower()] + 1;
-        }
         else
-        {
             return -1;
-        }
     }
 
     /// ditto
     final int hms(S)(const S name) const if (isSomeString!S)
     {
         if (name.toLower() in hmsAA)
-        {
             return hmsAA[name.toLower()];
-        }
         else
-        {
             return -1;
-        }
     }
 
     /// ditto
     final int ampm(S)(const S name) const if (isSomeString!S)
     {
         if (name.toLower() in ampmAA)
-        {
             return ampmAA[name.toLower()];
-        }
         else
-        {
             return -1;
-        }
     }
 
     /// ditto
@@ -960,14 +895,7 @@ public:
     /// ditto
     final int tzoffset(S)(const S name) const if (isSomeString!S)
     {
-        if (name in utczoneAA)
-        {
-            return 0;
-        }
-        else
-        {
-            return name in TZOFFSET ? TZOFFSET[name] : -1;
-        }
+        return name in TZOFFSET ? TZOFFSET[name] : -1;
     }
 }
 
@@ -1059,6 +987,7 @@ SysTime parse(Range)(Range timeString,
 ///
 unittest
 {
+    import std.stdio;
     immutable brazilTime = new SimpleTimeZone(dur!"seconds"(-10_800));
     const(TimeZone)[string] timezones = ["BRST" : brazilTime];
 
@@ -1501,35 +1430,16 @@ public:
         auto res = parseImpl(timeString, dayFirst, yearFirst, fuzzy);
 
         if (res.badData)
-        {
             throw new ConvException("Unknown string format");
-        }
 
         if (res.year.isNull() && res.month.isNull() && res.day.isNull()
                 && res.hour.isNull() && res.minute.isNull()
                 && res.second.isNull() && res.weekday.isNull()
                 && res.shortcutResult.isNull() && res.shortcutTimeResult.isNull())
-        {
             throw new ConvException("String does not contain a date.");
-        }
 
         if (res.shortcutResult.isNull && res.shortcutTimeResult.isNull)
         {
-            if (res.day.isNull)
-            {
-                //If the defaultDate day exceeds the last day of the month, fall back to
-                //the end of the month.
-                immutable cyear = res.year.isNull() ? defaultDate.year : res.year;
-                immutable cmonth = res.month.isNull() ? defaultDate.month : res.month;
-                immutable cday = res.day.isNull() ? defaultDate.day : res.day;
-
-                immutable days = Date(cyear, cmonth, 1).daysInMonth;
-                if (cday > days)
-                {
-                    res.day = days;
-                }
-            }
-
             if (!res.year.isNull)
                 defaultDate.year(res.year);
 
@@ -1600,13 +1510,9 @@ public:
         }
 
         if (!res.shortcutResult.isNull)
-        {
             return res.shortcutResult;
-        }
         else
-        {
             return defaultDate;
-        }
     }
 
 private:
@@ -1685,14 +1591,11 @@ private:
         import std.algorithm.iteration : filter;
         import std.uni : isUpper, isNumber;
         import std.conv : to, ConvException;
+        import std.experimental.allocator : theAllocator, makeArray, dispose;
+        import std.experimental.allocator.mallocator : Mallocator;
+        import containers.dynamicarray : DynamicArray;
 
         ParseResult res;
-
-        import std.experimental.allocator : theAllocator, makeArray,
-            dispose;
-        import std.experimental.allocator.mallocator : Mallocator;
-        import std.range.primitives : put;
-        import containers.dynamicarray : DynamicArray;
 
         DynamicArray!(string, Mallocator, true) tokens;
         put(tokens, timeString.save.timeLexer);
@@ -1704,7 +1607,7 @@ private:
         int last_skipped_token_i = -2;
 
         //year/month/day list
-        auto ymd = YMD!(Range)(timeString);
+        auto ymd = YMD!Range(timeString);
 
         //Index of the month string in ymd
         long mstridx = -1;
@@ -1808,18 +1711,14 @@ private:
                             res.hour = to!int(value.get());
 
                             if (value % 1)
-                            {
                                 res.minute = to!int(60 * (value % 1));
-                            }
                         }
                         else if (idx == 1)
                         {
                             res.minute = to!int(value.get());
 
                             if (value % 1)
-                            {
                                 res.second = to!int(60 * (value % 1));
-                            }
                         }
                         else if (idx == 2)
                         {
@@ -1831,9 +1730,7 @@ private:
                         ++i;
 
                         if (i >= tokensLength || idx == 2)
-                        {
                             break;
-                        }
 
                         //12h00
                         try
@@ -1854,9 +1751,7 @@ private:
                             immutable newidx = info.hms(tokens[i]);
 
                             if (newidx > -1)
-                            {
                                 idx = newidx;
-                            }
                         }
                     }
                 }
@@ -1872,9 +1767,7 @@ private:
                         res.minute = to!int(value.get());
 
                         if (value % 1)
-                        {
                             res.second = to!int(60 * (value % 1));
-                        }
                         else if (idx == 2)
                         {
                             auto seconds = parseMS(value_repr);
@@ -1906,9 +1799,7 @@ private:
                     res.minute = to!int(value.get());
 
                     if (value % 1)
-                    {
                         res.second = to!int(60 * (value % 1));
-                    }
 
                     ++i;
 
@@ -1979,9 +1870,7 @@ private:
                                 mstridx = ymd.length - 1;
                             }
                             else
-                            {
                                 ymd.put(tokens[i]);
-                            }
 
                             ++i;
                         }
@@ -1996,13 +1885,9 @@ private:
                         res.hour = to!int(value.get());
 
                         if (res.hour < 12 && info.ampm(tokens[i + 1]) == 1)
-                        {
                             res.hour += 12;
-                        }
                         else if (res.hour == 12 && info.ampm(tokens[i + 1]) == 0)
-                        {
                             res.hour = 0;
-                        }
 
                         ++i;
                     }
@@ -2018,14 +1903,12 @@ private:
                     version(dateparser_test) writeln("branch 9");
                     //12am
                     res.hour = to!int(value.get());
+
                     if (res.hour < 12 && info.ampm(tokens[i]) == 1)
-                    {
                         res.hour += 12;
-                    }
                     else if (res.hour == 12 && info.ampm(tokens[i]) == 0)
-                    {
                         res.hour = 0;
-                    }
+
                     ++i;
                 }
                 else if (!fuzzy)
@@ -2110,46 +1993,32 @@ private:
 
                 //If there's already an AM/PM flag, this one isn't one.
                 if (fuzzy && !res.ampm.isNull())
-                {
                     valIsAMPM = false;
-                }
 
                 //If AM/PM is found and hour is not, raise a ValueError
                 if (res.hour.isNull)
                 {
                     if (fuzzy)
-                    {
                         valIsAMPM = false;
-                    }
                     else
-                    {
                         throw new ConvException("No hour specified with AM or PM flag.");
-                    }
                 }
                 else if (!(0 <= res.hour && res.hour <= 12))
                 {
                     //If AM/PM is found, it's a 12 hour clock, so raise 
                     //an error for invalid range
                     if (fuzzy)
-                    {
                         valIsAMPM = false;
-                    }
                     else
-                    {
                         throw new ConvException("Invalid hour specified for 12-hour clock.");
-                    }
                 }
 
                 if (valIsAMPM)
                 {
                     if (value == 1 && res.hour < 12)
-                    {
                         res.hour += 12;
-                    }
                     else if (value == 0 && res.hour == 12)
-                    {
                         res.hour = 0;
-                    }
 
                     res.ampm = to!uint(value.get());
                 }
@@ -2268,15 +2137,11 @@ private:
 
         // month
         if (ymdResult[1] > 0)
-        {
             res.month = ymdResult[1];
-        }
 
         // day
         if (ymdResult[2] > 0)
-        {
             res.day = ymdResult[2];
-        }
 
         info.validate(res);
         return res;
