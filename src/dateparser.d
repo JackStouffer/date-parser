@@ -904,7 +904,7 @@ This function offers a generic date/time string Parser which is able to parse
 most known formats to represent a date and/or time.
 
 This function attempts to be forgiving with regards to unlikely input formats,
-returning a SysTime object even for dates which are ambiguous. If an element
+returning a `SysTime` object even for dates which are ambiguous. If an element
 of a date/time stamp is omitted, the following rules are applied:
 
 $(UL
@@ -912,11 +912,12 @@ $(UL
     an hour on a 12-hour clock (0 <= hour <= 12) *must* be specified if
     AM or PM is specified.)
     $(LI If a time zone is omitted, a SysTime is given with UTC±00:00.)
+    $(LI Unless)
 )
 
 Missing information is allowed, and what ever is given is applied on top of
 the `defaultDate` parameter, which defaults to the current time and timezone
-of the host. E.g. a string of "10:00 AM" with a `defaultDate` of
+of the host. E.g. a string of `"10:00 AM"` with a `defaultDate` of
 `SysTime(Date(2016, 1, 1))` will yield `SysTime(DateTime(2016, 1, 1, 10, 0, 0))`.
 
 If your date string uses timezone names in place of UTC offsets, then timezone
@@ -938,7 +939,7 @@ Params:
               from those time zones) to time zones. This parameter is ignored if
               ignoreTimezone is set.
     dayFirst = Whether to interpret the first value in an ambiguous 3-integer date
-              (e.g. 01/05/09) as the day (true) or month (false). If
+              (e.g. 01/05/09) as the day (`true`) or month (`false`). If
               yearFirst is set to true, this distinguishes between YDM and
               YMD.
     yearFirst = Whether to interpret the first value in an ambiguous 3-integer date
@@ -953,15 +954,15 @@ Returns:
     A SysTime object representing the parsed string
 
 Throws:
-    ConvException will be thrown for invalid or unknown string format
+    `ConvException` will be thrown for invalid string or unknown string format
 
 Throws:
-    TimeException if the date string is successfully parsed but the created
+    `TimeException` if the date string is successfully parsed but the created
     date would be invalid
 
 Throws:
-    ConvOverflowException if one of the numbers in the parsed date exceeds
-    int.max
+    `ConvOverflowException` if one of the numbers in the parsed date exceeds
+    `float.max`
 */
 SysTime parse(Range)(Range timeString,
     Flag!"ignoreTimezone" ignoreTimezone = No.ignoreTimezone,
@@ -1222,7 +1223,7 @@ unittest
     assert(parse("1994-11-05T08:15:30-05:00",
         Yes.ignoreTimezone) == SysTime(DateTime(1994, 11, 5, 8, 15, 30)));
     assert(parse("1994-11-05T08:15:30Z",
-        Yes.ignoreTimezone) == SysTime(DateTime(1994, 11, 5, 8, 15, 30), cast(immutable) UTC()));
+        Yes.ignoreTimezone) == SysTime(DateTime(1994, 11, 5, 8, 15, 30)));
     assert(parse("July 4, 1976") == SysTime(DateTime(1976, 7, 4)));
     assert(parse("7 4 1976") == SysTime(DateTime(1976, 7, 4)));
     assert(parse("4 jul 1976") == SysTime(DateTime(1976, 7, 4)));
@@ -1233,7 +1234,7 @@ unittest
     assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
     assert(parse("0:01:02 on July 4, 1976") == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
     assert(parse("1976-07-04T00:01:02Z",
-        Yes.ignoreTimezone) == SysTime(DateTime(1976, 7, 4, 0, 1, 2), cast(immutable) UTC()));
+        Yes.ignoreTimezone) == SysTime(DateTime(1976, 7, 4, 0, 1, 2)));
     assert(parse("July 4, 1976 12:01:02 am") == SysTime(DateTime(1976, 7, 4, 0, 1,
         2)));
     assert(parse("Mon Jan  2 04:24:27 1995") == SysTime(DateTime(1995, 1, 2, 4, 24,
@@ -1506,7 +1507,7 @@ public:
         else if (ignoreTimezone && !res.shortcutResult.isNull
             && res.shortcutResult.timezone !is null)
         {
-            res.shortcutResult = res.shortcutResult.toUTC();
+            res.shortcutResult = SysTime(cast(DateTime) res.shortcutResult);
         }
 
         if (!res.shortcutResult.isNull)

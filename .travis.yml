@@ -4,6 +4,4 @@ d:
   - dmd-2.069.2
   - ldc-0.17.0
 script:
-  - dub fetch doveralls
-  - dub test -b unittest-cov
-  - dub run doveralls
+  - dub test
