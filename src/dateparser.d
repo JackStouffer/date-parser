@@ -849,13 +849,13 @@ public:
         if (!res.year.isNull)
             res.year = convertYear(res.year, res.centurySpecified);
 
-        if (res.tzoffset.isNull || ((!res.tzoffset.isNull && res.tzoffset == 0)
-                && (res.tzname.length == 0 || res.tzname == "Z")))
+        if ((!res.tzoffset.isNull && res.tzoffset == 0)
+                && (res.tzname.length == 0 || res.tzname == "Z"))
         {
             res.tzname = "UTC";
             res.tzoffset = 0;
         }
-        else if (!res.tzoffset.isNull && res.tzoffset != 0 && res.tzname
+        else if (!res.tzoffset.isNull && res.tzoffset != 0 && res.tzname.length > 0
                  && this.utczone(res.tzname))
             res.tzoffset = 0;
     }
@@ -1171,7 +1171,7 @@ unittest
     assert((cast(immutable(SimpleTimeZone)) parsed3.timezone).utcOffset == hours(-3));
 
     immutable parsed4 = parse("20030925T104941-0300");
-    assert(parsed4 == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+    assert(parsed4 == SysTime(DateTime(2003, 9, 25, 10, 49, 41), zone));
     assert((cast(immutable(SimpleTimeZone)) parsed4.timezone).utcOffset == hours(-3));
 
     assert(parse("20030925T104941") == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
@@ -1326,10 +1326,10 @@ unittest
     assert(parse(s4, No.ignoreTimezone, null, No.dayFirst, No.yearFirst,
         Yes.fuzzy) == SysTime(DateTime(2003, 12, 3, 3)));
 
+    immutable zone = new SimpleTimeZone(dur!"hours"(-3));
     immutable parsed = parse(s5, No.ignoreTimezone, null, No.dayFirst, No.yearFirst,
         Yes.fuzzy);
-    assert(parsed == SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
-    assert((cast(immutable(SimpleTimeZone)) parsed.timezone).utcOffset == hours(-3));
+    assert(parsed == SysTime(DateTime(2003, 9, 25, 10, 49, 41), zone));
 
     assert(parse(s6, No.ignoreTimezone, null, No.dayFirst, No.yearFirst,
         Yes.fuzzy) == SysTime(DateTime(1945, 1, 29, 14, 45)));
@@ -1393,7 +1393,7 @@ unittest
     assert(b.parse == SysTime(DateTime(1, 9, 5, 10, 36, 28)));
 
     // bidirectional ranges
-    assert("2003-09-25T10:49:41-03:00".byCodeUnit.parse == SysTime(
+    assert("2003-09-25T10:49:41".byCodeUnit.parse == SysTime(
         DateTime(2003, 9, 25, 10, 49, 41)));
     assert("Thu Sep 10:36:28".byCodeUnit.parse == SysTime(
         DateTime(1, 9, 5, 10, 36, 28)));
@@ -1509,13 +1509,16 @@ public:
                 );
             else if (res.tzname.length > 0 && (res.tzname == LocalTime().stdName
                     || res.tzname == LocalTime().dstName))
-                defaultDate = defaultDate.toLocalTime();
+                defaultDate = SysTime(cast(DateTime) defaultDate);
             else if (!res.tzoffset.isNull && res.tzoffset == 0)
-                defaultDate = defaultDate.toUTC();
+                defaultDate = SysTime(cast(DateTime) defaultDate, cast(immutable) UTC());
             else if (!res.tzoffset.isNull && res.tzoffset != 0)
-                defaultDate = defaultDate.toOtherTZ(new immutable SimpleTimeZone(
-                    dur!"seconds"(res.tzoffset), res.tzname
-                ));
+            {
+                defaultDate = SysTime(
+                    cast(DateTime) defaultDate,
+                    new immutable SimpleTimeZone(dur!"seconds"(res.tzoffset), res.tzname)
+                );
+            }
         }
         else if (ignoreTimezone && !res.shortcutResult.isNull)
             res.shortcutResult = SysTime(cast(DateTime) res.shortcutResult);
@@ -2047,7 +2050,10 @@ private:
             {
                 debug(dateparser) writeln("branch 15");
                 res.tzname = tokens[i];
-                res.tzoffset = info.tzoffset(res.tzname);
+
+                if (info.tzoffset(res.tzname) > -1)
+                    res.tzoffset = info.tzoffset(res.tzname);
+
                 ++i;
 
                 //Check for something like GMT+3, or BRST+3. Notice
