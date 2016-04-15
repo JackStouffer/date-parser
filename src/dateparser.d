@@ -5,13 +5,23 @@ import std.typecons;
 import std.compiler;
 import std.regex;
 import std.range;
+import std.experimental.allocator.gc_allocator;
 
 private:
 
-Parser defaultParser;
+mixin template AllocatorState(Allocator)
+{
+    import std.experimental.allocator.common : stateSize;
+    static if (stateSize!Allocator == 0)
+        alias allocator = Allocator.instance;
+    else
+        Allocator allocator;
+}
+
+Parser!GCAllocator defaultParser;
 static this()
 {
-    defaultParser = new Parser(new ParserInfo());
+    defaultParser = new Parser!GCAllocator(new ParserInfo());
 }
 
 enum split_decimal = ctRegex!(`([\.,])`, "g");
@@ -719,7 +729,6 @@ Params:
 */
 class ParserInfo
 {
-    import std.datetime : Clock;
     import std.uni : toLower, asLowerCase;
 
 private:
@@ -939,8 +948,8 @@ from the OS by abbreviation. But, the timezone will be properly set if an offset
 is given. Timezone info and their abbreviations change constantly, so it's a
 good idea to not rely on `timezoneInfos` too much.
 
-This function is `std.experimental.allocator.theAllocator` aware and will use it
-for some operations. It assumes that `allocate` and `deallocate` are thread safe.
+By default, this function allocates memory on the GC. In order to reduce GC
+allocations, use a custom `Parser` instance with a different allocator.
 
 Params:
     timeString = A string containing a date/time stamp.
@@ -1021,6 +1030,30 @@ unittest
     assert(parse("09-25-2003") == SysTime(DateTime(2003, 9, 25)));
 }
 
+/// Apply information on top of `defaultDate`
+unittest
+{
+    assert("10:36:28".parse(No.ignoreTimezone, null, No.dayFirst, No.yearFirst,
+        No.fuzzy, SysTime(DateTime(2016, 3, 15)))
+    == SysTime(DateTime(2016, 3, 15, 10, 36, 28)));
+    assert("August 07".parse(No.ignoreTimezone, null, No.dayFirst, No.yearFirst,
+        No.fuzzy, SysTime(DateTime(2016, 1, 1)))
+    == SysTime(Date(2016, 8, 7)));
+    assert("2000".parse(No.ignoreTimezone, null, No.dayFirst, No.yearFirst,
+        No.fuzzy, SysTime(DateTime(2016, 3, 1)))
+    == SysTime(Date(2000, 3, 1)));
+}
+
+/// Custom allocators
+unittest
+{
+    import std.experimental.allocator.mallocator;
+
+    auto customParser = new Parser!Mallocator(new ParserInfo());
+    assert(customParser.parse("2003-09-25T10:49:41") ==
+        SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
+}
+
 /// Exceptions
 unittest
 {
@@ -1034,20 +1067,6 @@ unittest
     assertThrown!TimeException(parse("Jan 20, 2015 PM"));
     assertThrown!ConvException(parse("13:44 AM"));
     assertThrown!ConvException(parse("January 25, 1921 23:13 PM"));
-}
-
-/// Apply information on top of `defaultDate`
-unittest
-{
-    assert("10:36:28".parse(No.ignoreTimezone, null, No.dayFirst, No.yearFirst,
-        No.fuzzy, SysTime(DateTime(2016, 3, 15)))
-    == SysTime(DateTime(2016, 3, 15, 10, 36, 28)));
-    assert("August 07".parse(No.ignoreTimezone, null, No.dayFirst, No.yearFirst,
-        No.fuzzy, SysTime(DateTime(2016, 1, 1)))
-    == SysTime(Date(2016, 8, 7)));
-    assert("2000".parse(No.ignoreTimezone, null, No.dayFirst, No.yearFirst,
-        No.fuzzy, SysTime(DateTime(2016, 3, 1)))
-    == SysTime(Date(2000, 3, 1)));
 }
 // dfmt on
 
@@ -1342,7 +1361,7 @@ unittest
         }
     }
 
-    auto rusParser = new Parser(new RusParserInfo());
+    auto rusParser = new Parser!GCAllocator(new RusParserInfo());
     immutable parsedTime = rusParser.parse("10 Сентябрь 2015 10:20");
     assert(parsedTime == SysTime(DateTime(2015, 9, 10, 10, 20)));
 }
@@ -1391,11 +1410,16 @@ unittest
  * Implements the parsing functionality for the parse function. If you are
  * using a custom `ParserInfo` many times in the same program, you can avoid
  * unnecessary allocations by using the `Parser.parse` function directly.
- * Otherwise using `parse` or `Parser.parse` makes no difference.
+ *
+ * Params:
+ *     Allocator = the allocator type to use
+ *     parserInfo = the parser info to reference when parsing
  */
-final class Parser
+final class Parser(Allocator) if (
+    hasMember!(Allocator, "allocate") && hasMember!(Allocator, "deallocate"))
 {
     private const ParserInfo info;
+    mixin AllocatorState!Allocator;
 
 public:
     ///
@@ -1412,22 +1436,9 @@ public:
     }
 
     /**
-    * Parse the date/time string into a SysTime.
-    *
-    * Params:
-    *     timeString = Any date/time string using the supported formats.
-    *     ignoreTimezone = If set true, time zones in parsed strings are
-    *     ignored
-    *     timezoneInfos = Additional time zone names / aliases which may be
-    *     present in the string. This argument maps time zone names (and
-    *     optionally offsets from those time zones) to time zones. This
-    *     parameter is ignored if ignoreTimezone is set.
-    *
-    * Returns:
-    *    SysTime
-    *
-    * Throws:
-    *     ConvException for invalid or unknown string format
+     * This function has the same functionality as the free version of `parse`.
+     * The only difference is this will use your custom `ParserInfo` or allocator
+     * if provided.
      */
     SysTime parse(Range)(Range timeString,
         Flag!"ignoreTimezone" ignoreTimezone = No.ignoreTimezone,
@@ -1589,7 +1600,7 @@ private:
         import std.algorithm.iteration : filter;
         import std.uni : isUpper, isNumber;
         import std.conv : to, ConvException;
-        import std.experimental.allocator : theAllocator, makeArray, dispose;
+        import std.experimental.allocator : makeArray, dispose;
         import std.experimental.allocator.mallocator : Mallocator;
         import containers.dynamicarray : DynamicArray;
 
@@ -2026,10 +2037,10 @@ private:
             }
 
             //Check for a timezone name
-            auto itemUpper = theAllocator.makeArray!(dchar)(
+            auto itemUpper = allocator.makeArray!(dchar)(
                 tokens[i].filter!(a => !isUpper(a))
             );
-            scope(exit) theAllocator.dispose(itemUpper);
+            scope(exit) allocator.dispose(itemUpper);
 
             if (!res.hour.isNull && tokens[i].length <= 5
                     && res.tzname.length == 0 && res.tzoffset.isNull && itemUpper.length == 0)
@@ -2095,10 +2106,10 @@ private:
                 //Look for a timezone name between parenthesis
                 if (i + 3 < tokensLength)
                 {
-                    auto itemForwardUpper = theAllocator.makeArray!(dchar)(
+                    auto itemForwardUpper = allocator.makeArray!(dchar)(
                         tokens[i + 2].filter!(a => !isUpper(a))
                     );
-                    scope(exit) theAllocator.dispose(itemForwardUpper);
+                    scope(exit) allocator.dispose(itemForwardUpper);
 
                     if (info.jump(tokens[i]) && tokens[i + 1] == "("
                             && tokens[i + 3] == ")" && 3 <= tokens[i + 2].length

@@ -2,14 +2,9 @@ import std.datetime;
 import std.stdio;
 import std.compiler;
 import dateparser;
-
-private enum bool useAllocators = version_major == 2 && version_minor >= 69;
-
-static if (useAllocators)
-{
-    import std.experimental.allocator;
-    import std.experimental.allocator.mallocator;
-}
+import std.experimental.allocator;
+import std.experimental.allocator.mallocator;
+import std.experimental.allocator.gc_allocator;
 
 enum testCount = 200_000;
 
@@ -24,18 +19,14 @@ void main()
     version(unittest) {} else
     {
         import std.conv : to;
+        
+        auto customParser = new Parser!Mallocator(new ParserInfo());
 
-        static if (useAllocators)
-        {
-            IAllocator a = allocatorObject(Mallocator.instance);
-            theAllocator(a);
-        }
-
-        auto result = to!Duration(benchmark!(() => parse(stringOne))(testCount)[0] / testCount);
-        auto result2 = to!Duration(benchmark!(() => parse(stringTwo))(testCount)[0] / testCount);
-        auto result3 = to!Duration(benchmark!(() => parse(stringThree))(testCount)[0] / testCount);
-        auto result4 = to!Duration(benchmark!(() => parse(stringFour))(testCount)[0] / testCount);
-        auto result5 = to!Duration(benchmark!(() => parse(stringFive))(testCount)[0] / testCount);
+        auto result = to!Duration(benchmark!(() => customParser.parse(stringOne))(testCount)[0] / testCount);
+        auto result2 = to!Duration(benchmark!(() => customParser.parse(stringTwo))(testCount)[0] / testCount);
+        auto result3 = to!Duration(benchmark!(() => customParser.parse(stringThree))(testCount)[0] / testCount);
+        auto result4 = to!Duration(benchmark!(() => customParser.parse(stringFour))(testCount)[0] / testCount);
+        auto result5 = to!Duration(benchmark!(() => customParser.parse(stringFive))(testCount)[0] / testCount);
 
         writeln(stringOne, "\t", result);
         writeln(stringTwo, "\t\t\t", result2);
