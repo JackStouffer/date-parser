@@ -278,7 +278,7 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
 
                 if (state == State.EMPTY)
                 {
-                    version(dateparser_test) writeln("EMPTY");
+                    debug(dateparser) writeln("EMPTY");
                     // First character of the token - determines if we're starting
                     // to parse a word, a number or something else.
                     token ~= nextChar;
@@ -294,11 +294,11 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                     }
                     else
                         break; //emit token
-                    version(dateparser_test) writeln("TOKEN ", token, " STATE ", state);
+                    debug(dateparser) writeln("TOKEN ", token, " STATE ", state);
                 }
                 else if (state == State.ALPHA)
                 {
-                    version(dateparser_test) writeln("STATE ", state, " nextChar: ", nextChar);
+                    debug(dateparser) writeln("STATE ", state, " nextChar: ", nextChar);
                     // If we've already started reading a word, we keep reading
                     // letters until we find something that's not part of a word.
                     seenLetters = true;
@@ -320,7 +320,7 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                 {
                     // If we've already started reading a number, we keep reading
                     // numbers until we find something that doesn't fit.
-                    version(dateparser_test) writeln("STATE ", state, " nextChar: ", nextChar);
+                    debug(dateparser) writeln("STATE ", state, " nextChar: ", nextChar);
                     if (nextChar.isNumber)
                         token ~= nextChar;
                     else if (nextChar == '.' || (nextChar == ',' && token.length >= 2))
@@ -331,13 +331,13 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                     else
                     {
                         charStack ~= nextChar;
-                        version(dateparser_test) writeln("charStack add: ", charStack);
+                        debug(dateparser) writeln("charStack add: ", charStack);
                         break; //emit token
                     }
                 }
                 else if (state == State.ALPHA_PERIOD)
                 {
-                    version(dateparser_test) writeln("STATE ", state, " nextChar: ", nextChar);
+                    debug(dateparser) writeln("STATE ", state, " nextChar: ", nextChar);
                     // If we've seen some letters and a dot separator, continue
                     // parsing, and the tokens will be broken up later.
                     seenLetters = true;
@@ -356,7 +356,7 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                 }
                 else if (state == State.NUMERIC_PERIOD)
                 {
-                    version(dateparser_test) writeln("STATE ", state, " nextChar: ", nextChar);
+                    debug(dateparser) writeln("STATE ", state, " nextChar: ", nextChar);
                     // If we've seen at least one dot separator, keep going, we'll
                     // break up the tokens later.
                     if (nextChar == '.' || nextChar.isNumber)
@@ -827,8 +827,8 @@ public:
         if (!res.year.isNull)
             res.year = convertYear(res.year, res.centurySpecified);
 
-        if (res.tzoffset.isNull || (!res.tzoffset.isNull && res.tzoffset == 0)
-                && (res.tzname.length == 0 || res.tzname == "Z"))
+        if (res.tzoffset.isNull || ((!res.tzoffset.isNull && res.tzoffset == 0)
+                && (res.tzname.length == 0 || res.tzname == "Z")))
         {
             res.tzname = "UTC";
             res.tzoffset = 0;
@@ -847,7 +847,7 @@ public:
     /// ditto
     final int weekday(S)(const S name) const if (isSomeString!S)
     {
-        if (name.length >= 3 && name.toLower() in weekdaysAA)
+        if (name.toLower() in weekdaysAA)
             return weekdaysAA[name.toLower()];
         else
             return -1;
@@ -856,7 +856,7 @@ public:
     /// ditto
     final int month(S)(const S name) const if (isSomeString!S)
     {
-        if (name.length >= 3 && name.toLower() in monthsAA)
+        if (name.toLower() in monthsAA)
             return monthsAA[name.toLower()] + 1;
         else
             return -1;
@@ -988,7 +988,6 @@ SysTime parse(Range)(Range timeString,
 ///
 unittest
 {
-    import std.stdio;
     immutable brazilTime = new SimpleTimeZone(dur!"seconds"(-10_800));
     const(TimeZone)[string] timezones = ["BRST" : brazilTime];
 
@@ -1472,43 +1471,30 @@ public:
             }
         }
         else if (!res.shortcutTimeResult.isNull)
-        {
             defaultDate = SysTime(DateTime(Date(
                 defaultDate.year,
                 defaultDate.month,
                 defaultDate.day,
             ), res.shortcutTimeResult.get()));
-        }
 
         if (!ignoreTimezone)
         {
             if (res.tzname in timezoneInfos)
-            {
                 defaultDate = defaultDate.toOtherTZ(
                     cast(immutable) timezoneInfos[res.tzname]
                 );
-            }
             else if (res.tzname.length > 0 && (res.tzname == LocalTime().stdName
                     || res.tzname == LocalTime().dstName))
-            {
                 defaultDate = defaultDate.toLocalTime();
-            }
             else if (!res.tzoffset.isNull && res.tzoffset == 0)
-            {
                 defaultDate = defaultDate.toUTC();
-            }
             else if (!res.tzoffset.isNull && res.tzoffset != 0)
-            {
                 defaultDate = defaultDate.toOtherTZ(new immutable SimpleTimeZone(
                     dur!"seconds"(res.tzoffset), res.tzname
                 ));
-            }
         }
-        else if (ignoreTimezone && !res.shortcutResult.isNull
-            && res.shortcutResult.timezone !is null)
-        {
+        else if (ignoreTimezone && !res.shortcutResult.isNull)
             res.shortcutResult = SysTime(cast(DateTime) res.shortcutResult);
-        }
 
         if (!res.shortcutResult.isNull)
             return res.shortcutResult;
@@ -1533,9 +1519,7 @@ private:
         import std.conv : to;
 
         if (!(value.canFind(".")))
-        {
             return tuple(to!int(value), 0);
-        }
         else
         {
             auto splitValue = value.split(".");
@@ -1601,7 +1585,7 @@ private:
         DynamicArray!(string, Mallocator, true) tokens;
         put(tokens, timeString.save.timeLexer);
 
-        version(dateparser_test) writeln("tokens: ", tokens[]);
+        debug(dateparser) writeln("tokens: ", tokens[]);
 
         //keep up with the last token skipped so we can recombine
         //consecutively skipped tokens (-2 for when i begins at 0).
@@ -1614,20 +1598,20 @@ private:
         long mstridx = -1;
 
         immutable size_t tokensLength = tokens.length;
-        version(dateparser_test) writeln("tokensLength: ", tokensLength);
+        debug(dateparser) writeln("tokensLength: ", tokensLength);
         uint i = 0;
         while (i < tokensLength)
         {
             //Check if it's a number
             Nullable!(float, float.infinity) value;
             string value_repr;
-            version(dateparser_test) writeln("index: ", i);
-            version(dateparser_test) writeln("tokens[i]: ", tokens[i]);
+            debug(dateparser) writeln("index: ", i);
+            debug(dateparser) writeln("tokens[i]: ", tokens[i]);
 
             if (tokens[i].front.isNumber)
             {
                 value_repr = tokens[i];
-                version(dateparser_test) writeln("value_repr: ", value_repr);
+                debug(dateparser) writeln("value_repr: ", value_repr);
                 value = to!float(value_repr);
             }
 
@@ -1641,7 +1625,7 @@ private:
                         || tokensItemLength == 4) && res.hour.isNull
                         && (i >= tokensLength || (tokens[i] != ":" && info.hms(tokens[i]) == -1)))
                 {
-                    version(dateparser_test) writeln("branch 1");
+                    debug(dateparser) writeln("branch 1");
                     //19990101T23[59]
                     auto s = tokens[i - 1];
                     res.hour = to!int(s[0 .. 2]);
@@ -1654,7 +1638,7 @@ private:
                 else if (tokensItemLength == 6 || (tokensItemLength > 6
                         && tokens[i - 1].indexOf(".") == 6))
                 {
-                    version(dateparser_test) writeln("branch 2");
+                    debug(dateparser) writeln("branch 2");
                     //YYMMDD || HHMMSS[.ss]
                     auto s = tokens[i - 1];
 
@@ -1675,7 +1659,7 @@ private:
                 }
                 else if (tokensItemLength == 8 || tokensItemLength == 12 || tokensItemLength == 14)
                 {
-                    version(dateparser_test) writeln("branch 3");
+                    debug(dateparser) writeln("branch 3");
                     //YYYYMMDD
                     auto s = tokens[i - 1];
                     ymd.put(s[0 .. 4]);
@@ -1696,7 +1680,7 @@ private:
                 else if ((i < tokensLength && info.hms(tokens[i]) > -1)
                         || (i + 1 < tokensLength && tokens[i] == " " && info.hms(tokens[i + 1]) > -1))
                 {
-                    version(dateparser_test) writeln("branch 4");
+                    debug(dateparser) writeln("branch 4");
                     //HH[ ]h or MM[ ]m or SS[.ss][ ]s
                     if (tokens[i] == " ")
                     {
@@ -1759,7 +1743,7 @@ private:
                 else if (i == tokensLength && tokensLength > 3
                         && tokens[i - 2] == " " && info.hms(tokens[i - 3]) > -1)
                 {
-                    version(dateparser_test) writeln("branch 5");
+                    debug(dateparser) writeln("branch 5");
                     //X h MM or X m SS
                     immutable idx = info.hms(tokens[i - 3]) + 1;
 
@@ -1780,7 +1764,7 @@ private:
                 }
                 else if (i + 1 < tokensLength && tokens[i] == ":")
                 {
-                    version(dateparser_test) writeln("branch 6");
+                    debug(dateparser) writeln("branch 6");
                     //HH:MM[:SS[.ss]]
                     static if (isSomeString!Range)
                     {
@@ -1815,7 +1799,7 @@ private:
                 else if (i < tokensLength && (tokens[i] == "-" || tokens[i] == "/"
                         || tokens[i] == "."))
                 {
-                    version(dateparser_test) writeln("branch 7");
+                    debug(dateparser) writeln("branch 7");
                     immutable string separator = tokens[i];
                     ymd.put(value_repr);
                     ++i;
@@ -1879,7 +1863,7 @@ private:
                 }
                 else if (i >= tokensLength || info.jump(tokens[i]))
                 {
-                    version(dateparser_test) writeln("branch 8");
+                    debug(dateparser) writeln("branch 8");
                     if (i + 1 < tokensLength && info.ampm(tokens[i + 1]) > -1)
                     {
                         //12 am
@@ -1901,7 +1885,7 @@ private:
                 }
                 else if (info.ampm(tokens[i]) > -1)
                 {
-                    version(dateparser_test) writeln("branch 9");
+                    debug(dateparser) writeln("branch 9");
                     //12am
                     res.hour = to!int(value.get());
 
@@ -1914,13 +1898,13 @@ private:
                 }
                 else if (!fuzzy)
                 {
-                    version(dateparser_test) writeln("branch 10");
+                    debug(dateparser) writeln("branch 10");
                     res.badData = true;
                     return res;
                 }
                 else
                 {
-                    version(dateparser_test) writeln("branch 11");
+                    debug(dateparser) writeln("branch 11");
                     ++i;
                 }
                 continue;
@@ -1930,7 +1914,7 @@ private:
             value = info.weekday(tokens[i]);
             if (value > -1)
             {
-                version(dateparser_test) writeln("branch 12");
+                debug(dateparser) writeln("branch 12");
                 res.weekday = to!uint(value.get());
                 ++i;
                 continue;
@@ -1940,7 +1924,7 @@ private:
             value = info.month(tokens[i]);
             if (value > -1)
             {
-                version(dateparser_test) writeln("branch 13");
+                debug(dateparser) writeln("branch 13");
                 ymd.put(value.get);
                 assert(mstridx == -1);
                 mstridx = ymd.length - 1;
@@ -1986,7 +1970,7 @@ private:
             value = info.ampm(tokens[i]);
             if (value > -1)
             {
-                version(dateparser_test) writeln("branch 14");
+                debug(dateparser) writeln("branch 14");
                 //For fuzzy parsing, 'a' or 'am' (both valid English words)
                 //may erroneously trigger the AM/PM flag. Deal with that
                 //here.
@@ -2037,7 +2021,7 @@ private:
             if (!res.hour.isNull && tokens[i].length <= 5
                     && res.tzname.length == 0 && res.tzoffset.isNull && itemUpper.length == 0)
             {
-                version(dateparser_test) writeln("branch 15");
+                debug(dateparser) writeln("branch 15");
                 res.tzname = tokens[i];
                 res.tzoffset = info.tzoffset(res.tzname);
                 ++i;
@@ -2065,7 +2049,7 @@ private:
             //Check for a numbered timezone
             if (!res.hour.isNull && (tokens[i] == "+" || tokens[i] == "-"))
             {
-                version(dateparser_test) writeln("branch 16");
+                debug(dateparser) writeln("branch 16");
                 immutable int signal = tokens[i] == "+" ? 1 : -1;
                 ++i;
                 immutable size_t tokensItemLength = tokens[i].length;
@@ -2118,7 +2102,7 @@ private:
             //Check jumps
             if (!(info.jump(tokens[i]) || fuzzy))
             {
-                version(dateparser_test) writeln("branch 17");
+                debug(dateparser) writeln("branch 17");
                 res.badData = true;
                 return res;
             }

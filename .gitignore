@@ -17,3 +17,4 @@ docdir/
 gh-pages/
 dub.selections.json
 *.sublime*
+*.ini
