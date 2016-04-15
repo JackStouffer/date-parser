@@ -1,4 +1,4 @@
-version (dateparser_test) import std.stdio;
+debug(dateparser) import std.stdio;
 import std.datetime;
 import std.traits;
 import std.typecons;
@@ -7,6 +7,7 @@ import std.regex;
 import std.range;
 
 private:
+
 Parser defaultParser;
 static this()
 {
@@ -374,7 +375,7 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
                 }
             }
 
-            version (dateparser_test) writeln("STATE ", state, " seenLetters: ", seenLetters);
+            debug(dateparser) writeln("STATE ", state, " seenLetters: ", seenLetters);
             if ((state == State.ALPHA_PERIOD || state == State.NUMERIC_PERIOD)
                     && (seenLetters || token.count('.') > 1
                     || (token[$ - 1] == '.' || token[$ - 1] == ',')))
@@ -406,6 +407,23 @@ auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEnco
 
 unittest
 {
+    import std.algorithm.comparison : equal;
+
+    assert("Thu Sep 25 10:36:28 BRST 2003".timeLexer.equal(
+        ["Thu", " ", "Sep", " ", "25", " ",
+         "10", ":", "36", ":", "28", " ",
+         "BRST", " ", "2003"]
+    ));
+
+    assert("2003-09-25T10:49:41.5-03:00".timeLexer.equal(
+        ["2003", "-", "09", "-", "25", "T",
+         "10", ":", "49", ":", "41.5", "-",
+         "03", ":", "00"]
+    ));
+}
+
+unittest
+{
     import std.internal.test.dummyrange : ReferenceInputRange;
     import std.algorithm.comparison : equal;
 
@@ -416,20 +434,14 @@ unittest
     assert(b.timeLexer.equal(["Thu", " ", "Sep", " ", "10", ":", "36", ":", "28"]));
 }
 
-struct YMD(R) if (isForwardRange!R && is(ElementEncodingType!R : const char))
+struct YMD
 {
 private:
     bool century_specified = false;
     int[3] data;
-    int dataPosition;
-    R tzstr;
+    byte dataPosition;
 
 public:
-    this(R tzstr)
-    {
-        this.tzstr = tzstr;
-    }
-
     /**
      * Params
      */
@@ -439,6 +451,7 @@ public:
         import std.uni : isNumber;
         import std.exception : assumeWontThrow;
         import std.conv : to;
+        import std.algorithm.mutation : stripLeft;
 
         if (token.front.isNumber)
         {
@@ -447,7 +460,7 @@ public:
                 import std.algorithm.comparison : equal;
                 import std.conv : toChars;
 
-                return year.toChars.equal(token);
+                return year.toChars.equal(token.stripLeft('0'));
             }
             else
                 return assumeWontThrow(to!int(token)) == year;
@@ -472,11 +485,11 @@ public:
         import std.algorithm.iteration : filter;
         import std.range : walkLength;
 
-        foreach (int index, ref token; data[])
+        foreach (int index, ref item; data[])
         {
-            auto potentialYearTokens = tokens.filter!(a => YMD.couldBeYear(a, token));
+            auto potentialYearTokens = tokens.filter!(a => YMD.couldBeYear(a, item));
             immutable frontLength = potentialYearTokens.front.length;
-            immutable length = potentialYearTokens.walkLength(3);
+            immutable length = potentialYearTokens.walkLength(2);
 
             if (length == 1 && frontLength > 2)
                 return index;
@@ -545,7 +558,7 @@ public:
      * Returns:
      *     tuple of three ints
      */
-    auto resolveYMD(N)(N mstridx, bool yearfirst, bool dayfirst) if (is(NumericTypeOf!N : size_t))
+    auto resolveYMD(R, N)(R tokens, N mstridx, bool yearfirst, bool dayfirst) if (is(NumericTypeOf!N : size_t))
     {
         import std.algorithm.mutation : remove;
         import std.typecons : tuple;
@@ -659,7 +672,7 @@ public:
             }
             else
             {
-                if (data[0] > 31 || probableYearIndex(tzstr.timeLexer) == 0
+                if (data[0] > 31 || probableYearIndex(tokens) == 0
                         || (yearfirst && data[1] <= 12 && data[2] <= 31))
                 {
                     //99-01-01
@@ -1551,7 +1564,7 @@ private:
 
     /**
     * Private method which performs the heavy lifting of parsing, called from
-    * parse().
+    * `parse`.
     *
     * Params:
     *     timeString = the string to parse.
@@ -1592,7 +1605,7 @@ private:
         int last_skipped_token_i = -2;
 
         //year/month/day list
-        auto ymd = YMD!Range(timeString);
+        YMD ymd;
 
         //Index of the month string in ymd
         long mstridx = -1;
@@ -2111,7 +2124,7 @@ private:
             ++i;
         }
 
-        auto ymdResult = ymd.resolveYMD(mstridx, yearFirst, dayFirst);
+        auto ymdResult = ymd.resolveYMD(tokens[], mstridx, yearFirst, dayFirst);
 
         // year
         if (ymdResult[0] > -1)
