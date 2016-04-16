@@ -1,3 +1,5 @@
+module dateparser;
+
 debug(dateparser) import std.stdio;
 import std.datetime;
 import std.traits;
@@ -714,214 +716,6 @@ public:
 public:
 
 /**
-Class which handles what inputs are accepted. Subclass this to customize
-the language and acceptable values for each parameter.
-
-Params:
-    dayFirst = Whether to interpret the first value in an ambiguous 3-integer date
-        (e.g. 01/05/09) as the day (`true`) or month (`false`). If
-        `yearFirst` is set to `true`, this distinguishes between YDM
-        and YMD. Default is `false`.
-    yearFirst = Whether to interpret the first value in an ambiguous 3-integer date
-        (e.g. 01/05/09) as the year. If `true`, the first number is taken
-        to be the year, otherwise the last number is taken to be the year.
-        Default is `false`.
-*/
-class ParserInfo
-{
-    import std.uni : toLower, asLowerCase;
-
-private:
-    bool dayFirst;
-    bool yearFirst;
-    short year;
-    short century;
-
-public:
-    /**
-     * AAs used for matching strings to calendar numbers, e.g. Jan is 1
-     */
-    int[string] jumpAA;
-    ///ditto
-    int[string] weekdaysAA;
-    ///ditto
-    int[string] monthsAA;
-    ///ditto
-    int[string] hmsAA;
-    ///ditto
-    int[string] ampmAA;
-    ///ditto
-    int[string] utczoneAA;
-    ///ditto
-    int[string] pertainAA;
-
-    /**
-     * Take a range of character ranges or a range of ranges of character
-     * ranges and converts it to an associative array that the internal
-     * parser info methods can use.
-     *
-     * Use this method in order to override the default parser info field
-     * values. See the example on the $(REF parse).
-     *
-     * Params:
-     *     list = a range of character ranges
-     *
-     * Returns:
-     *     An associative array of `int`s accessed by strings
-     */
-    static int[string] convert(Range)(Range list) if (isInputRange!Range
-            && isSomeChar!(ElementEncodingType!(ElementEncodingType!(Range)))
-            || isSomeChar!(
-            ElementEncodingType!(ElementEncodingType!(ElementEncodingType!(Range)))))
-    {
-        import std.array : array;
-        import std.conv : to;
-
-        int[string] dictionary;
-
-        foreach (int i, value; list)
-        {
-            // tuple of strings or multidimensional string array
-            static if (isInputRange!(ElementType!(ElementType!(Range))))
-                foreach (item; value)
-                    dictionary[item.asLowerCase.array.to!string] = i;
-            else
-                dictionary[value.asLowerCase.array.to!string] = i;
-        }
-
-        return dictionary;
-    }
-
-    /// Ctor
-    this(bool dayFirst = false, bool yearFirst = false) @safe
-    {
-        dayFirst = dayFirst;
-        yearFirst = yearFirst;
-
-        year = Clock.currTime.year;
-        century = (year / 100) * 100;
-
-        jumpAA = JUMP_DEFAULT;
-        weekdaysAA = WEEKDAYS_DEFAULT;
-        monthsAA = MONTHS_DEFAULT;
-        hmsAA = HMS_DEFAULT;
-        ampmAA = AMPM_DEFAULT;
-        utczoneAA = UTCZONE_DEFAULT;
-        pertainAA = PERTAIN_DEFAULT;
-    }
-
-    /**
-     * If the century isn't specified, e.g. `"'07"`, then assume that the year
-     * is in the current century and return it as such. Otherwise do nothing
-     *
-     * Params:
-     *     convertYear = year to be converted
-     *     centurySpecified = is the century given in the year
-     *
-     * Returns:
-     *     the converted year
-     */
-    final int convertYear(int convertYear, bool centurySpecified = false) @safe @nogc pure nothrow const
-    {
-        import std.math : abs;
-
-        if (convertYear < 100 && !centurySpecified)
-        {
-            convertYear += century;
-            if (abs(convertYear - year) >= 50)
-            {
-                if (convertYear < year)
-                    convertYear += 100;
-                else
-                    convertYear -= 100;
-            }
-        }
-
-        return convertYear;
-    }
-
-    /**
-     * Takes and Result and converts it year and checks if the timezone is UTC
-     */
-    final void validate(ref ParseResult res) @safe pure const
-    {
-        //move to info
-        if (!res.year.isNull)
-            res.year = convertYear(res.year, res.centurySpecified);
-
-        if ((!res.tzoffset.isNull && res.tzoffset == 0)
-                && (res.tzname.length == 0 || res.tzname == "Z"))
-        {
-            res.tzname = "UTC";
-            res.tzoffset = 0;
-        }
-        else if (!res.tzoffset.isNull && res.tzoffset != 0 && res.tzname.length > 0
-                 && this.utczone(res.tzname))
-            res.tzoffset = 0;
-    }
-
-    /// Tests for presence of `name` in each of the AAs
-    final bool jump(S)(const S name) const if (isSomeString!S)
-    {
-        return name.toLower() in jumpAA ? true : false;
-    }
-
-    /// ditto
-    final int weekday(S)(const S name) const if (isSomeString!S)
-    {
-        if (name.toLower() in weekdaysAA)
-            return weekdaysAA[name.toLower()];
-        else
-            return -1;
-    }
-
-    /// ditto
-    final int month(S)(const S name) const if (isSomeString!S)
-    {
-        if (name.toLower() in monthsAA)
-            return monthsAA[name.toLower()] + 1;
-        else
-            return -1;
-    }
-
-    /// ditto
-    final int hms(S)(const S name) const if (isSomeString!S)
-    {
-        if (name.toLower() in hmsAA)
-            return hmsAA[name.toLower()];
-        else
-            return -1;
-    }
-
-    /// ditto
-    final int ampm(S)(const S name) const if (isSomeString!S)
-    {
-        if (name.toLower() in ampmAA)
-            return ampmAA[name.toLower()];
-        else
-            return -1;
-    }
-
-    /// ditto
-    final bool pertain(S)(const S name) const if (isSomeString!S)
-    {
-        return name.toLower() in pertainAA ? true : false;
-    }
-
-    /// ditto
-    final bool utczone(S)(const S name) const if (isSomeString!S)
-    {
-        return name.toLower() in utczoneAA ? true : false;
-    }
-
-    /// ditto
-    final int tzoffset(S)(const S name) const if (isSomeString!S)
-    {
-        return name in TZOFFSET ? TZOFFSET[name] : -1;
-    }
-}
-
-/**
 This function offers a generic date/time string Parser which is able to parse
 most known formats to represent a date and/or time.
 
@@ -933,13 +727,13 @@ $(UL
     $(LI If AM or PM is left unspecified, a 24-hour clock is assumed, however,
     an hour on a 12-hour clock (0 <= hour <= 12) *must* be specified if
     AM or PM is specified.)
-    $(LI If a time zone is omitted, a SysTime is given with UTC±00:00.)
-    $(LI Unless)
+    $(LI If a time zone is omitted, a SysTime is given with the timezone of the
+    host machine.)
 )
 
 Missing information is allowed, and what ever is given is applied on top of
-the `defaultDate` parameter, which defaults to the current time and timezone
-of the host. E.g. a string of `"10:00 AM"` with a `defaultDate` of
+the `defaultDate` parameter, which defaults to January 1, 1 AD at midnight.
+E.g. a string of `"10:00 AM"` with a `defaultDate` of
 `SysTime(Date(2016, 1, 1))` will yield `SysTime(DateTime(2016, 1, 1, 10, 0, 0))`.
 
 If your date string uses timezone names in place of UTC offsets, then timezone
@@ -1407,6 +1201,214 @@ unittest
 }
 
 /**
+Class which handles what inputs are accepted. Subclass this to customize
+the language and acceptable values for each parameter.
+
+Params:
+    dayFirst = Whether to interpret the first value in an ambiguous 3-integer date
+        (e.g. 01/05/09) as the day (`true`) or month (`false`). If
+        `yearFirst` is set to `true`, this distinguishes between YDM
+        and YMD. Default is `false`.
+    yearFirst = Whether to interpret the first value in an ambiguous 3-integer date
+        (e.g. 01/05/09) as the year. If `true`, the first number is taken
+        to be the year, otherwise the last number is taken to be the year.
+        Default is `false`.
+*/
+class ParserInfo
+{
+    import std.uni : toLower, asLowerCase;
+
+private:
+    bool dayFirst;
+    bool yearFirst;
+    short year;
+    short century;
+
+    /**
+     * If the century isn't specified, e.g. `"'07"`, then assume that the year
+     * is in the current century and return it as such. Otherwise do nothing
+     *
+     * Params:
+     *     convertYear = year to be converted
+     *     centurySpecified = is the century given in the year
+     *
+     * Returns:
+     *     the converted year
+     */
+    final int convertYear(int convertYear, bool centurySpecified = false) @safe @nogc pure nothrow const
+    {
+        import std.math : abs;
+
+        if (convertYear < 100 && !centurySpecified)
+        {
+            convertYear += century;
+            if (abs(convertYear - year) >= 50)
+            {
+                if (convertYear < year)
+                    convertYear += 100;
+                else
+                    convertYear -= 100;
+            }
+        }
+
+        return convertYear;
+    }
+
+    /**
+     * Takes and Result and converts it year and checks if the timezone is UTC
+     */
+    final void validate(ref ParseResult res) @safe pure const
+    {
+        //move to info
+        if (!res.year.isNull)
+            res.year = convertYear(res.year, res.centurySpecified);
+
+        if ((!res.tzoffset.isNull && res.tzoffset == 0)
+                && (res.tzname.length == 0 || res.tzname == "Z"))
+        {
+            res.tzname = "UTC";
+            res.tzoffset = 0;
+        }
+        else if (!res.tzoffset.isNull && res.tzoffset != 0 && res.tzname.length > 0
+                 && this.utczone(res.tzname))
+            res.tzoffset = 0;
+    }
+
+public:
+    /**
+     * AAs used for matching strings to calendar numbers, e.g. Jan is 1
+     */
+    int[string] jumpAA;
+    ///ditto
+    int[string] weekdaysAA;
+    ///ditto
+    int[string] monthsAA;
+    ///ditto
+    int[string] hmsAA;
+    ///ditto
+    int[string] ampmAA;
+    ///ditto
+    int[string] utczoneAA;
+    ///ditto
+    int[string] pertainAA;
+
+    /**
+     * Take a range of character ranges or a range of ranges of character
+     * ranges and converts it to an associative array that the internal
+     * parser info methods can use.
+     *
+     * Use this method in order to override the default parser info field
+     * values. See the example on the $(REF parse).
+     *
+     * Params:
+     *     list = a range of character ranges
+     *
+     * Returns:
+     *     An associative array of `int`s accessed by strings
+     */
+    static int[string] convert(Range)(Range list) if (isInputRange!Range
+            && isSomeChar!(ElementEncodingType!(ElementEncodingType!(Range)))
+            || isSomeChar!(
+            ElementEncodingType!(ElementEncodingType!(ElementEncodingType!(Range)))))
+    {
+        import std.array : array;
+        import std.conv : to;
+
+        int[string] dictionary;
+
+        foreach (int i, value; list)
+        {
+            // tuple of strings or multidimensional string array
+            static if (isInputRange!(ElementType!(ElementType!(Range))))
+                foreach (item; value)
+                    dictionary[item.asLowerCase.array.to!string] = i;
+            else
+                dictionary[value.asLowerCase.array.to!string] = i;
+        }
+
+        return dictionary;
+    }
+
+    /// Ctor
+    this(bool dayFirst = false, bool yearFirst = false) @safe
+    {
+        dayFirst = dayFirst;
+        yearFirst = yearFirst;
+
+        year = Clock.currTime.year;
+        century = (year / 100) * 100;
+
+        jumpAA = JUMP_DEFAULT;
+        weekdaysAA = WEEKDAYS_DEFAULT;
+        monthsAA = MONTHS_DEFAULT;
+        hmsAA = HMS_DEFAULT;
+        ampmAA = AMPM_DEFAULT;
+        utczoneAA = UTCZONE_DEFAULT;
+        pertainAA = PERTAIN_DEFAULT;
+    }
+
+    /// Tests for presence of `name` in each of the AAs
+    final bool jump(S)(const S name) const if (isSomeString!S)
+    {
+        return name.toLower() in jumpAA ? true : false;
+    }
+
+    /// ditto
+    final int weekday(S)(const S name) const if (isSomeString!S)
+    {
+        if (name.toLower() in weekdaysAA)
+            return weekdaysAA[name.toLower()];
+        else
+            return -1;
+    }
+
+    /// ditto
+    final int month(S)(const S name) const if (isSomeString!S)
+    {
+        if (name.toLower() in monthsAA)
+            return monthsAA[name.toLower()] + 1;
+        else
+            return -1;
+    }
+
+    /// ditto
+    final int hms(S)(const S name) const if (isSomeString!S)
+    {
+        if (name.toLower() in hmsAA)
+            return hmsAA[name.toLower()];
+        else
+            return -1;
+    }
+
+    /// ditto
+    final int ampm(S)(const S name) const if (isSomeString!S)
+    {
+        if (name.toLower() in ampmAA)
+            return ampmAA[name.toLower()];
+        else
+            return -1;
+    }
+
+    /// ditto
+    final bool pertain(S)(const S name) const if (isSomeString!S)
+    {
+        return name.toLower() in pertainAA ? true : false;
+    }
+
+    /// ditto
+    final bool utczone(S)(const S name) const if (isSomeString!S)
+    {
+        return name.toLower() in utczoneAA ? true : false;
+    }
+
+    /// ditto
+    final int tzoffset(S)(const S name) const if (isSomeString!S)
+    {
+        return name in TZOFFSET ? TZOFFSET[name] : -1;
+    }
+}
+
+/**
  * Implements the parsing functionality for the parse function. If you are
  * using a custom `ParserInfo` many times in the same program, you can avoid
  * unnecessary allocations by using the `Parser.parse` function directly.
@@ -1419,7 +1421,7 @@ final class Parser(Allocator) if (
     hasMember!(Allocator, "allocate") && hasMember!(Allocator, "deallocate"))
 {
     private const ParserInfo info;
-    mixin AllocatorState!Allocator;
+    private mixin AllocatorState!Allocator;
 
 public:
     ///
