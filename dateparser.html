@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<title>Module dateparser</title>
+		<link rel="stylesheet" type="text/css" href="./styles/ddox.css"/>
+		<link rel="stylesheet" href="./prettify/prettify.css" type="text/css"/>
+		<script type="text/javascript" src="./scripts/jquery.js">/**/</script>
+		<script type="text/javascript" src="./scripts/ddox.js">/**/</script>
+	</head>
+	<body onload="setupDdox();">
+		<nav id="main-nav">
+						<ul>
+						<li>
+							<a href="./dateparser.html">dateparser</a>
+						</li>
+						</ul>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<p>
+						<input id="symbolSearch" type="text" placeholder="Search for symbols" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/>
+					</p>
+	<ul id="symbolSearchResults" style="display: none"></ul>
+	<script type="application/javascript" src="./symbols.js"></script>
+	<script type="application/javascript">
+var symbolSearchRootDir = "./";
+$('#symbolSearchPane').show();
+	</script>
+				</div>
+		</nav>
+		<div id="main-contents">
+			<h1>Module dateparser</h1>
+			<p></p>
+
+			<section></section>
+			<section>
+				<h2>Functions</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th>
+						<th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<a id="parse" class="public" href="./dateparser/parse.html">
+								<code>parse</code>
+							</a>
+						</td>
+						<td>This function offers a generic date/time string <a href="./dateparser/Parser.html"><code class="lang-d"><span class="typ">Parser</span></code></a> which is able to <code class="lang-d"><span class="pln">parse</span></code>
+most known formats to represent a date and/or time.
+</td>
+					</tr>
+				</table>
+			</section>
+			<section>
+				<h2>Classes</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th>
+						<th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<a id="Parser" class="public" href="./dateparser/Parser.html">
+								<code>Parser</code>
+							</a>
+						</td>
+						<td>Implements the parsing functionality for the <a href="./dateparser/Parser.parse.html"><code class="lang-d"><span class="pln">parse</span></code></a> function. If you are
+ using a custom <code class="lang-d"><a href="./dateparser/ParserInfo.html"><span class="typ">ParserInfo</span></a></code> many times in the same program, you can avoid
+ unnecessary allocations by using the <code class="lang-d"><a href="./dateparser/Parser.parse.html"><span class="typ">Parser<wbr/></span><span class="pun">.</span><span class="pln">parse</span></a></code> function directly.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a id="ParserInfo" class="public" href="./dateparser/ParserInfo.html">
+								<code>ParserInfo</code>
+							</a>
+						</td>
+						<td>Class which handles what inputs are accepted. Subclass this to customize
+the language and acceptable values for each parameter.
+</td>
+					</tr>
+				</table>
+			</section>
+			<section>
+				<h2>Authors</h2>
+
+			</section>
+			<section>
+				<h2>Copyright</h2>
+
+			</section>
+			<section>
+				<h2>License</h2>
+
+			</section>
+		</div>
+	</body>
+</html>
