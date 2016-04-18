@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<url><loc>http://127.0.0.1/index.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/parse.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/Parser.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/Parser.info.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/Parser.parse.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/Parser.parseImpl.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/Parser.parseMS.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/Parser.setAttribute.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/Parser.this.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.ampm.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.ampmAA.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.convert.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.convertYear.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.hms.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.hmsAA.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.jump.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.jumpAA.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.month.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.monthsAA.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.pertain.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.pertainAA.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.this.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.tzoffset.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.utczone.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.utczoneAA.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.validate.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.weekday.html</loc></url>
+<url><loc>http://127.0.0.1/dateparser/ParserInfo.weekdaysAA.html</loc></url>
+</urlset>
