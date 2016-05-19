@@ -1,0 +1,9 @@
+.dub/
+*.sublime-*
+*.o
+dateparser
+dub.selections.json
+test.d
+*.ini
+*.log
+*.def
