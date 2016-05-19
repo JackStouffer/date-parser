@@ -7,13 +7,13 @@ import std.typecons;
 import std.compiler;
 import std.regex;
 import std.range;
+import std.experimental.allocator.common;
 import std.experimental.allocator.gc_allocator;
 
 private:
 
 mixin template AllocatorState(Allocator)
 {
-    import std.experimental.allocator.common : stateSize;
     static if (stateSize!Allocator == 0)
         alias allocator = Allocator.instance;
     else
