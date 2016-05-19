@@ -8,7 +8,7 @@ Compiles with D versions 2.068 and up. Tested with ldc v0.17.0 and dmd v2.068.2 
 
 ##Docs
 
-https://jackstouffer.github.io/date-parser/
+http://jackstouffer.com/dateparser/
 
 ##Install With Dub
 
