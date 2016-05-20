@@ -1624,7 +1624,7 @@ private:
         YMD ymd;
 
         //Index of the month string in ymd
-        long mstridx = -1;
+        ptrdiff_t mstridx = -1;
 
         immutable size_t tokensLength = tokens.length;
         debug(dateparser) writeln("tokensLength: ", tokensLength);
@@ -1861,7 +1861,7 @@ private:
                             if (!value.isNull())
                             {
                                 ymd.put(value.get());
-                                mstridx = cast(long) (ymd.length == 0 ? 0 : ymd.length - 1);
+                                mstridx = cast(ptrdiff_t) (ymd.length == 0 ? 0 : ymd.length - 1);
                             }
                             else
                             {
