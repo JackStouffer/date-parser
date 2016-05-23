@@ -5,6 +5,7 @@ main
 test
 parser
 dateparse
+package
 dateparser
 libdateparse.a
 libdateparser.a

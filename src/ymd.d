@@ -26,6 +26,7 @@
 
 module dateparser.ymd;
 
+debug(dateparser) import std.stdio;
 import std.traits;
 import std.range;
 import std.compiler;

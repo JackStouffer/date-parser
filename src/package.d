@@ -40,6 +40,7 @@ import dateparser.ymd;
 
 private:
 
+// Copied from EMSI containers
 mixin template AllocatorState(Allocator)
 {
     static if (stateSize!Allocator == 0)
@@ -55,43 +56,57 @@ static this()
 }
 
 // dfmt off
-//m from a.m/p.m, t from ISO T separator
-enum JUMP_DEFAULT = ParserInfo.convert([
-    " ", ".", ",", ";", "-", "/", "'", "at", "on",
-    "and", "ad", "m", "t", "of", "st", "nd", "rd",
-    "th"]);
-
-enum WEEKDAYS_DEFAULT = ParserInfo.convert([
-    ["Mon", "Monday"],
-    ["Tue", "Tuesday"], 
-    ["Wed", "Wednesday"],
-    ["Thu", "Thursday"],
-    ["Fri", "Friday"],
-    ["Sat", "Saturday"],
-    ["Sun", "Sunday"]
-]);
-enum MONTHS_DEFAULT = ParserInfo.convert([
-    ["Jan", "January"],
-    ["Feb", "February"],
-    ["Mar", "March"],
-    ["Apr", "April"],
-    ["May", "May"],
-    ["Jun", "June"],
-    ["Jul", "July"],
-    ["Aug", "August"],
-    ["Sep", "Sept", "September"],
-    ["Oct", "October"],
-    ["Nov", "November"],
-    ["Dec","December"]
-]);
-enum HMS_DEFAULT = ParserInfo.convert([
-    ["h", "hour", "hours"],
-    ["m", "minute", "minutes"],
-    ["s", "second", "seconds"]
-]);
-enum AMPM_DEFAULT = ParserInfo.convert([["am", "a"], ["pm", "p"]]);
-enum UTCZONE_DEFAULT = ParserInfo.convert(["UTC", "GMT", "Z"]);
-enum PERTAIN_DEFAULT = ParserInfo.convert(["of"]);
+// m from a.m/p.m, t from ISO T separator, order doesn't
+// matter here, just a presence check
+enum JUMP_DEFAULT = [
+    "and":9, "'":6,
+    "at":7, "/":5,
+    "st":14,
+    ";":3, " ":0,
+    "of":13, "nd":15,
+    "rd":16, ".":1,
+    "th":17, "on":8,
+    "m":11, ",":2,
+    "ad":10, "-":4, "t":12
+];
+enum WEEKDAYS_DEFAULT = [
+    "mon":0, "monday":0,
+    "tue":1, "tuesday":1,
+    "wed":2, "wednesday":2,
+    "thu":3, "thursday":3,
+    "fri":4, "friday":4,
+    "sat":5, "saturday":5,
+    "sun":6, "sunday":6,
+];
+enum MONTHS_DEFAULT = [
+    "jan":0, "january":0,
+    "feb":1, "february":1,
+    "mar":2, "march":2,
+    "apr":3, "april":3,
+    "may":4,
+    "jun":5, "june":5,
+    "jul":6, "july":6,
+    "aug":7, "august":7,
+    "sep":8, "sept":8, "september":8,
+    "oct":9, "october":9,
+    "nov":10, "november":10,
+    "dec":11, "december":11
+];
+enum HMS_DEFAULT = [
+    "h":0, "hour":0, "hours":0,
+    "m":1, "minute":1, "minutes":1,
+    "s":2, "second":2, "seconds":2
+];
+enum AMPM_DEFAULT = [
+    "am":0, "a":0,
+    "pm":1, "p":1
+];
+enum UTCZONE_DEFAULT = [
+    "UTC":0, "GMT":0, "Z":0
+];
+enum PERTAIN_DEFAULT = [
+    "of":0
+];
 int[string] TZOFFSET;
 // dfmt on
 

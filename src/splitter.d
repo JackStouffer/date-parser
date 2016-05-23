@@ -26,6 +26,7 @@
 
 module dateparser.splitter;
 
+debug(dateparser) import std.stdio;
 import std.compiler;
 import std.regex;
 import std.traits;

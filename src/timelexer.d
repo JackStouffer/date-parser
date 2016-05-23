@@ -26,6 +26,7 @@
 
 module dateparser.timelexer;
 
+debug(dateparser) import std.stdio;
 import std.range;
 import std.traits;
 import std.regex;
@@ -33,7 +34,7 @@ import dateparser.splitter;
 
 package:
 
-// Needs to be explicitly global for the backwards compatible
+// Needs to be explicitly flagged global for the backwards compatible
 // version of splitterWithMatches
 enum split_decimal = ctRegex!(`([\.,])`, "g");
 
