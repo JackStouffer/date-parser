@@ -203,7 +203,7 @@ SysTime parse(Range)(Range timeString,
     Flag!"yearFirst" yearFirst = No.yearFirst,
     Flag!"fuzzy" fuzzy = No.fuzzy,
     SysTime defaultDate = SysTime(DateTime(1, 1, 1))) if (
-        isForwardRange!Range && !isInfinite!Range && is(ElementEncodingType!Range : const char))
+        isForwardRange!Range && !isInfinite!Range && is(Unqual!(ElementEncodingType!Range) : char))
 {
     // dfmt off
     return defaultParser.parse(
@@ -851,7 +851,7 @@ public:
         Flag!"yearFirst" yearFirst = No.yearFirst,
         Flag!"fuzzy" fuzzy = No.fuzzy,
         SysTime defaultDate = SysTime(Date(1, 1, 1))) if (
-            isForwardRange!Range && !isInfinite!Range && is(ElementEncodingType!Range : const char))
+            isForwardRange!Range && !isInfinite!Range && is(Unqual!(ElementEncodingType!Range) : char))
     {
         import std.conv : to, ConvException;
 
@@ -1000,7 +1000,7 @@ private:
     */
     ParseResult parseImpl(Range)(Range timeString, bool dayFirst = false,
         bool yearFirst = false, bool fuzzy = false) if (isForwardRange!Range
-            && !isInfinite!Range && is(ElementEncodingType!Range : const char))
+            && !isInfinite!Range && is(Unqual!(ElementEncodingType!Range) : char))
     {
         import std.string : indexOf;
         import std.algorithm.searching : canFind;
