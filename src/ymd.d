@@ -244,7 +244,7 @@ public:
                 else
                 {
                     //01-Jan-01
-                    //Give precendence to day-first, since
+                    //Give precedence to day-first, since
                     //two-digit years is usually hand-written.
                     day = data[0];
                     month = data[1];

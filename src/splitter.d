@@ -45,7 +45,7 @@ static if (version_major == 2 && version_minor < 72)
      *     A forward range of strings
      */
     package auto splitterWithMatches(Range, RegEx)(Range r, RegEx pat) if (
-            is(Unqual!(ElementEncodingType!Range) : dchar))
+        is(Unqual!(ElementEncodingType!Range) : dchar))
     {
         return SplitterResult!(Range, RegEx)(r, pat);
     }
@@ -136,7 +136,12 @@ static if (version_major == 2 && version_minor < 72)
 }
 else
 {
-    package alias splitterWithMatches = splitter!(Yes.keepSeparators);
+    import std.typecons;
+
+    package auto splitterWithMatches(Range, RegEx)(Range r, RegEx pat)
+    {
+        return splitter!(Yes.keepSeparators)(r, pat);
+    }
 }
 
 unittest
