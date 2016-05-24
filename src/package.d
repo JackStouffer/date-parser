@@ -1084,8 +1084,9 @@ private:
                         //19990101T235959[.59]
                         res.hour = to!int(s[0 .. 2]);
                         res.minute = to!int(s[2 .. 4]);
-                        res.second = parseMS(s[4 .. $])[0];
-                        res.microsecond = parseMS(s[4 .. $])[1];
+                        auto ms = parseMS(s[4 .. $]);
+                        res.second = ms[0];
+                        res.microsecond = ms[1];
                     }
                 }
                 else if (tokensItemLength == 8 || tokensItemLength == 12 || tokensItemLength == 14)
