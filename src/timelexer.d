@@ -95,6 +95,7 @@ public:
 
     void popFront()
     {
+        import std.utf : byCodeUnit;
         import std.algorithm.searching : canFind, count;
         import std.uni : isAlpha;
 
@@ -233,11 +234,11 @@ public:
 
         debug(dateparser) writeln("STATE ", state, " seenLetters: ", seenLetters);
         if ((state == State.ALPHA_PERIOD || state == State.NUMERIC_PERIOD)
-                && (seenLetters || token.count('.') > 1
+                && (seenLetters || token.byCodeUnit.count('.') > 1
                 || (token[$ - 1] == '.' || token[$ - 1] == ',')))
             if ((state == State.ALPHA_PERIOD
                     || state == State.NUMERIC_PERIOD) && (seenLetters
-                    || token.count('.') > 1 || (token[$ - 1] == '.' || token[$ - 1] == ',')))
+                    || token.byCodeUnit.count('.') > 1 || (token[$ - 1] == '.' || token[$ - 1] == ',')))
             {
                 auto l = splitterWithMatches(token[], split_decimal);
                 token = l.front;
@@ -248,7 +249,7 @@ public:
                         tokenStack ~= tok;
             }
 
-        if (state == State.NUMERIC_PERIOD && !token.canFind('.'))
+        if (state == State.NUMERIC_PERIOD && !token.byCodeUnit.canFind('.'))
             token = token.replace(",", ".");
     }
 

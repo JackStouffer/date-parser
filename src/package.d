@@ -228,7 +228,7 @@ This function allocates memory and throws on the GC. In order to reduce GC alloc
 use a custom `Parser` instance with a different allocator.
 
 Params:
-    timeString = A forward range with UTF-8 encoded elements containing a date/time stamp.
+    timeString = A forward range containing a date/time stamp.
     ignoreTimezone = Set to false by default, time zones in parsed strings are ignored and a
                SysTime with the local time zone is returned. If timezone information
                is not important, setting this to true is slightly faster.
