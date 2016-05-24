@@ -136,8 +136,12 @@ This function offers a generic date/time string Parser which is able to parse
 most known formats to represent a date and/or time.
 
 This function attempts to be forgiving with regards to unlikely input formats,
-returning a `SysTime` object even for dates which are ambiguous. If an element
-of a date/time stamp is omitted, the following rules are applied:
+returning a `SysTime` object even for dates which are ambiguous. While other languages
+have writing systems without Arabic numerals, the overwhelming majority of dates
+are written with them. As such, this function does not work with other
+number systems.
+
+If an element of a date/time stamp is omitted, the following rules are applied:
 
 $(UL
     $(LI If AM or PM is left unspecified, a 24-hour clock is assumed, however,
@@ -158,8 +162,8 @@ from the OS by abbreviation. But, the timezone will be properly set if an offset
 is given. Timezone info and their abbreviations change constantly, so it's a
 good idea to not rely on `timezoneInfos` too much.
 
-By default, this function allocates memory on the GC. In order to reduce GC
-allocations, use a custom `Parser` instance with a different allocator.
+This function allocates memory and throws on the GC. In order to reduce GC allocations,
+use a custom `Parser` instance with a different allocator.
 
 Params:
     timeString = A forward range with UTF-8 encoded elements containing a date/time stamp.
