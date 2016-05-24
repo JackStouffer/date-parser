@@ -1007,12 +1007,11 @@ private:
         import std.uni : isUpper, isNumber;
         import std.conv : to, ConvException;
         import std.experimental.allocator : makeArray, dispose;
-        import std.experimental.allocator.mallocator : Mallocator;
         import containers.dynamicarray : DynamicArray;
 
         ParseResult res;
 
-        DynamicArray!(string, Mallocator, true) tokens;
+        DynamicArray!(string, Allocator, true) tokens;
         put(tokens, timeString.save.timeLexer);
 
         debug(dateparser) writeln("tokens: ", tokens[]);
