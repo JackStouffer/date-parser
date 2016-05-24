@@ -1,10 +1,11 @@
 import std.datetime;
 import std.stdio;
 import std.compiler;
-import dateparser;
+import std.conv;
 import std.experimental.allocator;
 import std.experimental.allocator.mallocator;
 import std.experimental.allocator.gc_allocator;
+import dateparser;
 
 enum testCount = 200_000;
 
@@ -18,7 +19,6 @@ void main()
 {
     version(unittest) {} else
     {
-        import std.conv : to;
         
         auto customParser = new Parser!Mallocator(new ParserInfo());
 

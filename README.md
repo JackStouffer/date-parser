@@ -16,7 +16,7 @@ http://jackstouffer.com/dateparser/
 {
     ...
     "dependencies": {
-        "dateparser": "~>2.0.0"
+        "dateparser": "~>2.0.3"
     }
 }
 ```
