@@ -56,7 +56,7 @@ enum split_decimal = ctRegex!(`([\.,])`, "g");
 * Returns:
 *     a input range of strings
 */
-auto timeLexer(Range)(Range r) if (isInputRange!Range && isSomeChar!(ElementEncodingType!Range))
+auto timeLexer(Range)(Range r) if (isInputRange!Range && is(Unqual!(ElementType!Range) == char))
 {
     return TimeLexerResult!Range(r);
 }
@@ -116,16 +116,16 @@ public:
             // find a character that's not part of the current token - since
             // that character may be part of the next token, it's stored in the
             // charStack.
-            uint nextChar;
+            char nextChar;
 
             if (!charStack.empty)
             {
-                nextChar = cast(uint) charStack.front;
-                charStack.popFront;
+                nextChar = charStack[0];
+                charStack = charStack[1 .. $];
             }
             else
             {
-                nextChar = cast(uint) source.front;
+                nextChar = source.front;
                 source.popFront;
             }
 
@@ -134,7 +134,7 @@ public:
                 debug(dateparser) writeln("EMPTY");
                 // First character of the token - determines if we're starting
                 // to parse a word, a number or something else.
-                token ~= cast(char) nextChar;
+                token ~= nextChar;
 
                 if (nextChar.isAlpha)
                     state = State.ALPHA;
@@ -160,16 +160,16 @@ public:
                     nextChar != '/' && nextChar != '-' &&
                     nextChar != ' ' && !nextChar.isNumber)
                 {
-                    token ~= cast(char) nextChar;
+                    token ~= nextChar;
                 }
                 else if (nextChar == '.')
                 {
-                    token ~= cast(char) nextChar;
+                    token ~= nextChar;
                     state = State.ALPHA_PERIOD;
                 }
                 else
                 {
-                    charStack ~= cast(char) nextChar;
+                    charStack ~= nextChar;
                     break; //emit token
                 }
             }
@@ -179,15 +179,15 @@ public:
                 // numbers until we find something that doesn't fit.
                 debug(dateparser) writeln("STATE ", state, " nextChar: ", nextChar);
                 if (nextChar.isNumber)
-                    token ~= cast(char) nextChar;
+                    token ~= nextChar;
                 else if (nextChar == '.' || (nextChar == ',' && token.length >= 2))
                 {
-                    token ~= cast(char) nextChar;
+                    token ~= nextChar;
                     state = State.NUMERIC_PERIOD;
                 }
                 else
                 {
-                    charStack ~= cast(char) nextChar;
+                    charStack ~= nextChar;
                     debug(dateparser) writeln("charStack add: ", charStack);
                     break; //emit token
                 }
@@ -199,15 +199,15 @@ public:
                 // parsing, and the tokens will be broken up later.
                 seenLetters = true;
                 if (nextChar == '.' || nextChar.isAlpha)
-                    token ~= cast(char) nextChar;
+                    token ~= nextChar;
                 else if (nextChar.isNumber && token[$ - 1] == '.')
                 {
-                    token ~= cast(char) nextChar;
+                    token ~= nextChar;
                     state = State.NUMERIC_PERIOD;
                 }
                 else
                 {
-                    charStack ~= cast(char) nextChar;
+                    charStack ~= nextChar;
                     break; //emit token
                 }
             }
@@ -217,15 +217,15 @@ public:
                 // If we've seen at least one dot separator, keep going, we'll
                 // break up the tokens later.
                 if (nextChar == '.' || nextChar.isNumber)
-                    token ~= cast(char) nextChar;
+                    token ~= nextChar;
                 else if (nextChar.isAlpha && token[$ - 1] == '.')
                 {
-                    token ~= cast(char) nextChar;
+                    token ~= nextChar;
                     state = State.ALPHA_PERIOD;
                 }
                 else
                 {
-                    charStack ~= cast(char) nextChar;
+                    charStack ~= nextChar;
                     break; //emit token
                 }
             }
@@ -252,7 +252,7 @@ public:
             token = token.replace(",", ".");
     }
 
-    bool empty()() @property
+    bool empty() @nogc @safe @property nothrow pure
     {
         return token.empty && source.empty && charStack.empty && tokenStack.empty;
     }
@@ -261,18 +261,34 @@ public:
 unittest
 {
     import std.algorithm.comparison : equal;
+    import std.utf : byCodeUnit;
 
-    assert("Thu Sep 25 10:36:28 BRST 2003".timeLexer.equal(
+    assert("Thu Sep 25 10:36:28 BRST 2003".byCodeUnit.timeLexer.equal(
         ["Thu", " ", "Sep", " ", "25", " ",
          "10", ":", "36", ":", "28", " ",
          "BRST", " ", "2003"]
     ));
 
-    assert("2003-09-25T10:49:41.5-03:00".timeLexer.equal(
+    assert("2003-09-25T10:49:41.5-03:00".byCodeUnit.timeLexer.equal(
         ["2003", "-", "09", "-", "25", "T",
          "10", ":", "49", ":", "41.5", "-",
          "03", ":", "00"]
     ));
+}
+
+unittest
+{
+    import std.algorithm.comparison : equal;
+    import std.utf : byChar;
+
+    assert("10:10"
+        .byChar
+        .timeLexer
+        .equal(["10", ":", "10"]));
+    assert("Thu Sep 10:36:28"
+        .byChar
+        .timeLexer
+        .equal(["Thu", " ", "Sep", " ", "10", ":", "36", ":", "28"]));
 }
 
 /++
@@ -283,16 +299,4 @@ pragma(inline, true)
 bool isNumber(dchar c) @safe pure nothrow @nogc
 {
     return c >= '0' && c <= '9';
-}
-
-unittest
-{
-    import std.internal.test.dummyrange : ReferenceInputRange;
-    import std.algorithm.comparison : equal;
-
-    auto a = new ReferenceInputRange!dchar("10:10");
-    assert(a.timeLexer.equal(["10", ":", "10"]));
-
-    auto b = new ReferenceInputRange!dchar("Thu Sep 10:36:28");
-    assert(b.timeLexer.equal(["Thu", " ", "Sep", " ", "10", ":", "36", ":", "28"]));
 }
