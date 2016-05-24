@@ -946,21 +946,37 @@ private:
      * Returns:
      *     tuple of two ints
      */
-    auto parseMS(string value)
+    auto parseMS(R)(R s) if (
+        isForwardRange!R &&
+        !isInfinite!R &&
+        is(Unqual!(ElementEncodingType!R) : char))
     {
-        import std.string : leftJustify;
+        import std.string : leftJustifier;
         import std.algorithm.searching : canFind;
+        import std.algorithm.iteration : splitter;
         import std.typecons : tuple;
-        import std.conv : to;
+        import std.conv : parse;
+        import std.utf : byCodeUnit;
 
-        if (!(value.canFind(".")))
-            return tuple(to!int(value), 0);
+        // auto decoding special case
+        static if (isNarrowString!R)
+            auto value = s.byCodeUnit;
+        else
+            alias value = s;
+
+        if (!(value.canFind('.')))
+        {
+            return tuple(parse!int(value), 0);
+        }
         else
         {
-            auto splitValue = value.split(".");
+            auto splitValue = value.splitter('.');
+            auto secs = splitValue.front;
+            splitValue.popFront();
+            auto msecs = splitValue.front.leftJustifier(6, '0');
             return tuple(
-                to!int(splitValue[0]),
-                to!int(splitValue[1].leftJustify(6, '0')[0 .. 6])
+                parse!int(secs, 10),
+                parse!int(msecs, 10)
             );
         }
     }
@@ -1042,7 +1058,7 @@ private:
             debug(dateparser) writeln("index: ", i);
             debug(dateparser) writeln("tokens[i]: ", tokens[i]);
 
-            if (tokens[i].front.isNumber)
+            if (tokens[i][0].isNumber)
             {
                 value_repr = tokens[i];
                 debug(dateparser) writeln("value_repr: ", value_repr);
@@ -1241,7 +1257,7 @@ private:
 
                     if (i < tokensLength && !info.jump(tokens[i]))
                     {
-                        if (tokens[i].front.isNumber)
+                        if (tokens[i][0].isNumber)
                         {
                             //01-01[-01]
                             static if (isSomeString!Range)

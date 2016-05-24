@@ -7,7 +7,7 @@ import std.experimental.allocator.mallocator;
 import std.experimental.allocator.gc_allocator;
 import dateparser;
 
-enum testCount = 200_000;
+enum testCount = 500_000;
 
 enum stringOne = "Thu Sep 25 10:36:28 BRST 2003";
 enum stringTwo = "09.25.2003";
