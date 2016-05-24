@@ -1005,6 +1005,7 @@ private:
         import std.algorithm.searching : canFind, countUntil;
         import std.algorithm.iteration : filter;
         import std.uni : isUpper, isNumber;
+        import std.utf : byCodeUnit;
         import std.conv : to, ConvException;
         import std.experimental.allocator : makeArray, dispose;
         import containers.dynamicarray : DynamicArray;
@@ -1365,7 +1366,7 @@ private:
                     if (tokens[i] == "-" || tokens[i] == "/")
                     {
                         //Jan-01[-99]
-                        immutable string separator = tokens[i].dup;
+                        immutable separator = tokens[i];
                         ++i;
                         ymd.put(tokens[i]);
                         ++i;
@@ -1443,8 +1444,8 @@ private:
             }
 
             //Check for a timezone name
-            auto itemUpper = allocator.makeArray!(dchar)(
-                tokens[i].filter!(a => !isUpper(a))
+            auto itemUpper = allocator.makeArray!(char)(
+                tokens[i].byCodeUnit.filter!(a => !isUpper(a))
             );
             scope(exit) allocator.dispose(itemUpper);
 
@@ -1515,8 +1516,8 @@ private:
                 //Look for a timezone name between parenthesis
                 if (i + 3 < tokensLength)
                 {
-                    auto itemForwardUpper = allocator.makeArray!(dchar)(
-                        tokens[i + 2].filter!(a => !isUpper(a))
+                    auto itemForwardUpper = allocator.makeArray!(char)(
+                        tokens[i + 2].byCodeUnit.filter!(a => !isUpper(a))
                     );
                     scope(exit) allocator.dispose(itemForwardUpper);
 
