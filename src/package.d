@@ -129,6 +129,77 @@ struct ParseResult
     Nullable!(TimeOfDay) shortcutTimeResult;
 }
 
+/**
+ * Parse a I[.F] seconds value into (seconds, microseconds)
+ *
+ * Params:
+ *     value = value to parse
+ * Returns:
+ *     tuple of two ints
+ */
+auto parseMS(R)(R s) if (
+    isForwardRange!R &&
+    !isInfinite!R &&
+    is(Unqual!(ElementEncodingType!R) : char))
+{
+    import std.string : leftJustifier;
+    import std.algorithm.searching : canFind;
+    import std.algorithm.iteration : splitter;
+    import std.typecons : tuple;
+    import std.conv : parse;
+    import std.utf : byCodeUnit;
+
+    // auto decoding special case
+    static if (isNarrowString!R)
+        auto value = s.byCodeUnit;
+    else
+        alias value = s;
+
+    if (!(value.save.canFind('.')))
+    {
+        return tuple(parse!int(value), 0);
+    }
+    else
+    {
+        auto splitValue = value.splitter('.');
+        auto secs = splitValue.front;
+        splitValue.popFront();
+        auto msecs = splitValue.front.leftJustifier(6, '0');
+        return tuple(
+            parse!int(secs),
+            parse!int(msecs)
+        );
+    }
+}
+
+/++
+    Params: c = The character to test.
+    Returns: Whether `c` is a number (0..9).
++/
+bool isNumber(dchar c) @safe pure nothrow @nogc
+{
+    return c >= '0' && c <= '9';
+}
+
+void setAttribute(P, T)(ref P p, string name, auto ref T value)
+{
+    foreach (mem; __traits(allMembers, P))
+    {
+        static if (is(typeof(__traits(getMember, p, mem)) Q))
+        {
+            static if (is(T : Q))
+            {
+                if (mem == name)
+                {
+                    __traits(getMember, p, mem) = value;
+                    return;
+                }
+            }
+        }
+    }
+    assert(0, P.stringof ~ " has no member " ~ name);
+}
+
 public:
 
 /**
@@ -939,68 +1010,6 @@ public:
 
 private:
     /**
-     * Parse a I[.F] seconds value into (seconds, microseconds)
-     *
-     * Params:
-     *     value = value to parse
-     * Returns:
-     *     tuple of two ints
-     */
-    auto parseMS(R)(R s) if (
-        isForwardRange!R &&
-        !isInfinite!R &&
-        is(Unqual!(ElementEncodingType!R) : char))
-    {
-        import std.string : leftJustifier;
-        import std.algorithm.searching : canFind;
-        import std.algorithm.iteration : splitter;
-        import std.typecons : tuple;
-        import std.conv : parse;
-        import std.utf : byCodeUnit;
-
-        // auto decoding special case
-        static if (isNarrowString!R)
-            auto value = s.byCodeUnit;
-        else
-            alias value = s;
-
-        if (!(value.canFind('.')))
-        {
-            return tuple(parse!int(value), 0);
-        }
-        else
-        {
-            auto splitValue = value.splitter('.');
-            auto secs = splitValue.front;
-            splitValue.popFront();
-            auto msecs = splitValue.front.leftJustifier(6, '0');
-            return tuple(
-                parse!int(secs, 10),
-                parse!int(msecs, 10)
-            );
-        }
-    }
-
-    void setAttribute(P, T)(ref P p, string name, auto ref T value)
-    {
-        foreach (mem; __traits(allMembers, P))
-        {
-            static if (is(typeof(__traits(getMember, p, mem)) Q))
-            {
-                static if (is(T : Q))
-                {
-                    if (mem == name)
-                    {
-                        __traits(getMember, p, mem) = value;
-                        return;
-                    }
-                }
-            }
-        }
-        assert(0, P.stringof ~ " has no member " ~ name);
-    }
-
-    /**
     * Private method which performs the heavy lifting of parsing, called from
     * `parse`.
     *
@@ -1024,7 +1033,7 @@ private:
     {
         import std.algorithm.searching : canFind, countUntil;
         import std.algorithm.iteration : filter;
-        import std.uni : isUpper, isNumber;
+        import std.uni : isUpper;
         import std.utf : byCodeUnit;
         import std.conv : to, ConvException;
         import std.experimental.allocator : makeArray, dispose;
