@@ -96,7 +96,7 @@ public:
     void popFront()
     {
         import std.algorithm.searching : canFind, count;
-        import std.uni : isNumber, isSpace, isAlpha;
+        import std.uni : isAlpha;
 
         if (tokenStack.length > 0)
         {
@@ -116,16 +116,16 @@ public:
             // find a character that's not part of the current token - since
             // that character may be part of the next token, it's stored in the
             // charStack.
-            dchar nextChar;
+            uint nextChar;
 
             if (!charStack.empty)
             {
-                nextChar = charStack.front;
+                nextChar = cast(uint) charStack.front;
                 charStack.popFront;
             }
             else
             {
-                nextChar = source.front;
+                nextChar = cast(uint) source.front;
                 source.popFront;
             }
 
@@ -134,13 +134,13 @@ public:
                 debug(dateparser) writeln("EMPTY");
                 // First character of the token - determines if we're starting
                 // to parse a word, a number or something else.
-                token ~= nextChar;
+                token ~= cast(char) nextChar;
 
                 if (nextChar.isAlpha)
                     state = State.ALPHA;
                 else if (nextChar.isNumber)
                     state = State.NUMERIC;
-                else if (nextChar.isSpace)
+                else if (nextChar == ' ')
                 {
                     token = " ";
                     break; //emit token
@@ -156,16 +156,20 @@ public:
                 // letters until we find something that's not part of a word.
                 seenLetters = true;
 
-                if (nextChar.isAlpha)
-                    token ~= nextChar;
+                if (nextChar != '.' && nextChar != ',' &&
+                    nextChar != '/' && nextChar != '-' &&
+                    nextChar != ' ' && !nextChar.isNumber)
+                {
+                    token ~= cast(char) nextChar;
+                }
                 else if (nextChar == '.')
                 {
-                    token ~= nextChar;
+                    token ~= cast(char) nextChar;
                     state = State.ALPHA_PERIOD;
                 }
                 else
                 {
-                    charStack ~= nextChar;
+                    charStack ~= cast(char) nextChar;
                     break; //emit token
                 }
             }
@@ -175,15 +179,15 @@ public:
                 // numbers until we find something that doesn't fit.
                 debug(dateparser) writeln("STATE ", state, " nextChar: ", nextChar);
                 if (nextChar.isNumber)
-                    token ~= nextChar;
+                    token ~= cast(char) nextChar;
                 else if (nextChar == '.' || (nextChar == ',' && token.length >= 2))
                 {
-                    token ~= nextChar;
+                    token ~= cast(char) nextChar;
                     state = State.NUMERIC_PERIOD;
                 }
                 else
                 {
-                    charStack ~= nextChar;
+                    charStack ~= cast(char) nextChar;
                     debug(dateparser) writeln("charStack add: ", charStack);
                     break; //emit token
                 }
@@ -195,15 +199,15 @@ public:
                 // parsing, and the tokens will be broken up later.
                 seenLetters = true;
                 if (nextChar == '.' || nextChar.isAlpha)
-                    token ~= nextChar;
+                    token ~= cast(char) nextChar;
                 else if (nextChar.isNumber && token[$ - 1] == '.')
                 {
-                    token ~= nextChar;
+                    token ~= cast(char) nextChar;
                     state = State.NUMERIC_PERIOD;
                 }
                 else
                 {
-                    charStack ~= nextChar;
+                    charStack ~= cast(char) nextChar;
                     break; //emit token
                 }
             }
@@ -213,15 +217,15 @@ public:
                 // If we've seen at least one dot separator, keep going, we'll
                 // break up the tokens later.
                 if (nextChar == '.' || nextChar.isNumber)
-                    token ~= nextChar;
+                    token ~= cast(char) nextChar;
                 else if (nextChar.isAlpha && token[$ - 1] == '.')
                 {
-                    token ~= nextChar;
+                    token ~= cast(char) nextChar;
                     state = State.ALPHA_PERIOD;
                 }
                 else
                 {
-                    charStack ~= nextChar;
+                    charStack ~= cast(char) nextChar;
                     break; //emit token
                 }
             }
@@ -269,6 +273,16 @@ unittest
          "10", ":", "49", ":", "41.5", "-",
          "03", ":", "00"]
     ));
+}
+
+/++
+    Params: c = The character to test.
+    Returns: Whether `c` is a number (0..9).
++/
+pragma(inline, true)
+bool isNumber(dchar c) @safe pure nothrow @nogc
+{
+    return c >= '0' && c <= '9';
 }
 
 unittest

@@ -39,11 +39,11 @@ void main()
 
 ## Speed
 
-Based on `master`
+Based on `master`, measured on a 2015 Macbook Pro 2.9GHz Intel i5. Python times measured with ipython's `%timeit` function. D times measured with `bench.sh`.
 
-String | Python | LDC | DMD
+String | Python 2.7.11 | LDC 0.17.1 | DMD 2.071.0
 ------ | ------ | --- | ---
-Thu Sep 25 10:36:28 BRST 2003 | 156 µs | 17 μs | 24 μs
-2003-09-25T10:49:41.5-03:00 | 136 µs | 7 μs | 12 μs
-09.25.2003 | 124 µs | 7 μs | 10 μs
-2003-09-25 | 66.4 µs | 5 μs | 7 μs
+Thu Sep 25 10:36:28 BRST 2003 | 156 µs | 13 μs | 21 μs
+2003-09-25T10:49:41.5-03:00 | 136 µs | 5 μs | 9 μs
+09.25.2003 | 124 µs | 5 μs | 8 μs
+2003-09-25 | 66.4 µs | 4 μs | 5 μs

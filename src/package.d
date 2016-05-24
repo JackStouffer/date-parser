@@ -172,15 +172,6 @@ auto parseMS(R)(R s) if (
     }
 }
 
-/++
-    Params: c = The character to test.
-    Returns: Whether `c` is a number (0..9).
-+/
-bool isNumber(dchar c) @safe pure nothrow @nogc
-{
-    return c >= '0' && c <= '9';
-}
-
 void setAttribute(P, T)(ref P p, string name, auto ref T value)
 {
     foreach (mem; __traits(allMembers, P))
@@ -624,6 +615,8 @@ unittest
 /// Custom parser info allows for international time representation
 unittest
 {
+    import std.utf;
+
     class RusParserInfo : ParserInfo
     {
         this()
@@ -649,6 +642,9 @@ unittest
     auto rusParser = new Parser!GCAllocator(new RusParserInfo());
     immutable parsedTime = rusParser.parse("10 Сентябрь 2015 10:20");
     assert(parsedTime == SysTime(DateTime(2015, 9, 10, 10, 20)));
+
+    immutable parsedTime2 = rusParser.parse("10 Сентябрь 2015 10:20"d.byChar);
+    assert(parsedTime2 == SysTime(DateTime(2015, 9, 10, 10, 20)));
 }
 // dfmt on
 
@@ -1034,7 +1030,7 @@ private:
         import std.algorithm.searching : canFind, countUntil;
         import std.algorithm.iteration : filter;
         import std.uni : isUpper;
-        import std.utf : byCodeUnit;
+        import std.utf : byCodeUnit, byChar;
         import std.conv : to, ConvException;
         import std.experimental.allocator : makeArray, dispose;
         import containers.dynamicarray : DynamicArray;
@@ -1042,7 +1038,12 @@ private:
         ParseResult res;
 
         DynamicArray!(string, Allocator, true) tokens;
-        put(tokens, timeString.save.timeLexer);
+
+        // auto decoding special case
+        static if (isSomeString!Range && is(ElementType!Range == dchar))
+            put(tokens, timeString.byChar.save.timeLexer);
+        else
+            put(tokens, timeString.save.timeLexer);
 
         debug(dateparser) writeln("tokens: ", tokens[]);
 
@@ -1473,7 +1474,7 @@ private:
             }
 
             //Check for a timezone name
-            auto itemUpper = allocator.makeArray!(char)(
+            auto itemUpper = allocator.makeArray!(Unqual!(typeof(tokens[i].byCodeUnit[0])))(
                 tokens[i].byCodeUnit.filter!(a => !isUpper(a))
             );
             scope(exit) allocator.dispose(itemUpper);
@@ -1545,7 +1546,7 @@ private:
                 //Look for a timezone name between parenthesis
                 if (i + 3 < tokensLength)
                 {
-                    auto itemForwardUpper = allocator.makeArray!(char)(
+                    auto itemForwardUpper = allocator.makeArray!(Unqual!(typeof(tokens[i + 2].byCodeUnit[0])))(
                         tokens[i + 2].byCodeUnit.filter!(a => !isUpper(a))
                     );
                     scope(exit) allocator.dispose(itemForwardUpper);
