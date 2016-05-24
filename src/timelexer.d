@@ -95,8 +95,7 @@ public:
 
     void popFront()
     {
-        import std.string : count;
-        import std.algorithm.searching : canFind;
+        import std.algorithm.searching : canFind, count;
         import std.uni : isNumber, isSpace, isAlpha;
 
         if (tokenStack.length > 0)

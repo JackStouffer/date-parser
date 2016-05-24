@@ -1002,8 +1002,7 @@ private:
         bool yearFirst = false, bool fuzzy = false) if (isForwardRange!Range
             && !isInfinite!Range && is(Unqual!(ElementEncodingType!Range) : char))
     {
-        import std.string : indexOf;
-        import std.algorithm.searching : canFind;
+        import std.algorithm.searching : canFind, countUntil;
         import std.algorithm.iteration : filter;
         import std.uni : isUpper, isNumber;
         import std.conv : to, ConvException;
@@ -1067,7 +1066,7 @@ private:
                     }
                 }
                 else if (tokensItemLength == 6 || (tokensItemLength > 6
-                        && tokens[i - 1].indexOf(".") == 6))
+                        && tokens[i - 1].countUntil('.') == 6))
                 {
                     debug(dateparser) writeln("branch 2");
                     //YYMMDD || HHMMSS[.ss]
