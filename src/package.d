@@ -634,8 +634,8 @@ unittest
     immutable parsedTime = rusParser.parse("10 Сентябрь 2015 10:20");
     assert(parsedTime == SysTime(DateTime(2015, 9, 10, 10, 20)));
 
-    //immutable parsedTime2 = rusParser.parse("10 Сентябрь 2015 10:20"d.byChar);
-    //assert(parsedTime2 == SysTime(DateTime(2015, 9, 10, 10, 20)));
+    immutable parsedTime2 = rusParser.parse("10 Сентябрь 2015 10:20"d.byChar);
+    assert(parsedTime2 == SysTime(DateTime(2015, 9, 10, 10, 20)));
 }
 // dfmt on
 
