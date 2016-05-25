@@ -32,6 +32,16 @@ import std.traits;
 import std.regex;
 import dateparser.splitter;
 
+private enum State
+{
+    EMPTY,
+    ALPHA,
+    NUMERIC,
+    ALPHA_PERIOD,
+    PERIOD,
+    NUMERIC_PERIOD
+}
+
 package:
 
 // Needs to be explicitly flagged global for the backwards compatible
@@ -71,21 +81,12 @@ private:
     string charStack;
     string[] tokenStack;
     string token;
-    enum State
-    {
-        EMPTY,
-        ALPHA,
-        NUMERIC,
-        ALPHA_PERIOD,
-        PERIOD,
-        NUMERIC_PERIOD
-    }
 
 public:
     this(Range r)
     {
         source = r;
-        popFront();
+        popFront;
     }
 
     auto front() @property
@@ -200,7 +201,9 @@ public:
                 // parsing, and the tokens will be broken up later.
                 seenLetters = true;
                 if (nextChar == '.' || nextChar.isAlpha)
+                {
                     token ~= nextChar;
+                }
                 else if (nextChar.isNumber && token[$ - 1] == '.')
                 {
                     token ~= nextChar;

@@ -40,15 +40,6 @@ import dateparser.ymd;
 
 private:
 
-// Copied from EMSI containers
-mixin template AllocatorState(Allocator)
-{
-    static if (stateSize!Allocator == 0)
-        alias allocator = Allocator.instance;
-    else
-        Allocator allocator;
-}
-
 Parser!GCAllocator defaultParser;
 static this()
 {
@@ -910,7 +901,6 @@ final class Parser(Allocator) if (
     hasMember!(Allocator, "allocate") && hasMember!(Allocator, "deallocate"))
 {
     private const ParserInfo info;
-    private mixin AllocatorState!Allocator;
 
 public:
     ///
@@ -1048,7 +1038,6 @@ private:
         import std.uni : isUpper;
         import std.utf : byCodeUnit, byChar;
         import std.conv : to, ConvException;
-        import std.experimental.allocator : makeArray, dispose;
         import containers.dynamicarray : DynamicArray;
 
         ParseResult res;
@@ -1498,13 +1487,12 @@ private:
             }
 
             //Check for a timezone name
-            auto itemUpper = allocator.makeArray!(Unqual!(typeof(tokens[i].byCodeUnit[0])))(
-                tokens[i].byCodeUnit.filter!(a => !isUpper(a))
-            );
-            scope(exit) allocator.dispose(itemUpper);
-
+            auto upperItems = tokens[i]
+                .byCodeUnit
+                .filter!(a => !isUpper(a))
+                .walkLength(1);
             if (!res.hour.isNull && tokens[i].length <= 5
-                    && res.tzname.length == 0 && res.tzoffset.isNull && itemUpper.length == 0)
+                    && res.tzname.length == 0 && res.tzoffset.isNull && upperItems == 0)
             {
                 debug(dateparser) writeln("branch 15");
                 res.tzname = tokens[i];
@@ -1519,9 +1507,9 @@ private:
                 //"my time +3 is GMT". If found, we reverse the
                 //logic so that timezone parsing code will get it
                 //right.
-                if (i < tokensLength && (tokens[i] == "+" || tokens[i] == "-"))
+                if (i < tokensLength && (tokens[i][0] == '+' || tokens[i][0] == '-'))
                 {
-                    tokens[i] = tokens[i] == "+" ? "-" : "+";
+                    tokens[i] = tokens[i][0] == '+' ? "-" : "+";
                     res.tzoffset = 0;
                     if (info.utczone(res.tzname))
                     {
@@ -1570,14 +1558,13 @@ private:
                 //Look for a timezone name between parenthesis
                 if (i + 3 < tokensLength)
                 {
-                    auto itemForwardUpper = allocator.makeArray!(Unqual!(typeof(tokens[i + 2].byCodeUnit[0])))(
-                        tokens[i + 2].byCodeUnit.filter!(a => !isUpper(a))
-                    );
-                    scope(exit) allocator.dispose(itemForwardUpper);
-
+                    auto notUpperItems = tokens[i + 2]
+                        .byCodeUnit
+                        .filter!(a => !isUpper(a))
+                        .walkLength(1);
                     if (info.jump(tokens[i]) && tokens[i + 1] == "("
                             && tokens[i + 3] == ")" && 3 <= tokens[i + 2].length
-                            && tokens[i + 2].length <= 5 && itemForwardUpper.length == 0)
+                            && tokens[i + 2].length <= 5 && notUpperItems == 0)
                     {
                         //-0300 (BRST)
                         res.tzname = tokens[i + 2];
