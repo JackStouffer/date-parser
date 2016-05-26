@@ -660,17 +660,26 @@ unittest
 // Test different string types
 unittest
 {
-    // forward ranges
-    assert("10h36m28s"w.parse == SysTime(
-        DateTime(1, 1, 1, 10, 36, 28)));
-    assert("Thu Sep 10:36:28"w.parse == SysTime(
-        DateTime(1, 9, 5, 10, 36, 28)));
+    import std.meta : AliasSeq;
+    import std.conv : to;
 
-    // bidirectional ranges
-    assert("2003-09-25T10:49:41"d.parse == SysTime(
-        DateTime(2003, 9, 25, 10, 49, 41)));
-    assert("Thu Sep 10:36:28"d.parse == SysTime(
-        DateTime(1, 9, 5, 10, 36, 28)));
+    alias StringTypes = AliasSeq!(
+        char[], string,
+        wchar[], wstring,
+        dchar[], dstring
+    );
+
+    foreach (T; StringTypes)
+    {
+        assert("10h36m28s".to!T.parse == SysTime(
+            DateTime(1, 1, 1, 10, 36, 28)));
+        assert("Thu Sep 10:36:28".to!T.parse == SysTime(
+            DateTime(1, 9, 5, 10, 36, 28)));
+        assert("2003-09-25T10:49:41".to!T.parse == SysTime(
+            DateTime(2003, 9, 25, 10, 49, 41)));
+        assert("Thu Sep 10:36:28".to!T.parse == SysTime(
+            DateTime(1, 9, 5, 10, 36, 28)));
+    }
 }
 
 // Issue #1
