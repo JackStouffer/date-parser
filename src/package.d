@@ -49,7 +49,7 @@ static this()
 // dfmt off
 // m from a.m/p.m, t from ISO T separator, order doesn't
 // matter here, just a presence check
-enum JUMP_DEFAULT = [
+enum jumpDefault = [
     "and":9, "'":6,
     "at":7, "/":5,
     "st":14,
@@ -60,7 +60,7 @@ enum JUMP_DEFAULT = [
     "m":11, ",":2,
     "ad":10, "-":4, "t":12
 ];
-enum WEEKDAYS_DEFAULT = [
+enum weekdaysDefault = [
     "mon":0, "monday":0,
     "tue":1, "tuesday":1,
     "wed":2, "wednesday":2,
@@ -69,7 +69,7 @@ enum WEEKDAYS_DEFAULT = [
     "sat":5, "saturday":5,
     "sun":6, "sunday":6,
 ];
-enum MONTHS_DEFAULT = [
+enum monthsDefault = [
     "jan":0, "january":0,
     "feb":1, "february":1,
     "mar":2, "march":2,
@@ -83,19 +83,19 @@ enum MONTHS_DEFAULT = [
     "nov":10, "november":10,
     "dec":11, "december":11
 ];
-enum HMS_DEFAULT = [
+enum hmsDefault = [
     "h":0, "hour":0, "hours":0,
     "m":1, "minute":1, "minutes":1,
     "s":2, "second":2, "seconds":2
 ];
-enum AMPM_DEFAULT = [
+enum ampmDefault = [
     "am":0, "a":0,
     "pm":1, "p":1
 ];
-enum UTCZONE_DEFAULT = [
+enum utcDefault = [
     "UTC":0, "GMT":0, "Z":0
 ];
-enum PERTAIN_DEFAULT = [
+enum pertainDefault = [
     "of":0
 ];
 // dfmt on
@@ -180,6 +180,41 @@ void setAttribute(P, T)(ref P p, string name, auto ref T value)
     }
     assert(0, P.stringof ~ " has no member " ~ name);
 }
+
+/**
+ * If the century isn't specified, e.g. `"'07"`, then assume that the year
+ * is in the current century and return it as such. Otherwise do nothing
+ *
+ * Params:
+ *     convertYear = year to be converted
+ *     centurySpecified = is the century given in the year
+ *
+ * Returns:
+ *     the converted year
+ */
+int convertYear(int convertYear, bool centurySpecified = false) @safe
+{
+    import std.math : abs;
+    import std.datetime : Clock;
+
+    immutable year = Clock.currTime.year;
+    immutable century = (year / 100) * 100;
+
+    if (convertYear < 100 && !centurySpecified)
+    {
+        convertYear += century;
+        if (abs(convertYear - year) >= 50)
+        {
+            if (convertYear < year)
+                convertYear += 100;
+            else
+                convertYear -= 100;
+        }
+    }
+
+    return convertYear;
+}
+
 
 public:
 
@@ -313,7 +348,7 @@ unittest
 /// Custom allocators
 unittest
 {
-    import std.experimental.allocator.mallocator;
+    import std.experimental.allocator.mallocator : Mallocator;
 
     auto customParser = new Parser!Mallocator(new ParserInfo());
     assert(customParser.parse("2003-09-25T10:49:41") ==
@@ -605,13 +640,12 @@ unittest
 /// Custom parser info allows for international time representation
 unittest
 {
-    import std.utf;
+    import std.utf : byChar;
 
     class RusParserInfo : ParserInfo
     {
         this()
         {
-            super(false, false);
             monthsAA = ParserInfo.convert([
                 ["янв", "Январь"],
                 ["фев", "Февраль"],
@@ -704,48 +738,14 @@ Params:
 */
 class ParserInfo
 {
-    import std.uni : toLower, asLowerCase;
-
 private:
     bool dayFirst;
     bool yearFirst;
-    short year;
-    short century;
-
-    /**
-     * If the century isn't specified, e.g. `"'07"`, then assume that the year
-     * is in the current century and return it as such. Otherwise do nothing
-     *
-     * Params:
-     *     convertYear = year to be converted
-     *     centurySpecified = is the century given in the year
-     *
-     * Returns:
-     *     the converted year
-     */
-    final int convertYear(int convertYear, bool centurySpecified = false) @safe @nogc pure nothrow const
-    {
-        import std.math : abs;
-
-        if (convertYear < 100 && !centurySpecified)
-        {
-            convertYear += century;
-            if (abs(convertYear - year) >= 50)
-            {
-                if (convertYear < year)
-                    convertYear += 100;
-                else
-                    convertYear -= 100;
-            }
-        }
-
-        return convertYear;
-    }
 
     /**
      * Takes and Result and converts it year and checks if the timezone is UTC
      */
-    final void validate(ref ParseResult res) @safe pure const
+    final void validate(ref ParseResult res) @safe const
     {
         //move to info
         if (!res.year.isNull)
@@ -764,7 +764,10 @@ private:
 
 public:
     /**
-     * AAs used for matching strings to calendar numbers, e.g. Jan is 1
+     * AAs used for matching strings to calendar numbers, e.g. Jan is 1.
+     *
+     * `jumpAA`, `utczoneAA`, and `pertainAA` are only used to check the
+     * presence of a key; the value of the key doesn't matter.
      */
     int[string] jumpAA;
     ///ditto
@@ -801,6 +804,7 @@ public:
     {
         import std.array : array;
         import std.conv : to;
+        import std.uni : asLowerCase;
 
         int[string] dictionary;
 
@@ -823,27 +827,27 @@ public:
         dayFirst = dayFirst;
         yearFirst = yearFirst;
 
-        year = Clock.currTime.year;
-        century = (year / 100) * 100;
-
-        jumpAA = JUMP_DEFAULT;
-        weekdaysAA = WEEKDAYS_DEFAULT;
-        monthsAA = MONTHS_DEFAULT;
-        hmsAA = HMS_DEFAULT;
-        ampmAA = AMPM_DEFAULT;
-        utczoneAA = UTCZONE_DEFAULT;
-        pertainAA = PERTAIN_DEFAULT;
+        jumpAA = jumpDefault;
+        weekdaysAA = weekdaysDefault;
+        monthsAA = monthsDefault;
+        hmsAA = hmsDefault;
+        ampmAA = ampmDefault;
+        utczoneAA = utcDefault;
+        pertainAA = pertainDefault;
     }
 
     /// Tests for presence of `name` in each of the AAs
     final bool jump(S)(const S name) const if (isSomeString!S)
     {
+        import std.uni : toLower;
         return name.toLower() in jumpAA ? true : false;
     }
 
     /// ditto
     final int weekday(S)(const S name) const if (isSomeString!S)
     {
+        import std.uni : toLower;
+
         if (name.toLower() in weekdaysAA)
             return weekdaysAA[name.toLower()];
         else
@@ -853,6 +857,8 @@ public:
     /// ditto
     final int month(S)(const S name) const if (isSomeString!S)
     {
+        import std.uni : toLower;
+
         if (name.toLower() in monthsAA)
             return monthsAA[name.toLower()] + 1;
         else
@@ -862,6 +868,8 @@ public:
     /// ditto
     final int hms(S)(const S name) const if (isSomeString!S)
     {
+        import std.uni : toLower;
+
         if (name.toLower() in hmsAA)
             return hmsAA[name.toLower()];
         else
@@ -871,6 +879,8 @@ public:
     /// ditto
     final int ampm(S)(const S name) const if (isSomeString!S)
     {
+        import std.uni : toLower;
+
         if (name.toLower() in ampmAA)
             return ampmAA[name.toLower()];
         else
@@ -880,13 +890,17 @@ public:
     /// ditto
     final bool pertain(S)(const S name) const if (isSomeString!S)
     {
+        import std.uni : toLower;
+
         return name.toLower() in pertainAA ? true : false;
     }
 
     /// ditto
     final bool utczone(S)(const S name) const if (isSomeString!S)
     {
+        import std.uni : toLower;
 
+        return name.toLower() in utczoneAA ? true : false;
     }
 }
 
@@ -1433,7 +1447,7 @@ private:
                         {
                             value = to!int(tokens[i + 3]);
                             //Convert it here to become unambiguous
-                            ymd.put(info.convertYear(value.get.to!int()));
+                            ymd.put(convertYear(value.get.to!int()));
                         }
                         catch (ConvException) {}
                         i += 4;
