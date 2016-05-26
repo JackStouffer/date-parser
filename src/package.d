@@ -98,7 +98,6 @@ enum UTCZONE_DEFAULT = [
 enum PERTAIN_DEFAULT = [
     "of":0
 ];
-int[string] TZOFFSET;
 // dfmt on
 
 struct ParseResult
@@ -887,13 +886,7 @@ public:
     /// ditto
     final bool utczone(S)(const S name) const if (isSomeString!S)
     {
-        return name.toLower() in utczoneAA ? true : false;
-    }
 
-    /// ditto
-    final int tzoffset(S)(const S name) const if (isSomeString!S)
-    {
-        return name in TZOFFSET ? TZOFFSET[name] : -1;
     }
 }
 
@@ -977,7 +970,7 @@ public:
 
             if (!res.weekday.isNull() && (res.day.isNull || !res.day))
             {
-                int delta_days = daysToDayOfWeek(
+                immutable delta_days = daysToDayOfWeek(
                     defaultDate.dayOfWeek(),
                     to!DayOfWeek(res.weekday)
                 );
@@ -1496,7 +1489,7 @@ private:
             }
 
             //Check for a timezone name
-            auto upperItems = tokens[i]
+            immutable upperItems = tokens[i]
                 .byCodeUnit
                 .filter!(a => !isUpper(a))
                 .walkLength(1);
@@ -1505,9 +1498,6 @@ private:
             {
                 debug(dateparser) writeln("branch 15");
                 res.tzname = tokens[i];
-
-                if (info.tzoffset(res.tzname) > -1)
-                    res.tzoffset = info.tzoffset(res.tzname);
 
                 ++i;
 
@@ -1567,7 +1557,7 @@ private:
                 //Look for a timezone name between parenthesis
                 if (i + 3 < tokensLength)
                 {
-                    auto notUpperItems = tokens[i + 2]
+                    immutable notUpperItems = tokens[i + 2]
                         .byCodeUnit
                         .filter!(a => !isUpper(a))
                         .walkLength(1);
