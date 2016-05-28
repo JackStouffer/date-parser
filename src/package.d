@@ -38,7 +38,7 @@ import std.experimental.allocator.gc_allocator;
 import dateparser.timelexer;
 import dateparser.ymd;
 import dateparser.parseresult;
-import dateparser.parserinfo;
+public import dateparser.parserinfo;
 
 private:
 

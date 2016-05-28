@@ -249,8 +249,9 @@ public:
     {
         import std.uni : toLower;
 
-        if (name.toLower() in weekdaysAA)
-            return weekdaysAA[name.toLower()];
+        auto key = name.toLower();
+        if (key in weekdaysAA)
+            return weekdaysAA[key];
         else
             return -1;
     }
@@ -260,8 +261,9 @@ public:
     {
         import std.uni : toLower;
 
-        if (name.toLower() in monthsAA)
-            return monthsAA[name.toLower()] + 1;
+        auto key = name.toLower();
+        if (key in monthsAA)
+            return monthsAA[key] + 1;
         else
             return -1;
     }
@@ -271,8 +273,9 @@ public:
     {
         import std.uni : toLower;
 
-        if (name.toLower() in hmsAA)
-            return hmsAA[name.toLower()];
+        auto key = name.toLower();
+        if (key in hmsAA)
+            return hmsAA[key];
         else
             return -1;
     }
@@ -282,8 +285,9 @@ public:
     {
         import std.uni : toLower;
 
-        if (name.toLower() in ampmAA)
-            return ampmAA[name.toLower()];
+        auto key = name.toLower();
+        if (key in ampmAA)
+            return ampmAA[key];
         else
             return -1;
     }
