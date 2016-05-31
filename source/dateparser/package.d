@@ -54,12 +54,12 @@ static this()
  * Params:
  *     value = value to parse
  * Returns:
- *     tuple of two ints
+ *     tuple of two `int`s
  */
 auto parseMS(R)(R s) if (
     isForwardRange!R &&
     !isInfinite!R &&
-    is(Unqual!(ElementEncodingType!R) : char))
+    isSomeChar!(ElementEncodingType!R))
 {
     import std.string : leftJustifier;
     import std.algorithm.searching : canFind;
