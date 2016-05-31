@@ -1,7 +1,6 @@
 {
     "name": "dateparser",
-    "description": "Library for parsing randomly formated date strings",
-    "sourcePaths": ["src/"],
+    "description": "Library for parsing randomly formatted date strings",
     "license": "BSL-1.0",
     "authors": ["Jack Stouffer"],
     "dependencies": {
@@ -9,13 +8,33 @@
     },
     "configurations": [
         {
+            "name": "library",
+            "targetType": "library"
+        },
+        {
             "name": "unittest",
             "mainSourceFile": "bench.d",
             "targetType": "executable"
         },
         {
-            "name": "library",
-            "targetType": "library"
+            "name": "benchmark",
+            "mainSourceFile": "bench.d",
+            "targetType": "executable",
+            "dflags-ldc": ["-O5", "-singleobj", "-boundscheck=off"]
         }
-    ]
+    ],
+    "buildTypes": {
+        "ddox": {
+            "dependencies": {
+                "ddox": "~>0.15.2"
+            },
+            "buildOptions": ["syntaxOnly"],
+            "dflags": ["-c", "-Df__dummy.html", "-Xfdocs.json"],
+            "postBuildCommands": [
+                "rm -rf docs",
+                "dub run ddox -- filter --min-protection=Public --ex containers docs.json",
+                "dub run ddox -- generate-html docs.json docs/"
+            ]
+        }
+    }
 }

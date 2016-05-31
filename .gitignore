@@ -19,3 +19,4 @@ gh-pages/
 dub.selections.json
 *.sublime*
 *.ini
+docs.json
