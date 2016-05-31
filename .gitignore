@@ -6,6 +6,7 @@ test
 parser
 dateparse
 package
+parseresult
 dateparser
 libdateparse.a
 libdateparser.a

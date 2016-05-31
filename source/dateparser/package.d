@@ -91,6 +91,21 @@ auto parseMS(R)(R s) if (
     }
 }
 
+pure unittest
+{
+    import std.typecons : tuple;
+    import std.utf : byChar;
+
+    auto s = "123";
+    assert(s.parseMS == tuple(123, 0));
+
+    auto s2 = "123.4";
+    assert(s2.parseMS == tuple(123, 400000));
+
+    auto s3 = "123.4567".byChar;
+    assert(s3.parseMS == tuple(123, 456700));
+}
+
 void setAttribute(P, T)(ref P p, string name, auto ref T value)
 {
     foreach (mem; __traits(allMembers, P))
