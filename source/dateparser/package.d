@@ -260,6 +260,7 @@ unittest
     assertThrown!ConvException(parse("The quick brown fox jumps over the lazy dog"));
     assertThrown!TimeException(parse("Feb 30, 2007"));
     assertThrown!TimeException(parse("Jan 20, 2015 PM"));
+    assertThrown!ConvException(parse("01-Jane-01"));
     assertThrown!ConvException(parse("13:44 AM"));
     assertThrown!ConvException(parse("January 25, 1921 23:13 PM"));
 }
@@ -1031,7 +1032,7 @@ private:
                             //01-Jan[-01]
                             value = info.month(tokens[i]);
 
-                            if (!value.isNull())
+                            if (value > -1)
                             {
                                 ymd.put(value.get());
                                 mstridx = cast(ptrdiff_t) (ymd.length == 0 ? 0 : ymd.length - 1);
