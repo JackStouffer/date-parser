@@ -2,24 +2,9 @@
 
 [![Build Status](https://travis-ci.org/JackStouffer/date-parser.svg?branch=master)](https://travis-ci.org/JackStouffer/date-parser) [![Dub](https://img.shields.io/dub/v/dateparser.svg)](http://code.dlang.org/packages/dateparser) [![Coverage Status](https://coveralls.io/repos/github/JackStouffer/date-parser/badge.svg?branch=master)](https://coveralls.io/github/JackStouffer/date-parser?branch=master)
 
-A port of the Python Dateutil date parser. This module offers a generic date/time string parser which is able to parse most known formats to represent a date and/or time. This module attempts to be forgiving with regards to unlikely input formats, returning a SysTime object even for dates which are ambiguous.
+A port of the Python Dateutil date parser. This module offers a generic date/time string parser which is able to parse most known formats to represent a date and/or time. This module attempts to be forgiving with regards to unlikely input formats, returning a `SysTime` object even for dates which are ambiguous.
 
 Compiles with D versions 2.068 and up. Tested with ldc v0.17.0 - v1.0.0-beta2 and dmd v2.068.2 - v2.071.1-b2
-
-##Docs
-
-http://jackstouffer.com/dateparser/
-
-##Install With Dub
-
-```
-{
-    ...
-    "dependencies": {
-        "dateparser": "~>2.1.1"
-    }
-}
-```
 
 ## Simple Example
 
@@ -34,6 +19,21 @@ void main()
     assert(parse("2003-09-25") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("09/25/2003") == SysTime(DateTime(2003, 9, 25)));
     assert(parse("Sep 2003")   == SysTime(DateTime(2003, 9, 1)));
+}
+```
+
+##Docs
+
+http://jackstouffer.com/dateparser/
+
+##Install With Dub
+
+```
+{
+    ...
+    "dependencies": {
+        "dateparser": "~>2.1.1"
+    }
 }
 ```
 
