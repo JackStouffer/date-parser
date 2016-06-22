@@ -99,6 +99,7 @@ public:
         import std.utf : byCodeUnit;
         import std.algorithm.searching : canFind, count;
         import std.uni : isAlpha;
+        import std.ascii : isDigit;
 
         if (tokenStack.length > 0)
         {
@@ -140,7 +141,7 @@ public:
 
                 if (nextChar.isAlpha)
                     state = State.ALPHA;
-                else if (nextChar.isNumber)
+                else if (nextChar.isDigit)
                     state = State.NUMERIC;
                 else if (nextChar == ' ')
                 {
@@ -160,7 +161,8 @@ public:
 
                 if (nextChar != '.' && nextChar != ',' &&
                     nextChar != '/' && nextChar != '-' &&
-                    nextChar != ' ' && !nextChar.isNumber)
+                    nextChar != '+' && nextChar != ' ' &&
+                    !nextChar.isDigit)
                 {
                     token ~= nextChar;
                 }
@@ -180,7 +182,7 @@ public:
                 // If we've already started reading a number, we keep reading
                 // numbers until we find something that doesn't fit.
                 debug(dateparser) writeln("STATE ", state, " nextChar: ", nextChar);
-                if (nextChar.isNumber)
+                if (nextChar.isDigit)
                     token ~= nextChar;
                 else if (nextChar == '.' || (nextChar == ',' && token.length >= 2))
                 {
@@ -204,7 +206,7 @@ public:
                 {
                     token ~= nextChar;
                 }
-                else if (nextChar.isNumber && token[$ - 1] == '.')
+                else if (nextChar.isDigit && token[$ - 1] == '.')
                 {
                     token ~= nextChar;
                     state = State.NUMERIC_PERIOD;
@@ -220,7 +222,7 @@ public:
                 debug(dateparser) writeln("STATE ", state, " nextChar: ", nextChar);
                 // If we've seen at least one dot separator, keep going, we'll
                 // break up the tokens later.
-                if (nextChar == '.' || nextChar.isNumber)
+                if (nextChar == '.' || nextChar.isDigit)
                     token ~= nextChar;
                 else if (nextChar.isAlpha && token[$ - 1] == '.')
                 {
@@ -293,14 +295,4 @@ unittest
         .byChar
         .timeLexer
         .equal(["Thu", " ", "Sep", " ", "10", ":", "36", ":", "28"]));
-}
-
-/++
-    Params: c = The character to test.
-    Returns: Whether `c` is a number (0..9).
-+/
-pragma(inline, true)
-bool isNumber(dchar c) @safe pure nothrow @nogc
-{
-    return c >= '0' && c <= '9';
 }

@@ -789,6 +789,7 @@ private:
         import std.algorithm.searching : canFind, countUntil;
         import std.algorithm.iteration : filter;
         import std.uni : isUpper;
+        import std.ascii : isDigit;
         import std.utf : byCodeUnit, byChar;
         import std.conv : to, ConvException;
         import containers.dynamicarray : DynamicArray;
@@ -834,7 +835,7 @@ private:
             debug(dateparser) writeln("index: ", i);
             debug(dateparser) writeln("tokens[i]: ", tokens[i]);
 
-            if (tokens[i][0].isNumber)
+            if (tokens[i][0].isDigit)
             {
                 value_repr = tokens[i];
                 debug(dateparser) writeln("value_repr: ", value_repr);
@@ -1033,7 +1034,7 @@ private:
 
                     if (i < tokensLength && !info.jump(tokens[i]))
                     {
-                        if (tokens[i][0].isNumber)
+                        if (tokens[i][0].isDigit)
                         {
                             //01-01[-01]
                             static if (isSomeString!Range)
