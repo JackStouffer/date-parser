@@ -1276,7 +1276,7 @@ private:
             if (!res.hour.isNull && (tokens[i] == "+" || tokens[i] == "-"))
             {
                 debug(dateparser) writeln("branch 16");
-                immutable int signal = tokens[i] == "+" ? 1 : -1;
+                immutable int signal = tokens[i][0] == '+' ? 1 : -1;
                 ++i;
                 immutable size_t tokensItemLength = tokens[i].length;
 
@@ -1294,7 +1294,7 @@ private:
                 else if (tokensItemLength <= 2)
                 {
                     //-[0]3
-                    res.tzoffset = to!int(tokens[i][0 .. 2]) * 3600;
+                    res.tzoffset = to!int(tokens[i]) * 3600;
                 }
                 else
                 {
