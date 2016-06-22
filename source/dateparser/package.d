@@ -132,10 +132,7 @@ This function offers a generic date/time string Parser which is able to parse
 most known formats to represent a date and/or time.
 
 This function attempts to be forgiving with regards to unlikely input formats,
-returning a `SysTime` object even for dates which are ambiguous. While other languages
-have writing systems without Arabic numerals, the overwhelming majority of dates
-are written with them. As such, this function does not work with other
-number systems.
+returning a `SysTime` object even for dates which are ambiguous.
 
 If an element of a date/time stamp is omitted, the following rules are applied:
 
@@ -160,6 +157,18 @@ good idea to not rely on `timezoneInfos` too much.
 
 This function allocates memory and throws on the GC. In order to reduce GC allocations,
 use a custom `Parser` instance with a different allocator.
+
+Unicode_Specifics:
+    $(OL
+        $(LI The AA key comparisons done with `ParserInfo` are on a code unit by code
+        unit basis. As such, if user data passed to this function has a different
+        normalization than the AAs in the used `ParserInfo` class, then you will
+        get parser exceptions.)
+        $(LI While other languages have writing systems without Arabic numerals,
+        the overwhelming majority of dates are written with them. As such,
+        this function does not work with other number systems and expects ASCII
+        numbers.)
+    )
 
 Params:
     timeString = A forward range containing a date/time stamp.
