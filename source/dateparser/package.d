@@ -349,6 +349,7 @@ unittest
     assert(parse("10h36m") == SysTime(DateTime(1, 1, 1, 10, 36)));
     assert(parse("10h") == SysTime(DateTime(1, 1, 1, 10, 0, 0)));
     assert(parse("10 h 36") == SysTime(DateTime(1, 1, 1, 10, 36, 0)));
+    assert(parse("10 hours 36 minutes") == SysTime(DateTime(1, 1, 1, 10, 36, 0)));
 }
 
 // AM vs PM
@@ -358,6 +359,9 @@ unittest
     assert(parse("10h pm") == SysTime(DateTime(1, 1, 1, 22)));
     assert(parse("10am") == SysTime(DateTime(1, 1, 1, 10)));
     assert(parse("10pm") == SysTime(DateTime(1, 1, 1, 22)));
+    assert(parse("12 am") == SysTime(DateTime(1, 1, 1, 0, 0)));
+    assert(parse("12am") == SysTime(DateTime(1, 1, 1, 0, 0)));
+    assert(parse("11 pm") == SysTime(DateTime(1, 1, 1, 23, 0)));
     assert(parse("10:00 am") == SysTime(DateTime(1, 1, 1, 10)));
     assert(parse("10:00 pm") == SysTime(DateTime(1, 1, 1, 22)));
     assert(parse("10:00am") == SysTime(DateTime(1, 1, 1, 10)));
