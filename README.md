@@ -4,7 +4,7 @@
 
 A port of the Python Dateutil date parser. This module offers a generic date/time string parser which is able to parse most known formats to represent a date and/or time. This module attempts to be forgiving with regards to unlikely input formats, returning a `SysTime` object even for dates which are ambiguous.
 
-Compiles with D versions 2.068 and up. Tested with ldc v0.17.0 - v1.0.0-beta2 and dmd v2.068.2 - v2.071.1-b2
+Compiles with D versions 2.068 and up. Tested with ldc v1.0.0 - v1.1.0-beta2 and dmd v2.069.2 - v2.071.2-b2
 
 ## Simple Example
 
