@@ -29,7 +29,6 @@ module dateparser.ymd;
 debug(dateparser) import std.stdio;
 import std.traits;
 import std.range;
-import std.compiler;
 
 package:
 
@@ -54,18 +53,15 @@ public:
 
         if (token.front.isNumber)
         {
-            static if (version_major == 2 && version_minor >= 69)
-            {
-                import std.algorithm.comparison : equal;
-                import std.conv : toChars;
+            import std.algorithm.comparison : equal;
+            import std.conv : toChars;
 
-                return year.toChars.equal(token.stripLeft('0'));
-            }
-            else
-                return assumeWontThrow(to!int(token)) == year;
+            return year.toChars.equal(token.stripLeft('0'));
         }
         else
+        {
             return false;
+        }
     }
 
     /**

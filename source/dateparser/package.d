@@ -30,7 +30,6 @@ debug(dateparser) import std.stdio;
 import std.datetime;
 import std.traits;
 import std.typecons;
-import std.compiler;
 import std.regex;
 import std.range;
 import std.experimental.allocator.common;
