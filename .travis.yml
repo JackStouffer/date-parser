@@ -2,7 +2,6 @@ sudo: false
 
 os:
   - linux
-  - osx
 
 language: d
 
@@ -13,3 +12,10 @@ d:
   - dmd-2.069.2
   - ldc-1.1.0-beta2
   - ldc-1.0.0
+
+matrix:
+  include:
+    - os: osx
+      d: dmd-2.071.1
+    - os: osx
+      d: ldc-1.0.0
