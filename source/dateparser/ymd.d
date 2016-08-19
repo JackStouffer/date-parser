@@ -46,16 +46,13 @@ public:
     static bool couldBeYear(Range, N)(Range token, N year) if (isInputRange!Range
             && isSomeChar!(ElementEncodingType!Range) && is(NumericTypeOf!N : int))
     {
-        import std.uni : isNumber;
-        import std.exception : assumeWontThrow;
-        import std.conv : to;
+        import std.algorithm.comparison : equal;
         import std.algorithm.mutation : stripLeft;
+        import std.ascii : isDigit;
+        import std.conv : toChars;
 
-        if (token.front.isNumber)
+        if (token.front.isDigit)
         {
-            import std.algorithm.comparison : equal;
-            import std.conv : toChars;
-
             return year.toChars.equal(token.stripLeft('0'));
         }
         else
