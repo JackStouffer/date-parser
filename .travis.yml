@@ -6,7 +6,7 @@ os:
 language: d
 
 d:
-  - dmd-2.071.2-b2
+  - dmd-2.071.2
   - dmd-2.071.1
   - dmd-2.070.2
   - dmd-2.069.2
