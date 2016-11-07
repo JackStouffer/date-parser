@@ -6,11 +6,11 @@ os:
 language: d
 
 d:
+  - dmd-2.072.0
   - dmd-2.071.2
-  - dmd-2.071.1
   - dmd-2.070.2
   - dmd-2.069.2
-  - ldc-1.1.0-beta2
+  - ldc-1.1.0-beta3
   - ldc-1.0.0
 
 matrix:
