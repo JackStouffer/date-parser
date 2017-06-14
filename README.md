@@ -1,4 +1,4 @@
-#Date Parser
+# Date Parser
 
 [![Build Status](https://travis-ci.org/JackStouffer/date-parser.svg?branch=master)](https://travis-ci.org/JackStouffer/date-parser) [![Dub](https://img.shields.io/dub/v/dateparser.svg)](http://code.dlang.org/packages/dateparser) [![codecov](https://codecov.io/gh/JackStouffer/date-parser/branch/master/graph/badge.svg)](https://codecov.io/gh/JackStouffer/date-parser)
 
@@ -22,11 +22,11 @@ void main()
 }
 ```
 
-##Docs
+## Docs
 
 http://jackstouffer.com/dateparser/
 
-##Install With Dub
+## Install With Dub
 
 ```
 {
