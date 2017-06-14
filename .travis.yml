@@ -6,20 +6,19 @@ os:
 language: d
 
 d:
-  - dmd-2.073.0
+  - dmd-2.074.1
+  - dmd-2.073.2
   - dmd-2.072.2
   - dmd-2.071.2
-  - dmd-2.070.2
-  - dmd-2.069.2
-  - ldc-1.1.0-beta6
-  - ldc-1.0.0
+  - ldc-1.2.0
+  - ldc-1.1.1
 
 matrix:
   include:
     - os: osx
-      d: dmd-2.072.0
+      d: dmd-2.074.1
     - os: osx
-      d: ldc-1.0.0
+      d: ldc-1.2.0
 
 script:
  - dub test -b unittest-cov --compiler=${DC}
