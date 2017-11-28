@@ -13,13 +13,6 @@ d:
   - ldc-1.6.0
   - ldc-1.5.0
 
-matrix:
-  include:
-    - os: osx
-      d: dmd-2.077.0
-    - os: osx
-      d: ldc-1.6.0
-
 script:
  - dub test -b unittest-cov --compiler=${DC}
 after_success:
