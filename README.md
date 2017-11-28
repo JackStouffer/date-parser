@@ -41,7 +41,7 @@ http://jackstouffer.com/dateparser/
 
 Based on `master`, measured on a 2015 Macbook Pro 2.9GHz Intel i5. Python times measured with ipython's `%timeit` function. D times measured with `bench.sh`.
 
-String | Python 2.7.11 | LDC 0.17.1 | DMD 2.071.0
+String | Python 2.7.11 | LDC 1.6.0 | DMD 2.077.0
 ------ | ------ | --- | ---
 Thu Sep 25 10:36:28 BRST 2003 | 156 µs | 13 μs | 17 μs
 2003-09-25T10:49:41.5-03:00 | 136 µs | 5 μs | 8 μs
