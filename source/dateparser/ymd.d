@@ -77,14 +77,14 @@ public:
         import std.algorithm.iteration : filter;
         import std.range : walkLength;
 
-        foreach (int index, ref item; data[])
+        foreach (index, ref item; data[])
         {
             auto potentialYearTokens = tokens.filter!(a => YMD.couldBeYear(a, item));
             immutable frontLength = potentialYearTokens.front.length;
             immutable length = potentialYearTokens.walkLength(2);
 
             if (length == 1 && frontLength > 2)
-                return index;
+                return cast(int) index;
         }
 
         return -1;

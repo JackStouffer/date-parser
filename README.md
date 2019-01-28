@@ -4,7 +4,7 @@
 
 A port of the Python Dateutil date parser. This module offers a generic date/time string parser which is able to parse most known formats to represent a date and/or time. This module attempts to be forgiving with regards to unlikely input formats, returning a `SysTime` object even for dates which are ambiguous.
 
-Tested with ldc v1.5.0 - v1.6.0 and dmd v2.074.1 - v2.077.0. May work with earlier versions.
+Tested with ldc v1.12.0 - v1.13.0 and dmd v2.081.2 - v2.084.0. May work with earlier versions.
 
 ## Simple Example
 
@@ -32,18 +32,18 @@ http://jackstouffer.com/dateparser/
 {
     ...
     "dependencies": {
-        "dateparser": "~>2.1.1"
+        "dateparser": "~>3.0.0"
     }
 }
 ```
 
 ## Speed
 
-Based on `master`, measured on a 2015 Macbook Pro 2.9GHz Intel i5. Python times measured with ipython's `%timeit` function. D times measured with `bench.sh`.
+Based on `master`, measured on a 2015 Macbook Pro 2.8GHz Intel i7. Python times measured with ipython's `%timeit` function. D times measured with `bench.sh`.
 
-String | Python 2.7.11 | LDC 1.6.0 | DMD 2.077.0
+String | Python 2.7.11 | LDC 1.13.0 | DMD 2.084.0
 ------ | ------ | --- | ---
-Thu Sep 25 10:36:28 BRST 2003 | 156 µs | 13 μs | 17 μs
-2003-09-25T10:49:41.5-03:00 | 136 µs | 5 μs | 8 μs
-09.25.2003 | 124 µs | 5 μs | 8 μs
+Thu Sep 25 10:36:28 BRST 2003 | 156 µs | 10 μs | 15 μs
+2003-09-25T10:49:41.5-03:00 | 136 µs | 5 μs | 6 μs
+09.25.2003 | 124 µs | 5 μs | 7 μs
 2003-09-25 | 66.4 µs | 4 μs | 5 μs
