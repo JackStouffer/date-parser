@@ -4,7 +4,7 @@
     "license": "BSL-1.0",
     "authors": ["Jack Stouffer"],
     "dependencies": {
-        "emsi_containers": "~>0.5.2"
+        "emsi_containers": "~>0.7.0"
     },
     "configurations": [
         {

@@ -209,14 +209,14 @@ public:
 
         int[string] dictionary;
 
-        foreach (int i, value; list)
+        foreach (i, value; list)
         {
             // tuple of strings or multidimensional string array
             static if (isInputRange!(ElementType!(ElementType!(Range))))
                 foreach (item; value)
-                    dictionary[item.asLowerCase.array.to!string] = i;
+                    dictionary[item.asLowerCase.array.to!string] = cast(int) i;
             else
-                dictionary[value.asLowerCase.array.to!string] = i;
+                dictionary[value.asLowerCase.array.to!string] = cast(int) i;
         }
 
         return dictionary;
