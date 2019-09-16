@@ -758,10 +758,10 @@ public:
             }
         }
         else if (ignoreTimezone && !res.shortcutResult.isNull)
-            res.shortcutResult = SysTime(cast(DateTime) res.shortcutResult);
+            res.shortcutResult = SysTime(cast(DateTime) res.shortcutResult.get);
 
         if (!res.shortcutResult.isNull)
-            return res.shortcutResult;
+            return res.shortcutResult.get;
         else
             return defaultDate;
     }
