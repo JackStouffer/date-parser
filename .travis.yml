@@ -6,6 +6,8 @@ os:
 language: d
 
 d:
+  - dmd
+  - ldc
   - dmd-2.084.0
   - dmd-2.083.1
   - dmd-2.082.1
