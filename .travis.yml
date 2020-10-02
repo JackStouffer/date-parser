@@ -8,12 +8,6 @@ language: d
 d:
   - dmd
   - ldc
-  - dmd-2.084.0
-  - dmd-2.083.1
-  - dmd-2.082.1
-  - dmd-2.081.2
-  - ldc-1.13.0
-  - ldc-1.12.0
 
 script:
  - dub test -b unittest-cov --compiler=${DC}

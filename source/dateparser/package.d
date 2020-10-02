@@ -212,6 +212,11 @@ SysTime parse(Range)(Range timeString,
     Flag!"fuzzy" fuzzy = No.fuzzy,
     SysTime defaultDate = SysTime(DateTime(1, 1, 1))) if (
         isForwardRange!Range && !isInfinite!Range && isSomeChar!(ElementEncodingType!Range))
+in
+{
+    assert(defaultParser !is null, "Accessing defaultParser before static this initalization. Use your own Parser instance.");
+}
+body
 {
     // dfmt off
     return defaultParser.parse(
