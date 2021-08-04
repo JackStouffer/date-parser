@@ -216,7 +216,7 @@ in
 {
     assert(defaultParser !is null, "Accessing defaultParser before static this initalization. Use your own Parser instance.");
 }
-body
+do
 {
     // dfmt off
     return defaultParser.parse(

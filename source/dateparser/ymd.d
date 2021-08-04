@@ -96,7 +96,7 @@ public:
     {
         assert(dataPosition <= 3);
     }
-    body
+    do
     {
         static if (is(N : int))
         {
@@ -116,7 +116,7 @@ public:
     {
         assert(dataPosition <= 3);
     }
-    body
+    do
     {
         import std.conv : to;
 
