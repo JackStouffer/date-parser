@@ -33,7 +33,9 @@ package:
 
 struct ParseResult
 {
-    bool badData = false;
+    Nullable!(SysTime) shortcutResult;
+    Nullable!(TimeOfDay) shortcutTimeResult;
+    string tzname;
     Nullable!(int, int.min) year;
     Nullable!(int, int.min) month;
     Nullable!(int, int.min) day;
@@ -45,7 +47,5 @@ struct ParseResult
     Nullable!(int, int.min) tzoffset;
     Nullable!(int, int.min) ampm;
     bool centurySpecified;
-    string tzname;
-    Nullable!(SysTime) shortcutResult;
-    Nullable!(TimeOfDay) shortcutTimeResult;
+    bool badData = false;
 }
