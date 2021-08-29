@@ -52,10 +52,8 @@ enum TokenType
 {
     Integer,
     Float,
-    WhiteSpace,
     String,
-    Colon,
-    Dash
+    Seperator
 }
 
 struct Token(Char) if (isSomeChar!Char)
@@ -72,111 +70,123 @@ struct Token(Char) if (isSomeChar!Char)
 enum LexerState
 {
     FindStartOfToken,
-    ParseWhiteSpace,
     ParseNumber,
-    ParseString
+    ParseString,
+    ParseSeperator
 }
 
-auto parse(Range)(Range dateStr)
+auto lex(Range)(Range dateStr)
     if (isSomeString!Range || (isRandomAccessRange!Range && hasSlicing!Range && isSomeChar!(ElementEncodingType!Range)))
 {
     alias TokenQual = Token!(Unqual!(ElementEncodingType!Range));
 
-    LexerState lexState = LexerState.FindStartOfToken;
     TokenQual[] tokens;
+    LexerState lexState = LexerState.FindStartOfToken;
     TokenQual currentToken;
-    size_t tokenStart;
+    size_t tokenStart = 0;
+    size_t i = 0;
 
     static if (isSomeString!Range)
     {
-        auto r = dateStr.byCodeUnit;
+        auto r = dateStr.byCodeUnit.save;
     }
     else
     {
-        auto r = dateStr;
+        auto r = dateStr.save;
     }
 
-    for (size_t i = 0; i < r.length; ++i)
+    while (!r.empty)
     {
-        immutable c = r[i];
-        writeln("c\t", c, "\ti\t", i, "\tis alpha\t", std.uni.isAlpha(c));
+        writeln("r.front\t", r.front, "\tlexState\t", lexState);
         final switch (lexState)
         {
             case LexerState.FindStartOfToken:
             {
-                if (std.uni.isAlpha(c))
+                if (std.uni.isAlpha(r.front))
                 {
                     lexState = LexerState.ParseString;
                     currentToken.type = TokenType.String;
                     tokenStart = i;
-                    goto case LexerState.ParseString;
                 }
-                else if (isWhite(c))
-                {
-                    lexState = LexerState.ParseWhiteSpace;
-                    currentToken.type = TokenType.WhiteSpace;
-                    tokenStart = i;
-                    goto case LexerState.ParseWhiteSpace;
-                }
-                else if (isDigit(c))
+                else if (isDigit(r.front))
                 {
                     lexState = LexerState.ParseNumber;
                     currentToken.type = TokenType.Integer;
                     tokenStart = i;
-                    goto case LexerState.ParseNumber;
+                }
+                else if (r.front == '/' || r.front == ':' || r.front == '-' || r.front == '.')
+                {
+                    lexState = LexerState.ParseSeperator;
+                    currentToken.type = TokenType.Seperator;
+                    tokenStart = i;
+                }
+                else if (isWhite(r.front))
+                {
+                    r.popFront();
+                    ++i;
                 }
                 break;
             }
             case LexerState.ParseString:
             {
                 writeln("branch 2");
-                if (!std.uni.isAlpha(c))
+                while (!r.empty && std.uni.isAlpha(r.front))
                 {
-                    lexState = LexerState.FindStartOfToken;
-                    currentToken.chars = dateStr[tokenStart .. i];
-                    tokens ~= currentToken;
-                    currentToken = TokenQual.init;
-                    goto case LexerState.FindStartOfToken;
+                    r.popFront();
+                    ++i;
                 }
-                break;
-            }
-            case LexerState.ParseWhiteSpace:
-            {
-                writeln("branch 3");
-                if (!isWhite(c))
-                {
-                    lexState = LexerState.FindStartOfToken;
-                    currentToken.chars = dateStr[tokenStart .. i];
-                    tokens ~= currentToken;
-                    currentToken = TokenQual.init;
-                    goto case LexerState.FindStartOfToken;
-                }
+                lexState = LexerState.FindStartOfToken;
+                currentToken.chars = dateStr[tokenStart .. i];
+                tokens ~= currentToken;
+                currentToken = TokenQual.init;
+                //goto case LexerState.FindStartOfToken;
                 break;
             }
             case LexerState.ParseNumber:
             {
                 writeln("branch 4");
-                if (!isDigit(c))
+                while (!r.empty && isDigit(r.front))
                 {
-                    lexState = LexerState.FindStartOfToken;
-                    currentToken.chars = dateStr[tokenStart .. i];
-                    tokens ~= currentToken;
-                    currentToken = TokenQual.init;
-                    goto case LexerState.FindStartOfToken;
+                    r.popFront();
+                    ++i;
                 }
+                lexState = LexerState.FindStartOfToken;
+                currentToken.chars = dateStr[tokenStart .. i];
+                tokens ~= currentToken;
+                currentToken = TokenQual.init;
+                //goto case LexerState.FindStartOfToken;
+                break;
+            }
+            case LexerState.ParseSeperator:
+            {
+                writeln("branch 5");
+                while (!r.empty && (r.front == '/' || r.front == ':' || r.front == '-' || r.front == '.'))
+                {
+                    r.popFront();
+                    ++i;
+                }
+                lexState = LexerState.FindStartOfToken;
+                currentToken.chars = dateStr[tokenStart .. i];
+                tokens ~= currentToken;
+                currentToken = TokenQual.init;
                 break;
             }
         }
     }
 
-    currentToken.chars = dateStr[tokenStart .. $];
-    tokens ~= currentToken;
     return tokens;
+}
+
+auto parse(Range)(Range dateStr)
+    if (isSomeString!Range || (isRandomAccessRange!Range && hasSlicing!Range && isSomeChar!(ElementEncodingType!Range)))
+{
+    return lex(dateStr);
 }
 
 unittest
 {
     writeln(parse("Thu Sep 25 10:36:28 BRST 2003"));
+    writeln(parse("2003-09-25T10:49:41.5-03:00"));
     //writeln(parse("Feb 30, 2007"));
     //writeln(parse("09-25-2003"));
 }
