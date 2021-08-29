@@ -27,14 +27,14 @@
 module dateparser;
 
 import std.stdio;
+import std.array;
 import std.datetime;
+import std.algorithm.iteration;
 import std.traits;
 import std.typecons;
 import std.range;
 static import std.uni;
 import std.utf;
-import std.experimental.allocator.common;
-import std.experimental.allocator.gc_allocator;
 
 pragma(inline, true)
 bool isDigit(dchar c) @safe pure nothrow @nogc
@@ -80,11 +80,14 @@ auto lex(Range)(Range dateStr)
 {
     alias TokenQual = Token!(Unqual!(ElementEncodingType!Range));
 
-    TokenQual[] tokens;
+    auto tokens = appender!(TokenQual[])();
+
+    tokens.reserve(dateStr.length / 2);
     LexerState lexState = LexerState.FindStartOfToken;
-    TokenQual currentToken;
+    TokenQual currentToken = void;
     size_t tokenStart = 0;
     size_t i = 0;
+    uint sawPeriod = 0;
 
     static if (isSomeString!Range)
     {
@@ -97,7 +100,6 @@ auto lex(Range)(Range dateStr)
 
     while (!r.empty)
     {
-        writeln("r.front\t", r.front, "\tlexState\t", lexState);
         final switch (lexState)
         {
             case LexerState.FindStartOfToken:
@@ -114,7 +116,7 @@ auto lex(Range)(Range dateStr)
                     currentToken.type = TokenType.Integer;
                     tokenStart = i;
                 }
-                else if (r.front == '/' || r.front == ':' || r.front == '-' || r.front == '.')
+                else if (r.front == '/' || r.front == ':' || r.front == '-' || r.front == '.' || r.front == ',')
                 {
                     lexState = LexerState.ParseSeperator;
                     currentToken.type = TokenType.Seperator;
@@ -129,7 +131,6 @@ auto lex(Range)(Range dateStr)
             }
             case LexerState.ParseString:
             {
-                writeln("branch 2");
                 while (!r.empty && std.uni.isAlpha(r.front))
                 {
                     r.popFront();
@@ -138,29 +139,69 @@ auto lex(Range)(Range dateStr)
                 lexState = LexerState.FindStartOfToken;
                 currentToken.chars = dateStr[tokenStart .. i];
                 tokens ~= currentToken;
-                currentToken = TokenQual.init;
-                //goto case LexerState.FindStartOfToken;
                 break;
             }
             case LexerState.ParseNumber:
             {
-                writeln("branch 4");
-                while (!r.empty && isDigit(r.front))
+                while (!r.empty)
                 {
+                    if (r.front == '.' && i < r.length - 1 && !isDigit(dateStr[i + 1]))
+                    {
+                        break;
+                    }
+                    else if (r.front == '.')
+                    {
+                        ++sawPeriod;
+                    }
+                    else if (!isDigit(r.front))
+                    {
+                        break;
+                    }
+
                     r.popFront();
                     ++i;
                 }
-                lexState = LexerState.FindStartOfToken;
-                currentToken.chars = dateStr[tokenStart .. i];
-                tokens ~= currentToken;
-                currentToken = TokenQual.init;
-                //goto case LexerState.FindStartOfToken;
+
+                if (sawPeriod == 1)
+                {
+                    lexState = LexerState.FindStartOfToken;
+                    currentToken.type = TokenType.Float;
+                    currentToken.chars = dateStr[tokenStart .. i];
+                    tokens ~= currentToken;
+                }
+                else if (sawPeriod > 1)
+                {
+                    auto splitted = dateStr[tokenStart .. i].splitter!("a == b", Yes.keepSeparators)('.');
+                    foreach (str; splitted)
+                    {
+                        if (str[0] == '.')
+                        {
+                            currentToken.type = TokenType.Seperator;
+                        }
+                        else
+                        {
+                            currentToken.type = TokenType.Integer;
+                        }
+                        
+                        currentToken.chars = str;
+                        tokens ~= currentToken;
+                    }
+
+                    currentToken = TokenQual.init;
+                }
+                else
+                {
+                    lexState = LexerState.FindStartOfToken;
+                    currentToken.chars = dateStr[tokenStart .. i];
+                    tokens ~= currentToken;
+                }
+
+                sawPeriod = 0;
                 break;
             }
             case LexerState.ParseSeperator:
             {
-                writeln("branch 5");
-                while (!r.empty && (r.front == '/' || r.front == ':' || r.front == '-' || r.front == '.'))
+                while (!r.empty && (r.front == '/' || r.front == ':' || r.front == '-' || r.front == ','))
                 {
                     r.popFront();
                     ++i;
@@ -168,7 +209,6 @@ auto lex(Range)(Range dateStr)
                 lexState = LexerState.FindStartOfToken;
                 currentToken.chars = dateStr[tokenStart .. i];
                 tokens ~= currentToken;
-                currentToken = TokenQual.init;
                 break;
             }
         }
@@ -187,7 +227,8 @@ unittest
 {
     writeln(parse("Thu Sep 25 10:36:28 BRST 2003"));
     writeln(parse("2003-09-25T10:49:41.5-03:00"));
-    //writeln(parse("Feb 30, 2007"));
+    writeln(parse("10.10.2003"));
+    writeln(parse("Feb 30, 2007"));
     //writeln(parse("09-25-2003"));
 }
 

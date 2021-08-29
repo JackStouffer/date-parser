@@ -20,7 +20,7 @@
             "name": "benchmark",
             "mainSourceFile": "bench.d",
             "targetType": "executable",
-            "dflags-ldc": ["-O5", "-singleobj", "-boundscheck=off"]
+            "dflags-ldc": ["-O5", "-boundscheck=off"]
         }
     ],
     "buildTypes": {

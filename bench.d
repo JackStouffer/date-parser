@@ -1,3 +1,4 @@
+import std.datetime.stopwatch : benchmark;
 import std.datetime;
 import std.stdio;
 import std.compiler;
@@ -20,13 +21,19 @@ void main()
     version(unittest) {} else
     {
         
-        auto customParser = new Parser!Mallocator(new ParserInfo());
+        //auto customParser = new Parser!Mallocator(new ParserInfo());
 
-        auto result = to!Duration(benchmark!(() => customParser.parse(stringOne))(testCount)[0] / testCount);
-        auto result2 = to!Duration(benchmark!(() => customParser.parse(stringTwo))(testCount)[0] / testCount);
-        auto result3 = to!Duration(benchmark!(() => customParser.parse(stringThree))(testCount)[0] / testCount);
-        auto result4 = to!Duration(benchmark!(() => customParser.parse(stringFour))(testCount)[0] / testCount);
-        auto result5 = to!Duration(benchmark!(() => customParser.parse(stringFive))(testCount)[0] / testCount);
+        //auto result = to!Duration(benchmark!(() => customParser.parse(stringOne))(testCount)[0] / testCount);
+        //auto result2 = to!Duration(benchmark!(() => customParser.parse(stringTwo))(testCount)[0] / testCount);
+        //auto result3 = to!Duration(benchmark!(() => customParser.parse(stringThree))(testCount)[0] / testCount);
+        //auto result4 = to!Duration(benchmark!(() => customParser.parse(stringFour))(testCount)[0] / testCount);
+        //auto result5 = to!Duration(benchmark!(() => customParser.parse(stringFive))(testCount)[0] / testCount);
+
+        auto result = to!Duration(benchmark!(() => parse(stringOne))(testCount)[0] / testCount);
+        auto result2 = to!Duration(benchmark!(() => parse(stringTwo))(testCount)[0] / testCount);
+        auto result3 = to!Duration(benchmark!(() => parse(stringThree))(testCount)[0] / testCount);
+        auto result4 = to!Duration(benchmark!(() => parse(stringFour))(testCount)[0] / testCount);
+        auto result5 = to!Duration(benchmark!(() => parse(stringFive))(testCount)[0] / testCount);
 
         writeln(stringOne, "\t", result);
         writeln(stringTwo, "\t\t\t", result2);
