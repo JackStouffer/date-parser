@@ -29,11 +29,11 @@ void main()
         //auto result4 = to!Duration(benchmark!(() => customParser.parse(stringFour))(testCount)[0] / testCount);
         //auto result5 = to!Duration(benchmark!(() => customParser.parse(stringFive))(testCount)[0] / testCount);
 
-        auto result = to!Duration(benchmark!(() => parse(stringOne))(testCount)[0] / testCount);
-        auto result2 = to!Duration(benchmark!(() => parse(stringTwo))(testCount)[0] / testCount);
-        auto result3 = to!Duration(benchmark!(() => parse(stringThree))(testCount)[0] / testCount);
-        auto result4 = to!Duration(benchmark!(() => parse(stringFour))(testCount)[0] / testCount);
-        auto result5 = to!Duration(benchmark!(() => parse(stringFive))(testCount)[0] / testCount);
+        auto result = to!Duration(benchmark!(() => parse!(Mallocator)(stringOne))(testCount)[0] / testCount);
+        auto result2 = to!Duration(benchmark!(() => parse!(Mallocator)(stringTwo))(testCount)[0] / testCount);
+        auto result3 = to!Duration(benchmark!(() => parse!(Mallocator)(stringThree))(testCount)[0] / testCount);
+        auto result4 = to!Duration(benchmark!(() => parse!(Mallocator)(stringFour))(testCount)[0] / testCount);
+        auto result5 = to!Duration(benchmark!(() => parse!(Mallocator)(stringFive))(testCount)[0] / testCount);
 
         writeln(stringOne, "\t", result);
         writeln(stringTwo, "\t\t\t", result2);

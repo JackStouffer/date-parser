@@ -35,6 +35,8 @@ import std.typecons;
 import std.range;
 static import std.uni;
 import std.utf;
+import containers;
+import std.experimental.allocator.gc_allocator;
 
 pragma(inline, true)
 bool isDigit(dchar c) @safe pure nothrow @nogc
@@ -60,11 +62,6 @@ struct Token(Char) if (isSomeChar!Char)
 {
     const(Char)[] chars;
     TokenType type;
-    union
-    {
-        uint intData;
-        float floatData;
-    }
 }
 
 enum LexerState
@@ -75,19 +72,19 @@ enum LexerState
     ParseSeperator
 }
 
-auto lex(Range)(Range dateStr)
+auto lex(Allocator, Range)(Range dateStr)
     if (isSomeString!Range || (isRandomAccessRange!Range && hasSlicing!Range && isSomeChar!(ElementEncodingType!Range)))
 {
     alias TokenQual = Token!(Unqual!(ElementEncodingType!Range));
 
-    auto tokens = appender!(TokenQual[])();
-
+    auto tokens = DynamicArray!(TokenQual, Allocator)();
     tokens.reserve(dateStr.length / 2);
+
     LexerState lexState = LexerState.FindStartOfToken;
     TokenQual currentToken = void;
     size_t tokenStart = 0;
     size_t i = 0;
-    uint sawPeriod = 0;
+    size_t sawPeriod = 0;
 
     static if (isSomeString!Range)
     {
@@ -104,13 +101,7 @@ auto lex(Range)(Range dateStr)
         {
             case LexerState.FindStartOfToken:
             {
-                if (std.uni.isAlpha(r.front))
-                {
-                    lexState = LexerState.ParseString;
-                    currentToken.type = TokenType.String;
-                    tokenStart = i;
-                }
-                else if (isDigit(r.front))
+                if (isDigit(r.front))
                 {
                     lexState = LexerState.ParseNumber;
                     currentToken.type = TokenType.Integer;
@@ -126,6 +117,12 @@ auto lex(Range)(Range dateStr)
                 {
                     r.popFront();
                     ++i;
+                }
+                else
+                {
+                    lexState = LexerState.ParseString;
+                    currentToken.type = TokenType.String;
+                    tokenStart = i;
                 }
                 break;
             }
@@ -162,14 +159,20 @@ auto lex(Range)(Range dateStr)
                     ++i;
                 }
 
-                if (sawPeriod == 1)
+                if (sawPeriod == 0)
+                {
+                    lexState = LexerState.FindStartOfToken;
+                    currentToken.chars = dateStr[tokenStart .. i];
+                    tokens ~= currentToken;
+                }
+                else if (sawPeriod == 1)
                 {
                     lexState = LexerState.FindStartOfToken;
                     currentToken.type = TokenType.Float;
                     currentToken.chars = dateStr[tokenStart .. i];
                     tokens ~= currentToken;
                 }
-                else if (sawPeriod > 1)
+                else
                 {
                     auto splitted = dateStr[tokenStart .. i].splitter!("a == b", Yes.keepSeparators)('.');
                     foreach (str; splitted)
@@ -188,12 +191,6 @@ auto lex(Range)(Range dateStr)
                     }
 
                     currentToken = TokenQual.init;
-                }
-                else
-                {
-                    lexState = LexerState.FindStartOfToken;
-                    currentToken.chars = dateStr[tokenStart .. i];
-                    tokens ~= currentToken;
                 }
 
                 sawPeriod = 0;
@@ -217,18 +214,18 @@ auto lex(Range)(Range dateStr)
     return tokens;
 }
 
-auto parse(Range)(Range dateStr)
+auto parse(Allocator = GCAllocator, Range)(Range dateStr)
     if (isSomeString!Range || (isRandomAccessRange!Range && hasSlicing!Range && isSomeChar!(ElementEncodingType!Range)))
 {
-    return lex(dateStr);
+    return lex!Allocator(dateStr);
 }
 
 unittest
 {
-    writeln(parse("Thu Sep 25 10:36:28 BRST 2003"));
-    writeln(parse("2003-09-25T10:49:41.5-03:00"));
-    writeln(parse("10.10.2003"));
-    writeln(parse("Feb 30, 2007"));
+    writeln(parse("Thu Sep 25 10:36:28 BRST 2003")[]);
+    writeln(parse("2003-09-25T10:49:41.5-03:00")[]);
+    writeln(parse("10.10.2003")[]);
+    writeln(parse("Feb 30, 2007")[]);
     //writeln(parse("09-25-2003"));
 }
 
