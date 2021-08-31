@@ -20,7 +20,6 @@ void main()
 {
     version(unittest) {} else
     {
-        
         //auto customParser = new Parser!Mallocator(new ParserInfo());
 
         //auto result = to!Duration(benchmark!(() => customParser.parse(stringOne))(testCount)[0] / testCount);

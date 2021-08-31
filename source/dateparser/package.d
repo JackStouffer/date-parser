@@ -27,15 +27,12 @@
 module dateparser;
 
 import std.stdio;
-import std.array;
-import std.datetime;
 import std.algorithm.iteration;
 import std.traits;
 import std.typecons;
 import std.range;
 static import std.uni;
-import std.utf;
-import containers;
+import containers.dynamicarray;
 import std.experimental.allocator.gc_allocator;
 
 pragma(inline, true)
@@ -48,6 +45,58 @@ pragma(inline, true)
 bool isWhite(dchar c) @safe pure nothrow @nogc
 {
     return c == ' ' || (c >= 0x09 && c <= 0x0D);
+}
+
+
+// Copied from phobos utf.d because std.utf has top level imports which are not
+// betterC compatible
+auto byCodeUnit(R)(R r)
+if ((isConvertibleToString!R && !isStaticArray!R) ||
+    (isInputRange!R && isSomeChar!(ElementEncodingType!R)))
+{
+    import std.traits : StringTypeOf;
+    static if (// This would be cleaner if we had a way to check whether a type
+               // was a range without any implicit conversions.
+               (isAutodecodableString!R && !__traits(hasMember, R, "empty") &&
+                !__traits(hasMember, R, "front") && !__traits(hasMember, R, "popFront")))
+    {
+        static struct ByCodeUnitImpl
+        {
+        @safe pure nothrow @nogc:
+
+            @property bool empty() const     { return source.length == 0; }
+            @property auto ref front() inout { return source[0]; }
+            void popFront()                  { source = source[1 .. $]; }
+
+            @property auto save() { return ByCodeUnitImpl(source.save); }
+
+            @property auto ref back() inout { return source[$ - 1]; }
+            void popBack()                  { source = source[0 .. $-1]; }
+
+            auto ref opIndex(size_t index) inout     { return source[index]; }
+            auto opSlice(size_t lower, size_t upper) { return ByCodeUnitImpl(source[lower .. upper]); }
+
+            @property size_t length() const { return source.length; }
+            alias opDollar = length;
+
+            StringTypeOf!R source;
+        }
+
+        static assert(isRandomAccessRange!ByCodeUnitImpl);
+
+        return ByCodeUnitImpl(r);
+    }
+    else static if (!isInputRange!R ||
+                    (is(R : const dchar[]) && !__traits(hasMember, R, "empty") &&
+                    !__traits(hasMember, R, "front") && !__traits(hasMember, R, "popFront")))
+    {
+        return cast(StringTypeOf!R) r;
+    }
+    else
+    {
+        // byCodeUnit for ranges and dchar[] is a no-op
+        return r;
+    }
 }
 
 enum TokenType
@@ -71,6 +120,8 @@ enum LexerState
     ParseString,
     ParseSeperator
 }
+
+//pragma(LDC_intrinsic, "llvm.readcyclecounter") ulong llvm_readcyclecounter() @safe @nogc nothrow;
 
 auto lex(Allocator, Range)(Range dateStr)
     if (isSomeString!Range || (isRandomAccessRange!Range && hasSlicing!Range && isSomeChar!(ElementEncodingType!Range)))
@@ -217,15 +268,23 @@ auto lex(Allocator, Range)(Range dateStr)
 auto parse(Allocator = GCAllocator, Range)(Range dateStr)
     if (isSomeString!Range || (isRandomAccessRange!Range && hasSlicing!Range && isSomeChar!(ElementEncodingType!Range)))
 {
-    return lex!Allocator(dateStr);
+    //immutable startCycleCount = llvm_readcyclecounter();
+    auto tokens = lex!Allocator(dateStr);
+    //immutable endCycleCount = llvm_readcyclecounter();
+    //writeln("cycles ", endCycleCount - startCycleCount);
+    
+
+
+
+    return lexResult;
 }
 
 unittest
 {
-    writeln(parse("Thu Sep 25 10:36:28 BRST 2003")[]);
-    writeln(parse("2003-09-25T10:49:41.5-03:00")[]);
-    writeln(parse("10.10.2003")[]);
-    writeln(parse("Feb 30, 2007")[]);
+    //writeln(parse("Thu Sep 25 10:36:28 BRST 2003")[]);
+    //writeln(parse("2003-09-25T10:49:41.5-03:00")[]);
+    //writeln(parse("10.10.2003")[]);
+    //writeln(parse("Feb 30, 2007")[]);
     //writeln(parse("09-25-2003"));
 }
 

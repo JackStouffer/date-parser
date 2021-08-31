@@ -9,7 +9,8 @@
     "configurations": [
         {
             "name": "library",
-            "targetType": "library"
+            "targetType": "library",
+            "dflags-dmd": ["-betterC"]
         },
         {
             "name": "unittest",
@@ -20,7 +21,8 @@
             "name": "benchmark",
             "mainSourceFile": "bench.d",
             "targetType": "executable",
-            "dflags-ldc": ["-O5", "-boundscheck=off"]
+            "dflags-dmd": ["-noboundscheck"],
+            "dflags-ldc": ["-O5", "-boundscheck=off", "-Hkeep-all-bodies", "-enable-inlining"]
         }
     ],
     "buildTypes": {
