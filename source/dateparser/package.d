@@ -41,10 +41,10 @@ public import dateparser.parserinfo;
 
 private:
 
-Parser!GCAllocator defaultParser;
+Parser defaultParser;
 static this()
 {
-    defaultParser = new Parser!GCAllocator(new ParserInfo());
+    defaultParser = new Parser(new ParserInfo());
 }
 
 /**
@@ -267,12 +267,9 @@ unittest
     == SysTime(Date(2000, 3, 1)));
 }
 
-/// Custom allocators
 unittest
 {
-    import std.experimental.allocator.mallocator : Mallocator;
-
-    auto customParser = new Parser!Mallocator(new ParserInfo());
+    auto customParser = new Parser(new ParserInfo());
     assert(customParser.parse("2003-09-25T10:49:41") ==
         SysTime(DateTime(2003, 9, 25, 10, 49, 41)));
 }
@@ -590,7 +587,7 @@ unittest
         }
     }
 
-    auto rusParser = new Parser!GCAllocator(new RusParserInfo());
+    auto rusParser = new Parser(new RusParserInfo());
     immutable parsedTime = rusParser.parse("10 Сентябрь 2015 10:20");
     assert(parsedTime == SysTime(DateTime(2015, 9, 10, 10, 20)));
 
@@ -655,12 +652,9 @@ unittest
  * unnecessary allocations by using the `Parser.parse` function directly.
  *
  * Params:
- *     Allocator = the allocator type to use
  *     parserInfo = the parser info to reference when parsing
  */
-final class Parser(Allocator) if (
-    hasMember!(Allocator, "allocate") && hasMember!(Allocator, "deallocate"))
-{
+final class Parser {
     private const ParserInfo info;
 
 public:
@@ -794,30 +788,31 @@ private:
         bool yearFirst = false, bool fuzzy = false) if (isForwardRange!Range
             && !isInfinite!Range && isSomeChar!(ElementEncodingType!Range))
     {
+		import std.array : appender, Appender;
         import std.algorithm.searching : canFind, countUntil;
         import std.algorithm.iteration : filter;
         import std.uni : isUpper;
         import std.ascii : isDigit;
         import std.utf : byCodeUnit, byChar;
         import std.conv : to, ConvException;
-        import containers.dynamicarray : DynamicArray;
 
         ParseResult res;
 
-        DynamicArray!(string, Allocator, true) tokens;
+        //DynamicArray!(string, Allocator, true) tokens;
+		auto tokensAppender = appender!(string[])();
 
         static if (is(Unqual!(ElementEncodingType!Range) == dchar) ||
             is(Unqual!(ElementEncodingType!Range) == wchar))
         {
-            put(tokens, timeString.save.byChar.timeLexer);
+            put(tokensAppender, timeString.save.byChar.timeLexer);
         }
         else static if (isSomeString!Range && is(Unqual!(ElementEncodingType!Range) == char))
         {
-            put(tokens, timeString.save.byCodeUnit.timeLexer);
+            put(tokensAppender, timeString.save.byCodeUnit.timeLexer);
         }
         else
         {
-            put(tokens, timeString.save.timeLexer);
+            put(tokensAppender, timeString.save.timeLexer);
         }
 
         debug(dateparser) writeln("tokens: ", tokens[]);
@@ -832,6 +827,7 @@ private:
         //Index of the month string in ymd
         ptrdiff_t mstridx = -1;
 
+		auto tokens = tokensAppender.data;
         immutable size_t tokensLength = tokens.length;
         debug(dateparser) writeln("tokensLength: ", tokensLength);
         uint i = 0;
