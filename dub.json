@@ -3,9 +3,6 @@
     "description": "Library for parsing randomly formatted date strings",
     "license": "BSL-1.0",
     "authors": ["Jack Stouffer"],
-    "dependencies": {
-        "emsi_containers": "~>0.8.0"
-    },
     "configurations": [
         {
             "name": "library",
